@@ -25,11 +25,7 @@ import androidx.activity.OnBackPressedCallback
 import com.example.geminispotifyapp.ui.theme.GeminiSpotifyAppTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-
-
 import android.app.Activity
-import android.content.Context
-import android.net.http.HttpException
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,7 +54,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
@@ -68,15 +63,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.geminispotifyapp.auth.AuthManager
-import com.example.geminispotifyapp.data.PlayHistoryObject
-import com.example.geminispotifyapp.data.SpotifyArtist
-import com.example.geminispotifyapp.data.SpotifyTrack
+import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
 import com.example.geminispotifyapp.page.HomePage
 import com.example.geminispotifyapp.page.RecentlyPlayedContent
 import com.example.geminispotifyapp.page.TopArtistContent
 import com.example.geminispotifyapp.page.TopTrackContent
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 import kotlinx.coroutines.async
+import retrofit2.HttpException
 
 
 class MainActivity : ComponentActivity() {
@@ -143,7 +137,6 @@ fun LoginScreen(onAuthButtonClicked: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpotifyDataScreen(spotifyDataManager: SpotifyDataManager) {
     val scope = rememberCoroutineScope()
@@ -155,42 +148,49 @@ fun SpotifyDataScreen(spotifyDataManager: SpotifyDataManager) {
     // Define a function to fetch data
     fun fetchData() {
         scope.launch {
-            screenState = screenState.copy(isLoading = true, errorMessage = null, errorCause = null)
+            screenState = screenState.copy(isLoading = true, httpStatusCode = null ,errorMessage = null, errorCause = null)
             try {
                 Log.d("SpotifyDataScreen", "Fetching data...")
-                spotifyDataManager.refreshTokenDataIfNeeded()
+//                spotifyDataManager.refreshTokenDataIfNeeded()
 
                 val topArtistsDeferredShort = async(Dispatchers.IO) {
-                    spotifyDataManager.getUserTopArtists(timeRange = "short_term", limit = 10)
+                    spotifyDataManager.getUserTopArtists(timeRange = "short_term", limit = GET_ITEM_NUM)
                 }
                 val topArtistDeferredMedium = async(Dispatchers.IO) {
-                    spotifyDataManager.getUserTopArtists(timeRange = "medium_term", limit = 10)
+                    spotifyDataManager.getUserTopArtists(timeRange = "medium_term", limit = GET_ITEM_NUM)
                 }
                 val topArtistsDeferredLong = async(Dispatchers.IO) {
-                    spotifyDataManager.getUserTopArtists(timeRange = "long_term", limit = 10)
+                    spotifyDataManager.getUserTopArtists(timeRange = "long_term", limit = GET_ITEM_NUM)
                 }
 
                 val topTracksDeferredShort = async(Dispatchers.IO) {
-                    spotifyDataManager.getUserTopTracks(timeRange = "short_term", limit = 10)
+                    spotifyDataManager.getUserTopTracks(timeRange = "short_term", limit = GET_ITEM_NUM)
                 }
                 val topTracksDeferredMedium = async(Dispatchers.IO) {
-                    spotifyDataManager.getUserTopTracks(timeRange = "medium_term", limit = 10)
+                    spotifyDataManager.getUserTopTracks(timeRange = "medium_term", limit = GET_ITEM_NUM)
                 }
                 val topTracksDeferredLong = async(Dispatchers.IO) {
-                    spotifyDataManager.getUserTopTracks(timeRange = "long_term", limit = 10)
+                    spotifyDataManager.getUserTopTracks(timeRange = "long_term", limit = GET_ITEM_NUM)
                 }
 
                 val recentlyPlayedDeferred = async(Dispatchers.IO) {
-                    spotifyDataManager.getRecentlyPlayedTracks(limit = 10)
+                    spotifyDataManager.getRecentlyPlayedTracks(limit = GET_ITEM_NUM)
                 }
 
                 screenState = screenState.copy(
-                    topArtists = topArtistsDeferredShort.await().items + topArtistDeferredMedium.await().items + topArtistsDeferredLong.await().items,
-                    topTracks = topTracksDeferredShort.await().items + topTracksDeferredMedium.await().items + topTracksDeferredLong.await().items,
-                    recentlyPlayed = recentlyPlayedDeferred.await().items,
-                    isLoading = false
+                    isLoading = false,
+                    topArtistsShort = topArtistsDeferredShort.await().items,
+                    topArtistsMedium = topArtistDeferredMedium.await().items,
+                    topArtistsLong = topArtistsDeferredLong.await().items,
+                    topTracksShort = topTracksDeferredShort.await().items,
+                    topTracksMedium = topTracksDeferredMedium.await().items,
+                    topTracksLong = topTracksDeferredLong.await().items,
+                    recentlyPlayed = recentlyPlayedDeferred.await().items
                 )
-            } catch (e: Exception) {
+            } catch (e: HttpException) {
+                screenState = screenState.copy(isLoading = false, httpStatusCode = e.response()?.code(), errorMessage = e.message(), errorCause = e)
+            }
+            catch (e: Exception) {
                 Log.e("SpotifyDataScreen", "Failed to load data", e)
                 screenState = screenState.copy(isLoading = false, errorMessage = e.message, errorCause = e)
             }
@@ -213,7 +213,7 @@ fun SpotifyDataScreen(spotifyDataManager: SpotifyDataManager) {
             }
         }
 
-        isAuthenticationExpired(screenState.errorMessage, screenState.errorCause) -> {
+        isAuthenticationExpired(screenState.httpStatusCode) -> {
             Box(Modifier
                 .fillMaxSize()
                 .padding(4.dp)) {
@@ -245,10 +245,10 @@ fun SpotifyDataScreen(spotifyDataManager: SpotifyDataManager) {
                             HomePage() // 首頁內容
                         }
                         composable("topArtists") {
-                            TopArtistContent(screenState.topArtists, navController)
+                            TopArtistContent(screenState.topArtistsShort, screenState.topArtistsMedium, screenState.topArtistsLong, navController)
                         }
                         composable("topTracks") {
-                            TopTrackContent(screenState.topTracks, navController)
+                            TopTrackContent(screenState.topTracksShort, screenState.topTracksMedium, screenState.topTracksLong, navController)
                         }
                         composable("recentlyPlayed") {
                             RecentlyPlayedContent(screenState.recentlyPlayed, navController)
@@ -262,6 +262,7 @@ fun SpotifyDataScreen(spotifyDataManager: SpotifyDataManager) {
         }
     }
 }
+
 
 /**
  * Handles back navigation in the app. When the current destination is not "home",
@@ -373,62 +374,6 @@ fun BottomNavigationPreview() {
     val navController = rememberNavController()
     BottomNavigation(navController = navController)
 }
-
-// Helper functions to encapsulate common logic
-fun isAuthenticationExpired(errorMessage: String?, errorCause: Throwable?): Boolean {
-    return errorMessage?.contains("認證已過期") == true ||
-            (errorCause is HttpException)
-}
-
-@Composable
-fun AuthenticationExpiredContent(context: Context) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Authentication has expired. Please re-login to your Spotify account")
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = {
-                AuthManager.startAuthentication(context)
-            },
-            contentPadding = PaddingValues(16.dp)
-        ) {
-            Text("Connect to Spotify")
-        }
-    }
-}
-
-@Composable
-fun ErrorContent(errorMessage: String?, onRetry: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "Failed to load data: $errorMessage",
-            color = Color.Red
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onRetry) {
-            Text("Retry")
-        }
-    }
-}
-
-// Data class for screen state
-data class ScreenState(
-    val isLoading: Boolean = true,
-    val errorMessage: String? = null,
-    val errorCause: Throwable? = null,
-    val topArtists: List<SpotifyArtist> = emptyList(),
-    val topTracks: List<SpotifyTrack> = emptyList(),
-    val recentlyPlayed: List<PlayHistoryObject> = emptyList()
-)
 
 
 @Composable

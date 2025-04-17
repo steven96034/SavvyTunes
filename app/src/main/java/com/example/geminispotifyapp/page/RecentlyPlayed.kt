@@ -15,7 +15,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +35,7 @@ import coil.compose.AsyncImage
 import com.example.geminispotifyapp.HandleBackToHome
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.PlayHistoryObject
+import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -48,7 +52,6 @@ fun RecentlyPlayedContent(recentlyPlayed: List<PlayHistoryObject>, navController
             .verticalScroll(scrollState)
             .padding(vertical = 8.dp, horizontal = 16.dp)
     ) {
-        // 最近播放
         Row {
             Column {
                 Row (
@@ -73,6 +76,18 @@ fun RecentlyPlayedContent(recentlyPlayed: List<PlayHistoryObject>, navController
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
         }
+        if (recentlyPlayed.size < GET_ITEM_NUM) {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Info, contentDescription = "Info Icon")
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("You data is not enough to show more recently played songs. (Max = $GET_ITEM_NUM)")
+            }
+        }
+
         Log.d("SpotifyDataContent", "Recently Played: $recentlyPlayed")
     }
 
@@ -144,19 +159,14 @@ fun formatTimeAgo(dateString: String): String {
         // 獲取當前時間
         val now = java.util.Date()
 
-        // 計算時間差（毫秒）
-        val diff = now.time - lastPlayed.time
+        // 計算時間差（毫秒 * 1000 == 秒）
+        val diff = (now.time - lastPlayed.time) / 1000
 
-        // 將時間差轉換為秒、分、時、天
-        val seconds = diff / 1000
-        val minutes = seconds / 60
-        val hours = minutes / 60
-        val days = hours / 24
         return when {
-            diff < 60 * 1000 -> "剛剛"
-            diff < 60 * 60 * 1000 -> "${diff / (60 * 1000)} 分鐘前"
-            diff < 24 * 60 * 60 * 1000 -> "${diff / (60 * 60 * 1000)} 小時前"
-            else -> "${diff / (24 * 60 * 60 * 1000)} 天前"
+            diff < 60 -> "剛剛"
+            diff < 60 * 60 -> "${diff / (60)} 分鐘前"
+            diff < 24 * 60 * 60 -> "${diff / (60 * 60)} 小時前"
+            else -> "${diff / (24 * 60 * 60)} 天前"
         }
     } catch (e: Exception) {
         Log.e("TimeFormat", "解析日期失敗：$dateString", e)

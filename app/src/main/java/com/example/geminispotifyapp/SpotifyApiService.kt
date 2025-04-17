@@ -1,7 +1,6 @@
 package com.example.geminispotifyapp
 
 import android.content.Context
-import android.util.Log
 import com.adamratzman.spotify.utils.Language
 import com.example.geminispotifyapp.auth.SpotifyTokenResponse
 import okhttp3.OkHttpClient
@@ -111,61 +110,6 @@ interface SpotifyApiService {
             } catch (e: Exception) {
                 e.printStackTrace()
                 return null
-            }
-        }
-        suspend fun refreshTokenIfNeeded(context: Context) {
-            // 檢查 token 是否過期 (可以存儲 token 過期時間)
-            val currentTime = System.currentTimeMillis() / 1000 // Convert to seconds
-            val sharedPreferences = context.getSharedPreferences("spotify_token_prefs", Context.MODE_PRIVATE)
-            val expiryTime = sharedPreferences.getLong("expires_at", 0)
-
-            Log.d("SpotifyAuth", "Current time: $currentTime, Expiry time: $expiryTime")
-            if (expiryTime <= currentTime) {
-                // 使用 refresh token 獲取新的 access token
-                Log.d("SpotifyAuth", "Access token expired. Refreshing...")
-                val refreshToken = sharedPreferences.getString("refresh_token", null)
-                if (refreshToken != null) {
-                    try {
-                        val newTokens = refreshToken(context)?.accessToken
-                        // 儲存新的 tokens
-                        with(sharedPreferences.edit()) {
-                            putString("access_token", newTokens)
-                            apply()
-                        }
-                        SpotifyDataManager(context).updateAccessToken(newTokens)
-                        Log.d("SpotifyAuth", "(Refresh) Token 已重新儲存至 SharedPreferences")
-                        Log.d("SpotifyAuth", "New tokens: ${sharedPreferences.getString("access_token", "not found")}, ${sharedPreferences.getLong("expires_at", 0)}")
-                        //saveTokens(newTokens)
-                    } catch (e: Exception) {
-                        // Token 刷新失敗，需要重新登入
-                        with(sharedPreferences.edit()) {
-                            putString("access_token", null)
-                            putString("refresh_token", null)
-                            putString("token_type", null)
-                            putLong("expires_at", 0)
-                            putString("scope", null)
-                            apply()
-                        }
-                        SpotifyDataManager(context).updateAccessToken(null)
-                        //clearTokens()
-                        throw Exception("認證已過期，請重新登入")
-                    }
-                } else {
-                    // 沒有 refresh token，需要重新登入
-                    with(sharedPreferences.edit()) {
-                        putString("access_token", null)
-                        putString("refresh_token", null)
-                        putString("token_type", null)
-                        putLong("expires_at", 0)
-                        putString("scope", null)
-                        apply()
-                    }
-                    SpotifyDataManager(context).updateAccessToken(null)
-                    //clearTokens()
-                    throw Exception("認證已過期，請重新登入")
-                }
-            } else {
-                Log.d("SpotifyAuth", "Access token still valid.")
             }
         }
     }

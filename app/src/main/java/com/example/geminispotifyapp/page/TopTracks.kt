@@ -15,7 +15,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,13 +41,14 @@ import com.example.geminispotifyapp.DropDownMenuTemplate
 import com.example.geminispotifyapp.HandleBackToHome
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.SpotifyTrack
+import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
+
 
 @Composable
-fun TopTrackContent(topTracks: List<SpotifyTrack>, navController: NavController) {
+fun TopTrackContent(topTracksShort: List<SpotifyTrack>, topTracksMedium: List<SpotifyTrack>, topTracksLong: List<SpotifyTrack>, navController: NavController) {
     val scrollState = rememberScrollState()
     var expandedMenuTrack by remember { mutableStateOf(false) }
     var trackPeriodSelection by remember { mutableIntStateOf(0) }
-    val batchSize = 10
 
     HandleBackToHome(navController)
 
@@ -54,7 +58,6 @@ fun TopTrackContent(topTracks: List<SpotifyTrack>, navController: NavController)
             .verticalScroll(scrollState)
             .padding(vertical = 8.dp, horizontal = 16.dp)
     ) {
-        // 熱門歌曲
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -86,47 +89,57 @@ fun TopTrackContent(topTracks: List<SpotifyTrack>, navController: NavController)
             )
         }
 
-//        Spacer(modifier = Modifier.height(24.dp))
-//        if(topTracks.isNotEmpty()) {
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.SpaceBetween,
-//                verticalAlignment = Alignment.CenterVertically
-//            ) {
-//                Text(
-//                    text = "您的熱門歌曲",
-//                    style = MaterialTheme.typography.headlineMedium,
-//                    fontWeight = FontWeight.Bold
-//                )
-//            }
-//
-//            Spacer(modifier = Modifier.height(8.dp))
-//        }
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (topTracks.isNotEmpty()) {
-            for (i in 0 until batchSize) {
-                val index = i + (trackPeriodSelection * batchSize)
-                if (index < topTracks.size) {
-                    TrackItem(i + 1, topTracks[index])
-                    if (i < batchSize - 1) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    }
-                }
-            }
+        when (trackPeriodSelection) {
+            0 -> GetTopTracks(topTracksShort)
+            1 -> GetTopTracks(topTracksMedium)
+            2 -> GetTopTracks(topTracksLong)
+            else -> {}
         }
-        Log.d("SpotifyDataContent", "Top Tracks: $topTracks")
-//        topTracks.forEachIndexed { index, track ->
-//            TrackItem(index + 1, track)
-//            if (index < topTracks.size - 1) {
-//                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+//        if (topTracks.isNotEmpty()) {
+//            for (i in 0 until GET_ITEM_NUM) {
+//                val index = i + (trackPeriodSelection * GET_ITEM_NUM)
+//                if (index < topTracks.size) {
+//                    TrackItem(i + 1, topTracks[index])
+//                    if (i < GET_ITEM_NUM - 1) {
+//                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+//                    }
+//                }
 //            }
 //        }
+
+        Log.d("SpotifyDataContent", "Top Tracks Short-Period: $topTracksShort")
+        Log.d("SpotifyDataContent", "Top Tracks Medium-Period: $topTracksMedium")
+        Log.d("SpotifyDataContent", "Top Tracks Long-Period: $topTracksLong")
+
     }
 }
 
 @Composable
-fun TrackItem(index: Int, track: SpotifyTrack) {
+private fun GetTopTracks(topTracks: List<SpotifyTrack>){
+    topTracks.forEachIndexed { index, track ->
+        TrackItem(index + 1, track)
+        if (index < topTracks.size - 1) {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        }
+    }
+    if (topTracks.size < GET_ITEM_NUM) {
+        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.Info, contentDescription = "Info Icon")
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("You data is not enough to show more tracks. (Max = $GET_ITEM_NUM)")
+        }
+    }
+
+}
+
+@Composable
+private fun TrackItem(index: Int, track: SpotifyTrack) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()

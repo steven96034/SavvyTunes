@@ -15,7 +15,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,14 +39,14 @@ import coil.compose.AsyncImage
 import com.example.geminispotifyapp.DropDownMenuTemplate
 import com.example.geminispotifyapp.HandleBackToHome
 import com.example.geminispotifyapp.R
+import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
 import com.example.geminispotifyapp.data.SpotifyArtist
 
 @Composable
-fun TopArtistContent(topArtists: List<SpotifyArtist>, navController: NavController) {
+fun TopArtistContent(topArtistsShort: List<SpotifyArtist>, topArtistsMedium: List<SpotifyArtist>, topArtistsLong: List<SpotifyArtist>, navController: NavController) {
     val scrollState = rememberScrollState()
     var expandedMenuArtist by remember { mutableStateOf(false) }
     var artistPeriodSelection by remember { mutableIntStateOf(0) }
-    val batchSize = 10
 
     HandleBackToHome(navController)
 
@@ -53,7 +56,6 @@ fun TopArtistContent(topArtists: List<SpotifyArtist>, navController: NavControll
             .verticalScroll(scrollState)
             .padding(vertical = 8.dp, horizontal = 16.dp)
     ) {
-        // 熱門藝術家
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -87,30 +89,53 @@ fun TopArtistContent(topArtists: List<SpotifyArtist>, navController: NavControll
 
         Spacer(modifier = Modifier.height(8.dp))
 
-
-        if (topArtists.isNotEmpty()) {
-            for (i in 0 until batchSize) {
-                val index = i + (artistPeriodSelection * batchSize)
-                if (index < topArtists.size) {
-                    ArtistItem(i + 1, topArtists[index])
-                    if (i < batchSize - 1) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    }
-                }
-            }
+        when (artistPeriodSelection) {
+            0 -> GetTopArtists(topArtistsShort)
+            1 -> GetTopArtists(topArtistsMedium)
+            2 -> GetTopArtists(topArtistsLong)
+            else -> {}
         }
-        Log.d("SpotifyDataContent", "Top Artists: $topArtists")
-//        topArtists.forEachIndexed { index, artist ->
-//            ArtistItem(index + 1, artist)
-//            if (index < topArtists.size - 1) {
-//                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+//        if (topArtists.isNotEmpty()) {
+//            for (i in 0 until GET_ITEM_NUM) {
+//                val index = i + (artistPeriodSelection * GET_ITEM_NUM)
+//                if (index < topArtists.size) {
+//                    ArtistItem(i + 1, topArtists[index])
+//                    if (i < GET_ITEM_NUM - 1) {
+//                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+//                    }
+//                }
 //            }
 //        }
+        Log.d("SpotifyDataContent", "Top Artists Short-Period: $topArtistsShort")
+        Log.d("SpotifyDataContent", "Top Artists Medium-Period: $topArtistsMedium")
+        Log.d("SpotifyDataContent", "Top Artists Long-Period: $topArtistsLong")
     }
 }
 
 @Composable
-fun ArtistItem(index: Int, artist: SpotifyArtist) {
+private fun GetTopArtists(topArtists: List<SpotifyArtist>){
+    topArtists.forEachIndexed { index, artist ->
+        ArtistItem(index + 1, artist)
+        if (index < topArtists.size - 1) {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        }
+    }
+    if (topArtists.size < GET_ITEM_NUM) {
+        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.Info, contentDescription = "Info Icon")
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("You data is not enough to show more artists. (Max = $GET_ITEM_NUM)")
+        }
+    }
+}
+
+@Composable
+private fun ArtistItem(index: Int, artist: SpotifyArtist) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()

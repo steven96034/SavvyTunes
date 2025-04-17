@@ -2,15 +2,11 @@ package com.example.geminispotifyapp
 
 import android.content.Context
 import android.util.Log
-import com.example.geminispotifyapp.auth.SpotifyTokenResponse
 import com.example.geminispotifyapp.data.RecentlyPlayedResponse
 import com.example.geminispotifyapp.data.TopArtistsResponse
 import com.example.geminispotifyapp.data.TopTracksResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import retrofit2.http.Field
-import retrofit2.http.FormUrlEncoded
-import retrofit2.http.POST
 
 class SpotifyDataManager(private val context: Context) {
 
@@ -117,7 +113,6 @@ class SpotifyDataManager(private val context: Context) {
         try {
             val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
             Log.d("SpotifyData", "pref.accessToken before: ${prefs.getString(ACCESS_TOKEN_KEY, null)}")
-            // val refreshToken = prefs.getString(REFRESH_TOKEN_KEY, null) ?: throw Exception("No refresh token available")
 
             val response = SpotifyApiService.refreshToken(context = context)
 
@@ -126,33 +121,20 @@ class SpotifyDataManager(private val context: Context) {
                 if (response != null) {
                     putString(ACCESS_TOKEN_KEY, response.accessToken)
                     Log.d("SpotifyData", "pref.accessToken after: ${prefs.getString(ACCESS_TOKEN_KEY, null)}")
-                }
-                if (response != null) {
+
                     putLong(EXPIRES_AT_KEY, System.currentTimeMillis() + (response.expiresIn * 1000))
-                }
-                // refresh_token 不一定每次都返回，只有在有變更時才返回
-                if (response != null) {
+
+                    // refresh_token 不一定每次都返回，只有在有變更時才返回
                     if (response.refreshToken != null) {
                         putString(REFRESH_TOKEN_KEY, response.refreshToken)
                     }
                 }
                 apply()
             }
-
             Log.d("SpotifyData", "成功更新 Access Token")
         } catch (e: Exception) {
             Log.e("SpotifyData refresh token", "刷新 Token 失敗", e)
             throw e
         }
     }
-
-    suspend fun refreshTokenDataIfNeeded() {
-        try {
-            SpotifyApiService.refreshTokenIfNeeded(context)
-        } catch (e: Exception) {
-            Log.e("SpotifyData", "刷新 Token 失敗", e)
-            throw e
-        }
-    }
-
 }
