@@ -36,8 +36,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.geminispotifyapp.DropDownMenuTemplate
-import com.example.geminispotifyapp.HandleBackToHome
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
 import com.example.geminispotifyapp.data.SpotifyArtist
@@ -72,7 +70,7 @@ fun TopArtistContent(topArtistsShort: List<SpotifyArtist>, topArtistsMedium: Lis
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
-                        text = "您的熱門藝術家",
+                        text = "Your Top Artists",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -147,7 +145,7 @@ private fun ArtistItem(index: Int, artist: SpotifyArtist) {
             modifier = Modifier.width(30.dp)
         )
 
-        // 藝術家圖片
+        // Artist Image
         val imageUrl = artist.images?.firstOrNull()?.url
         if (imageUrl != null) {
             AsyncImage(
@@ -162,7 +160,7 @@ private fun ArtistItem(index: Int, artist: SpotifyArtist) {
             Spacer(modifier = Modifier.width(12.dp))
         }
 
-        // 藝術家資訊
+        // Artist Info
         Column(
             modifier = Modifier.weight(1f)
         ) {
@@ -172,7 +170,7 @@ private fun ArtistItem(index: Int, artist: SpotifyArtist) {
                 fontWeight = FontWeight.Medium
             )
             Text(
-                text = "人氣指數: ${artist.popularity}",
+                text = "Popularity: ${artist.popularity}",
                 style = MaterialTheme.typography.labelSmall
             )
         }

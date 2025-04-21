@@ -37,8 +37,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.example.geminispotifyapp.DropDownMenuTemplate
-import com.example.geminispotifyapp.HandleBackToHome
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
@@ -74,7 +72,7 @@ fun TopTrackContent(topTracksShort: List<SpotifyTrack>, topTracksMedium: List<Sp
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
-                        text = "您的熱門歌曲",
+                        text = "Your Top Songs",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -151,7 +149,7 @@ private fun TrackItem(index: Int, track: SpotifyTrack) {
             modifier = Modifier.width(30.dp)
         )
 
-        // 專輯封面
+        // Album Cover
         val imageUrl = track.album.images.firstOrNull()?.url
         if (imageUrl != null) {
             AsyncImage(
@@ -165,7 +163,7 @@ private fun TrackItem(index: Int, track: SpotifyTrack) {
             Spacer(modifier = Modifier.width(12.dp))
         }
 
-        // 歌曲資訊
+        // Song Info
         Column(
             modifier = Modifier.weight(1f)
         ) {
