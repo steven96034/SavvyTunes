@@ -55,6 +55,7 @@ class AuthCallbackActivity : AppCompatActivity() {
             error != null -> {
                 Log.e(TAG, "Spotify Authentication Error: $error")
                 showErrorAndFinish("Spotify authentication error: $error")
+                return
             }
             code != null -> {
                 Log.d(TAG, "Successfully received Authorization Code: $code")
@@ -63,6 +64,7 @@ class AuthCallbackActivity : AppCompatActivity() {
             else -> {
                 Log.w(TAG, "Callback URI does not contain code or error")
                 showErrorAndFinish("Missing code or error in callback URI")
+                return
             }
         }
     }
