@@ -1,7 +1,8 @@
 package com.example.geminispotifyapp
 
 import android.content.Context
-import com.adamratzman.spotify.utils.Language
+import com.example.geminispotifyapp.SpotifyDataManager.Companion.PREF_NAME
+import com.example.geminispotifyapp.SpotifyDataManager.Companion.REFRESH_TOKEN_KEY
 import com.example.geminispotifyapp.auth.SpotifyTokenResponse
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -31,7 +32,7 @@ interface SpotifyApiService {
     companion object {
         private const val BASE_URL = "https://accounts.spotify.com/"
 
-        // 創建 Retrofit 實例
+        // Create Retrofit instance
         private val retrofit by lazy {
             Retrofit.Builder()
                 .baseUrl(BASE_URL)
@@ -40,7 +41,7 @@ interface SpotifyApiService {
                 .build()
         }
 
-        // 創建 OkHttpClient 實例
+        // Create OkHttpClient instance
         private fun createOkHttpClient(): OkHttpClient {
             return OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
@@ -52,12 +53,12 @@ interface SpotifyApiService {
                 .build()
         }
 
-        // 提供 API 服務
-        val service: SpotifyApiService by lazy {
+        // Provide API service
+        private val service: SpotifyApiService by lazy {
             retrofit.create(SpotifyApiService::class.java)
         }
 
-        // 靜態方法，用於從 AuthCallbackActivity 呼叫
+        // static get access token method, call from AuthCallbackActivity
         suspend fun getAccessToken(
             grantType: String,
             code: String,
@@ -74,37 +75,36 @@ interface SpotifyApiService {
             )
         }
 
-        // 靜態刷新 token 方法
+        // static refresh token method
         suspend fun refreshToken(context: Context): SpotifyTokenResponse? {
             try {
-                // 從 SharedPreferences 獲取之前保存的 refresh token
-                val sharedPreferences = context.getSharedPreferences("spotify_token_prefs", Context.MODE_PRIVATE)
-                val refreshToken = sharedPreferences.getString("refresh_token", "") ?: ""
+                val sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+                val refreshToken = sharedPreferences.getString(REFRESH_TOKEN_KEY, "") ?: ""
                 val clientId = BuildConfig.SPOTIFY_WEB_API_KEY
 
                 if (refreshToken.isEmpty()) {
                     return null
                 }
 
-                // 準備請求參數
+                // Prepare request parameters
                 val requestBody = HashMap<String, String>().apply {
                     put("grant_type", "refresh_token")
                     put("refresh_token", refreshToken)
                     put("client_id", clientId)
                 }
 
-                // 發送請求
+                // Send request and get response
                 val response = service.refreshAccessToken(requestBody)
 
-                // 保存新的 access token 和 refresh token (如果有提供)
-                sharedPreferences.edit().apply {
-                    putString("access_token", response.accessToken)
-                    response.refreshToken?.let {
-                        putString("refresh_token", Language.it.toString())
-                    }
-                    putLong("token_expiry", System.currentTimeMillis() + (response.expiresIn * 1000))
-                    apply()
-                }
+//                // 保存新的 access token 和 refresh token (如果有提供)
+//                sharedPreferences.edit().apply {
+//                    putString(ACCESS_TOKEN_KEY, response.accessToken)
+//                    response.refreshToken?.let {
+//                        putString(REFRESH_TOKEN_KEY, Language.it.toString())
+//                    }
+//                    putLong(EXPIRES_AT_KEY, System.currentTimeMillis() + (response.expiresIn * 1000))
+//                    apply()
+//                }
 
                 return response
             } catch (e: Exception) {

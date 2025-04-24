@@ -12,7 +12,7 @@ import retrofit2.http.Header
 import retrofit2.http.Query
 import java.util.concurrent.TimeUnit
 
-// Spotify 用戶 API 服務介面
+// Spotify API service for fetching user data
 interface SpotifyUserApiService {
     @GET("v1/me/top/artists")
     suspend fun getTopArtists(
@@ -41,7 +41,7 @@ interface SpotifyUserApiService {
     companion object {
         private const val BASE_URL = "https://api.spotify.com/"
 
-        // 創建 Retrofit 實例
+        // Create Retrofit instance
         private val retrofit by lazy {
             Retrofit.Builder()
                 .baseUrl(BASE_URL)
@@ -50,7 +50,7 @@ interface SpotifyUserApiService {
                 .build()
         }
 
-        // 創建 OkHttpClient 實例
+        // Create OkHttpClient instance
         private fun createOkHttpClient(): OkHttpClient {
             return OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
@@ -62,7 +62,7 @@ interface SpotifyUserApiService {
                 .build()
         }
 
-        // 提供 API 服務
+        // Provide API service
         val service: SpotifyUserApiService by lazy {
             retrofit.create(SpotifyUserApiService::class.java)
         }

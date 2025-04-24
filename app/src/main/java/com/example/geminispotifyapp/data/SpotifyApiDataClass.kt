@@ -19,7 +19,6 @@ data class SpotifyTrack(
     val id: String,
     val name: String,
     val popularity: Int,
-    val type: String,
     @SerializedName("external_urls")
     val externalUrls: Map<String, String>,
     val album: SpotifyAlbum,
@@ -69,17 +68,6 @@ data class SpotifyImage(
     val url: String,
     val height: Int?,
     val width: Int?
-)
-
-data class SpotifyPagingObject<T>(
-    val items: List<T>,
-    val total: Int,
-    val limit: Int,
-    val offset: Int,
-    @SerializedName("next")
-    val nextUrl: String?,
-    @SerializedName("previous")
-    val previousUrl: String?
 )
 
 data class TopArtistsResponse(

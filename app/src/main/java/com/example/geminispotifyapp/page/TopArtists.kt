@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -207,6 +209,9 @@ private fun ArtistItem(index: Int, artist: SpotifyArtist, onArtistSelected: (Spo
                 )
                 Spacer(modifier = Modifier.width(12.dp))
             }
+            else {
+                Spacer(modifier = Modifier.width(72.dp))
+            }
 
             // Artist Info
             Column(
@@ -235,6 +240,7 @@ fun ArtistDetail(
     onDismiss: (SpotifyArtist?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val scrollState = rememberScrollState()
     val context = LocalContext.current
     Surface(
         color = SpotifyBlack,
@@ -242,6 +248,7 @@ fun ArtistDetail(
         modifier = modifier
             .fillMaxWidth(0.8f)
             .fillMaxHeight(0.9f)
+            .verticalScroll(scrollState)
     ) {
         Column(
             modifier = Modifier
@@ -256,12 +263,19 @@ fun ArtistDetail(
                 AsyncImage(
                     model = imageUrl,
                     contentDescription = "Artist image",
-
                     modifier = Modifier.clip(RoundedCornerShape(2.dp)),
                     contentScale = ContentScale.Inside
                 )
             }
+            else {
+                Spacer(modifier = Modifier.height(12.dp))
+                Card (modifier = Modifier.padding(16.dp), shape = RectangleShape) {
+                    Text(text = "No Image...", style = MaterialTheme.typography.headlineMedium)
+                }
+                Spacer(modifier = Modifier.height(60.dp))
+            }
             Spacer(modifier = Modifier.width(36.dp))
+
             Text(
                 text = artist.name,
                 style = MaterialTheme.typography.headlineSmall,
@@ -269,23 +283,25 @@ fun ArtistDetail(
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Display more details about the artist here
             Text(
                 text = "Popularity: ${artist.popularity}",
                 style = MaterialTheme.typography.bodyMedium
             )
             Spacer(modifier = Modifier.height(8.dp))
+
             Text(
                 text = "Genres: ${artist.genres.joinToString(", ")}",
                 style = MaterialTheme.typography.bodyMedium
             )
             Spacer(modifier = Modifier.height(8.dp))
+
             val followers = artist.followers["total"]
             val formattedFollowers = followers.toString().reversed().chunked(3).joinToString(",").reversed()
             Text(
                 text = "Followers: $formattedFollowers",
                 style = MaterialTheme.typography.bodyMedium
             )
+
             val url = artist.externalUrls["spotify"]
             if (url != null) {
                 Spacer(modifier = Modifier.height(8.dp))

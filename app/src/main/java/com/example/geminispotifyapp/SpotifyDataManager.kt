@@ -11,18 +11,18 @@ import kotlinx.coroutines.flow.StateFlow
 class SpotifyDataManager(private val context: Context) {
 
     companion object {
-        private const val PREF_NAME = "spotify_token_prefs"
-        private const val ACCESS_TOKEN_KEY = "access_token"
-        private const val REFRESH_TOKEN_KEY = "refresh_token"
-        private const val TOKEN_TYPE_KEY = "token_type"
-        private const val EXPIRES_AT_KEY = "expires_at"
+        const val PREF_NAME = "spotify_token_prefs"
+        const val ACCESS_TOKEN_KEY = "access_token"
+        const val REFRESH_TOKEN_KEY = "refresh_token"
+        const val TOKEN_TYPE_KEY = "token_type"
+        const val EXPIRES_AT_KEY = "expires_at"
+        const val STATE_KEY = "state"
     }
 
     private val _accessTokenFlow = MutableStateFlow(getAccessToken()) // 使用 getAccessToken() 的初始值
     val accessTokenAsFlow: StateFlow<String?> = _accessTokenFlow
 
-    // 從 SharedPreferences 取得 Access Token
-    fun getAccessToken(): String? {
+    private fun getAccessToken(): String? {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         return prefs.getString(ACCESS_TOKEN_KEY, null)
     }
@@ -32,27 +32,31 @@ class SpotifyDataManager(private val context: Context) {
         Log.d("Auth", "updateAccessToken: $accessToken")
     }
 
-    // 從 SharedPreferences 取得 Token Type
-    fun getTokenType(): String? {
+    fun getSavedState(context: Context): String? {
+        val pref = context.getSharedPreferences(STATE_KEY, Context.MODE_PRIVATE)
+        return pref.getString(STATE_KEY, null)
+    }
+
+    // Always return "Bearer"
+    private fun getTokenType(): String? {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         return prefs.getString(TOKEN_TYPE_KEY, "Bearer")
     }
 
-    // 檢查 Token 是否過期
-    fun isTokenExpired(): Boolean {
+    // Check if the token has expired
+    private fun isTokenExpired(): Boolean {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         val expiresAt = prefs.getLong(EXPIRES_AT_KEY, 0)
         return System.currentTimeMillis() > expiresAt
     }
 
-    // 取得授權 Header
-    fun getAuthorizationHeader(): String {
+    // Get the authorization header
+    private fun getAuthorizationHeader(): String {
         val tokenType = getTokenType() ?: "Bearer"
         val accessToken = getAccessToken() ?: ""
         return "$tokenType $accessToken"
     }
 
-    // 取得用戶熱門藝術家
     suspend fun getUserTopArtists(
         timeRange: String = "medium_term",
         limit: Int = 20,
@@ -70,7 +74,6 @@ class SpotifyDataManager(private val context: Context) {
         )
     }
 
-    // 取得用戶熱門歌曲
     suspend fun getUserTopTracks(
         timeRange: String = "medium_term",
         limit: Int = 20,
@@ -88,7 +91,6 @@ class SpotifyDataManager(private val context: Context) {
         )
     }
 
-    // 取得用戶最近播放的歌曲
     suspend fun getRecentlyPlayedTracks(
         limit: Int = 20,
         before: Long? = null,
@@ -106,17 +108,14 @@ class SpotifyDataManager(private val context: Context) {
         )
     }
 
-    // 刷新 Token
     private suspend fun refreshToken() {
-        // 在正式版本中，您需要實現這個方法來使用 refresh_token 獲取新的 access_token
-        // 下面是一個示例實現，您需要根據自己的 SpotifyApiService 來調整
         try {
             val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
             Log.d("SpotifyData", "pref.accessToken before: ${prefs.getString(ACCESS_TOKEN_KEY, null)}")
 
             val response = SpotifyApiService.refreshToken(context = context)
 
-            // 保存新的 access_token 和過期時間
+            // save the new access token and expiration time
             with(prefs.edit()) {
                 if (response != null) {
                     putString(ACCESS_TOKEN_KEY, response.accessToken)
@@ -124,7 +123,7 @@ class SpotifyDataManager(private val context: Context) {
 
                     putLong(EXPIRES_AT_KEY, System.currentTimeMillis() + (response.expiresIn * 1000))
 
-                    // refresh_token 不一定每次都返回，只有在有變更時才返回
+                    // refresh_token would changed when returned (not null)
                     if (response.refreshToken != null) {
                         putString(REFRESH_TOKEN_KEY, response.refreshToken)
                     }

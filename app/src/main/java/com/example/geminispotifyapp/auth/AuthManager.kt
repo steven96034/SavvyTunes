@@ -7,9 +7,12 @@ import java.security.SecureRandom
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.widget.Toast
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import com.example.geminispotifyapp.BuildConfig
+import com.example.geminispotifyapp.SpotifyDataManager.Companion.STATE_KEY
+import com.example.geminispotifyapp.utils.toast
 
 
 object AuthManager {
@@ -136,6 +139,20 @@ object AuthManager {
         return getSharedPreferences(context).getString(CODE_VERIFIER_PREF_KEY, null)
     }
 
+    private fun generateRandomState(length: Int = 32): String {
+        val possibleChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        val random = SecureRandom()
+        val bytes = ByteArray(length)
+        random.nextBytes(bytes)
+        return bytes.map { possibleChars[random.nextInt(possibleChars.length)] }.joinToString("")
+    }
+
+    private fun saveState(context: Context, state: String) {
+        getSharedPreferences(context).edit {
+            putString(STATE_KEY, state)
+        }
+    }
+
     // --- Authentication Flow ---
 
     /**
@@ -153,7 +170,11 @@ object AuthManager {
         // 3. Generate Code Challenge
         val codeChallenge = generateCodeChallenge(codeVerifier)
 
-        // 4. Build Authorization URL
+        // 4. Generate and Save State
+        val state = generateRandomState()
+        saveState(context, state)
+
+        // 5. Build Authorization URL
         val authUri = AUTH_ENDPOINT.toUri().buildUpon().apply {
             appendQueryParameter("response_type", "code")
             appendQueryParameter("client_id", CLIENT_ID)
@@ -161,20 +182,19 @@ object AuthManager {
             appendQueryParameter("code_challenge_method", "S256")
             appendQueryParameter("code_challenge", codeChallenge)
             appendQueryParameter("redirect_uri", REDIRECT_URI)
-            // Consider adding a state parameter for security (optional)
-            // appendQueryParameter("state", generateRandomState())
+            appendQueryParameter("state", state)
         }.build()
 
-        // 5. Open the URL in a browser or Chrome Custom Tab
+        // 6. Open the URL in a browser or Chrome Custom Tab
         val intent = Intent(Intent.ACTION_VIEW, authUri)
-        // Consider using Chrome Custom Tabs for a better user experience (requires additional setup)
-        // intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) // Required if starting from a non-Activity context
+
         try {
             context.startActivity(intent)
         } catch (e: Exception) {
             // Handle errors when a browser cannot be opened (e.g., no suitable browser installed)
             e.printStackTrace()
             // Consider displaying an error message to the user
+            toast(context, "Error opening browser", Toast.LENGTH_SHORT)
         }
     }
 }

@@ -38,6 +38,7 @@ class AuthCallbackActivity : AppCompatActivity() {
     private fun handleIntent(intent: Intent?) {
         Log.d(TAG, "handleIntent called with intent: $intent")
         val uri = intent?.data
+        val savedState = SpotifyDataManager(this).getSavedState(this)
         val expectedScheme = "geminispotifyapp"
         val expectedHost = "callback"
 
@@ -49,7 +50,14 @@ class AuthCallbackActivity : AppCompatActivity() {
 
         val code = uri.getQueryParameter("code")
         val error = uri.getQueryParameter("error")
-        val state = uri.getQueryParameter("state") // Consider using this if your auth flow uses state
+        val state = uri.getQueryParameter("state")
+
+        if (state == null || state != savedState) {
+            Log.w(TAG, "Received state does not match saved state, may exist hazard for CSRF attack")
+            // Might be under the risk of CSRF attack
+            showErrorAndFinish("Might be under the risk of CSRF attack. Please attempt to login again or check your browser.")
+            return
+        }
 
         when {
             error != null -> {
