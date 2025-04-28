@@ -16,7 +16,6 @@ class SpotifyDataManager(private val context: Context) {
         const val REFRESH_TOKEN_KEY = "refresh_token"
         const val TOKEN_TYPE_KEY = "token_type"
         const val EXPIRES_AT_KEY = "expires_at"
-        const val STATE_KEY = "state"
     }
 
     private val _accessTokenFlow = MutableStateFlow(getAccessToken()) // 使用 getAccessToken() 的初始值
@@ -30,11 +29,6 @@ class SpotifyDataManager(private val context: Context) {
     fun updateAccessToken(accessToken: String?) {
         _accessTokenFlow.value = accessToken
         Log.d("Auth", "updateAccessToken: $accessToken")
-    }
-
-    fun getSavedState(context: Context): String? {
-        val pref = context.getSharedPreferences(STATE_KEY, Context.MODE_PRIVATE)
-        return pref.getString(STATE_KEY, null)
     }
 
     // Always return "Bearer"
@@ -115,7 +109,7 @@ class SpotifyDataManager(private val context: Context) {
 
             val response = SpotifyApiService.refreshToken(context = context)
 
-            // save the new access token and expiration time
+            // Save the new access token and expiration time
             with(prefs.edit()) {
                 if (response != null) {
                     putString(ACCESS_TOKEN_KEY, response.accessToken)
@@ -130,9 +124,9 @@ class SpotifyDataManager(private val context: Context) {
                 }
                 apply()
             }
-            Log.d("SpotifyData", "成功更新 Access Token")
+            Log.d("SpotifyData", "Successfully refreshed Access Token")
         } catch (e: Exception) {
-            Log.e("SpotifyData refresh token", "刷新 Token 失敗", e)
+            Log.e("SpotifyData refresh token", "Failed to refresh Access Token", e)
             throw e
         }
     }

@@ -6,6 +6,7 @@ import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
@@ -25,12 +26,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 
 @Composable
-fun HomePage() {
+fun HomePage(paddingValues: PaddingValues) {
     val scrollState = rememberScrollState()
 
     HomeNavigation()
 
-    Row (horizontalArrangement = Arrangement.Center, modifier = Modifier.padding(4.dp).verticalScroll(scrollState)) {
+    Row (horizontalArrangement = Arrangement.Center, modifier = Modifier.padding(6.dp, 12.dp).padding(paddingValues).verticalScroll(scrollState)) {
         Column (verticalArrangement = Arrangement.Center, modifier = Modifier.padding(4.dp)) {
             Image(painterResource(R.drawable.full_logo_green_rgb),
                 contentDescription = "Spotify Logo")

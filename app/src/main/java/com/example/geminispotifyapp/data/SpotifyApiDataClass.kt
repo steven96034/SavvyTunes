@@ -106,3 +106,12 @@ data class RecentlyPlayedResponse(
     @SerializedName("cursors")
     val cursors: Map<String, String>?
 )
+
+data class SearchResponse(
+    val limit: Int,
+    val offset: Int,
+    val total: Int,
+    val tracks: List<SpotifyTrack>?,
+    val albums: List<SpotifyAlbum>?,
+    val artists: List<SpotifyArtist>?
+)

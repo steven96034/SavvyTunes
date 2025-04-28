@@ -1,6 +1,7 @@
 package com.example.geminispotifyapp
 
 import com.example.geminispotifyapp.data.RecentlyPlayedResponse
+import com.example.geminispotifyapp.data.SearchResponse
 import com.example.geminispotifyapp.data.TopArtistsResponse
 import com.example.geminispotifyapp.data.TopTracksResponse
 import okhttp3.OkHttpClient
@@ -37,6 +38,17 @@ interface SpotifyUserApiService {
         @Query("before") before: Long? = null,
         @Query("after") after: Long? = null
     ): RecentlyPlayedResponse
+
+    @GET("v1/search")
+    suspend fun searchTracks(
+        @Header("Authorization") authorization: String,
+        @Query("q") query: String,
+        @Query("type") type: String = "track",
+        @Query("market") market: String? = "TW",
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0,
+        @Query("include_external") includeExternal: String? = null
+    ): SearchResponse
 
     companion object {
         private const val BASE_URL = "https://api.spotify.com/"

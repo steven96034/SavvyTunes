@@ -3,7 +3,6 @@ package com.example.geminispotifyapp.page
 import android.content.Intent
 import android.util.Log
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,14 +10,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -30,9 +27,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,7 +43,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.navigation.NavController
@@ -54,14 +55,17 @@ import coil.compose.AsyncImage
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.PlayHistoryObject
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
-import com.example.geminispotifyapp.data.SpotifyTrack
-import com.example.geminispotifyapp.ui.theme.SpotifyBlack
+import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.DurationUnit
 
 @Composable
-fun RecentlyPlayedContent(recentlyPlayed: List<PlayHistoryObject>, navController: NavController) {
+fun RecentlyPlayedContent(recentlyPlayed: List<PlayHistoryObject>, navController: NavController, paddingValues: PaddingValues) {
     val scrollState = rememberScrollState()
     var onHistorySelected by remember { mutableStateOf<PlayHistoryObject?>(null) }
 
@@ -70,13 +74,17 @@ fun RecentlyPlayedContent(recentlyPlayed: List<PlayHistoryObject>, navController
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(6.dp, 12.dp)
+            .padding(paddingValues)
             .verticalScroll(scrollState)
-            .padding(vertical = 8.dp, horizontal = 16.dp)
     ) {
+        Spacer(modifier = Modifier.height(2.dp))
         Row {
             Column {
                 Row (
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
                     horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -90,7 +98,8 @@ fun RecentlyPlayedContent(recentlyPlayed: List<PlayHistoryObject>, navController
                 }
             }
         }
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
+
         recentlyPlayed.forEachIndexed { index, playHistory ->
             RecentTrackItem(index + 1, playHistory){ onHistorySelected = it }
             if (index < recentlyPlayed.size - 1) {
@@ -111,36 +120,11 @@ fun RecentlyPlayedContent(recentlyPlayed: List<PlayHistoryObject>, navController
 
         Log.d("SpotifyDataContent", "Recently Played: $recentlyPlayed")
     }
-    onHistorySelected?.let { history ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f)) // Transparent background
-                .pointerInput(Unit) {
-                    detectTapGestures { offset ->
-                        val innerBoxWidth = size.width * 0.8f
-                        val innerBoxHeight = size.height * 0.9f
-                        val innerBoxLeft = (size.width - innerBoxWidth) / 2
-                        val innerBoxTop = (size.height - innerBoxHeight) / 2
-
-                        if (offset.x < innerBoxLeft || offset.x > innerBoxLeft + innerBoxWidth ||
-                            offset.y < innerBoxTop || offset.y > innerBoxTop + innerBoxHeight
-                        ) {
-                            onHistorySelected = null
-                            Log.d("ArtistDetail", "Dismissing artist detail")
-                        }
-                    }
-                }
-
-            , // 半透明黑色背景
-            contentAlignment = Alignment.Center
-        ) {
-            TrackHistoryDetail(
-                historyTrack = history,
-                onDismiss = { onHistorySelected = null },
-                modifier = Modifier
-            )
-        }
+    DetailBox(selectedValue = onHistorySelected, onDismiss = { onHistorySelected = null }) { track, onDetailDismiss ->
+        TrackHistoryDetail(
+            historyTrack = track,
+            onDismiss = onDetailDismiss,
+        )
     }
 }
 
@@ -246,115 +230,232 @@ private fun formatTime(dateString: String): String {
 @Composable
 private fun TrackHistoryDetail(
     historyTrack: PlayHistoryObject,
-    onDismiss: (SpotifyTrack?) -> Unit,
-    modifier: Modifier = Modifier,
+    onDismiss: () -> Unit,
 ) {
-    val scrollState = rememberScrollState()
-    val context = LocalContext.current
-
     val track = historyTrack.track
 
-    Surface(
-        color = SpotifyBlack,
-        shape = RoundedCornerShape(16.dp),
-        modifier = modifier
-            .fillMaxWidth(0.8f)
-            .fillMaxHeight(0.9f)
-            .verticalScroll(scrollState)
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxSize() // Ensure Column fills the Surface
-                .wrapContentSize(Alignment.TopCenter), // Align the content to top center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            val imageUrl = track.album.images.firstOrNull()?.url
-            if (imageUrl != null) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = "Album image",
-                    modifier = Modifier.clip(RoundedCornerShape(2.dp)),
-                    contentScale = ContentScale.Inside
+    // Image
+    val imageUrl = track.album.images.firstOrNull()?.url
+    if (imageUrl != null) {
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = "Album image",
+            modifier = Modifier.clip(RoundedCornerShape(2.dp)),
+            contentScale = ContentScale.Inside
+        )
+    } else {
+        Spacer(modifier = Modifier.height(12.dp))
+        Card(modifier = Modifier.padding(16.dp), shape = RectangleShape) {
+            Text(text = "No Image...", style = MaterialTheme.typography.headlineMedium)
+        }
+        Spacer(modifier = Modifier.height(60.dp))
+    }
+    Spacer(modifier = Modifier.height(2.dp))
+
+    // Track Name
+    Text(
+        text = track.name,
+        style = MaterialTheme.typography.headlineMedium,
+        fontWeight = FontWeight.Bold
+    )
+    Spacer(modifier = Modifier.height(2.dp))
+
+    // Artist Name
+    Text(
+        text = track.artists.joinToString(", ") { it.name },
+        style = MaterialTheme.typography.bodyMedium
+    )
+
+    Spacer(modifier = Modifier.height(2.dp))
+    HorizontalDivider()
+    Spacer(modifier = Modifier.height(6.dp))
+
+    // Last Played At
+    Text(
+        text = "Last Played At: ${formatTime(historyTrack.playedAt)}",
+        style = MaterialTheme.typography.bodyMedium
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+
+    // Album Name
+    Text(
+        text = "From Album: ${track.album.name}",
+        style = MaterialTheme.typography.bodyMedium
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+
+    // Track Number
+    Text(
+        text = "Track Number: ${track.trackNumber}",
+        style = MaterialTheme.typography.bodyMedium
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+
+    // Release Date
+    Text(
+        text = "Release Date: ${track.album.releaseDate}",
+        style = MaterialTheme.typography.bodyMedium
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+
+    // Track Popularity
+    Text(
+        text = "Track Popularity: ${track.popularity}",
+        style = MaterialTheme.typography.bodyMedium
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+
+    // Track Duration
+    val duration = track.durationMs.milliseconds
+    val formattedDuration: String = when {
+        duration < 1.minutes -> { // Less than 1 minute
+            val seconds = duration.toInt(DurationUnit.SECONDS)
+            String.format(Locale.getDefault(), "%02d", seconds)
+        }
+
+        duration < 1.hours -> { // Less than 1 hour
+            val minutes = duration.toInt(DurationUnit.MINUTES)
+            val seconds = (duration - minutes.minutes).toInt(DurationUnit.SECONDS)
+            String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+        }
+
+        else -> {
+            val simpleDateFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+            simpleDateFormat.format(duration)
+        }
+    }
+    Text(
+        text = "Duration: $formattedDuration ",
+        style = MaterialTheme.typography.bodyMedium
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+
+    // Is Explicit Lyrics or Not
+    Text(
+        text = "Explicit: ${track.explicit}",
+        style = MaterialTheme.typography.bodyMedium
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+
+    // Available Markets
+    val limit = 5
+    val availableMarkets = track.availableMarkets
+    var showMore by remember { mutableStateOf(false) }
+    val textToShow by remember {
+        derivedStateOf {
+            if (showMore) {
+                availableMarkets.joinToString(", ")
+            } else {
+                if (availableMarkets.size > limit) {
+                    availableMarkets.take(limit).joinToString(", ")
+                } else {
+                    availableMarkets.joinToString(", ")
+                }
+            }
+        }
+    }
+    val annotatedText = buildAnnotatedString {
+        if (availableMarkets.size > limit)
+            append("Available Markets:\n $textToShow")
+        else append("Available Markets: $textToShow")
+        if (availableMarkets.size > limit) {
+            pushStringAnnotation(tag = "VIEW_MORE", annotation = "view_more")
+            withStyle(
+                style = SpanStyle(
+                    color = SpotifyGreen,
+                    textDecoration = TextDecoration.Underline,
+                )
+            ) {
+                append(if (showMore) "...View Less" else "...+${availableMarkets.size - limit} More")
+            }
+            pop()
+        }
+    }
+    Text(
+        text = annotatedText,
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.pointerInput(Unit) {
+            detectTapGestures {
+                annotatedText.getStringAnnotations(
+                    tag = "VIEW_MORE",
+                    start = 0,
+                    end = annotatedText.length
+                ).firstOrNull()?.let {
+                    showMore = !showMore
+                }
+            }
+        }
+    )
+
+    Spacer(modifier = Modifier.height(6.dp))
+    HorizontalDivider()
+    Spacer(modifier = Modifier.height(6.dp))
+
+// Open in Spotify (URL)
+    val url = track.externalUrls["spotify"]
+    if (url != null) {
+        val context = LocalContext.current
+        Spacer(modifier = Modifier.height(4.dp))
+        Button(onClick = {
+            val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            if (intent.resolveActivity(context.packageManager) != null) {
+                context.startActivity(intent)
+            }
+        }) {
+            Row {
+                Text(text = "Open in Spotify")
+                Spacer(modifier = Modifier.width(4.dp))
+                Image(
+                    painter = painterResource(R.drawable.primary_logo_green_rgb),
+                    contentDescription = null,
+                    modifier = Modifier.height(20.dp)
                 )
             }
-            else {
-                Spacer(modifier = Modifier.height(12.dp))
-                Card (modifier = Modifier.padding(16.dp), shape = RectangleShape) {
-                    Text(text = "No Image...", style = MaterialTheme.typography.headlineMedium)
-                }
-                Spacer(modifier = Modifier.height(60.dp))
-            }
-            Spacer(modifier = Modifier.width(36.dp))
+        }
+    }
+    Spacer(modifier = Modifier.height(6.dp))
 
-            Text(
-                text = track.name,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
+    // Spotify ID
+    Text(
+        text = "Spotify Track ID: ${track.id}",
+        style = MaterialTheme.typography.labelSmall,
+    )
+    Spacer(modifier = Modifier.height(4.dp))
 
-            Text(
-                text = "Last Played At: ${formatTime(historyTrack.playedAt)}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(4.dp))
+    // External IDs
+    if (track.externalIds["isrc"] != null) {
+        Text(
+            text = "ISRC: ${track.externalIds["isrc"]}",
+            style = MaterialTheme.typography.labelSmall
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+    }
+    if (track.externalIds["ean"] != null) {
+        Text(
+            text = "EAN: ${track.externalIds["ean"]}",
+            style = MaterialTheme.typography.labelSmall
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+    }
+    if (track.externalIds["upc"] != null) {
+        Text(
+            text = "UPC: ${track.externalIds["upc"]}",
+            style = MaterialTheme.typography.labelSmall
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+    }
 
-            Text(
-                text = "Performing Artists: ${track.artists.joinToString(", ") { it.name }}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(4.dp))
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
+        Button(
+            onClick = { onDismiss() },
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(text = "Close")
+        }
+    }
 
-            Text(
-                text = "Track From: ${track.album.name}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Track Number: ${track.trackNumber}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Release Date: ${track.album.releaseDate}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Track Popularity: ${track.popularity}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-
-            val duration = track.durationMs
-            val formattedDuration: String = when {
-                duration < 60000 -> { // Less than 1 minute
-                    val seconds = duration / 1000
-                    String.format("%02d", seconds) + "s"
-                }
-                duration < 3600000 -> { // Less than 1 hour
-                    val minutes = duration / 60000
-                    val seconds = (duration % 60000) / 1000
-                    String.format("%02d:%02d", minutes, seconds)
-                }
-                else -> android.icu.text.SimpleDateFormat("HH:mm:ss").format(duration)
-            }
-            Text (
-                text = "Duration: $formattedDuration ",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Explicit: ${track.explicit}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-
+    // Deprecated Data
 //            Text(
 //                text = "Is Local: ${track.isLocal}",
 //                style = MaterialTheme.typography.bodyMedium
@@ -367,18 +468,12 @@ private fun TrackHistoryDetail(
 //            )
 //            Spacer(modifier = Modifier.height(4.dp))
 
-            Text(
-                text = "Available Markets: ${track.availableMarkets.joinToString(", ")}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-
 //            Text(
 //                text = "External URLs: ${track.externalUrls.values.joinToString(", ")}",
 //                style = MaterialTheme.typography.bodyMedium
 //            )
 //            Spacer(modifier = Modifier.height(4.dp))
-//
+
 //            Text(
 //                text = "URI: ${track.uri}",
 //                style = MaterialTheme.typography.bodyMedium
@@ -391,44 +486,4 @@ private fun TrackHistoryDetail(
 //                style = MaterialTheme.typography.bodyMedium
 //            )
 //            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "External IDs: ${track.externalIds.values.joinToString(", ")}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-
-
-            val url = track.externalUrls["spotify"]
-            if (url != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    if (intent.resolveActivity(context.packageManager) != null) {
-                        context.startActivity(intent)
-                    }
-                }) {
-                    Row {
-                        Text(text = "Open in Spotify")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Image(
-                            painter = painterResource(R.drawable.primary_logo_green_rgb),
-                            contentDescription = null,
-                            modifier = Modifier.height(20.dp)
-                        )
-                    }
-                }
-            }
-
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
-                Button(
-                    onClick = { onDismiss(null) },
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(text = "Close")
-                }
-            }
-        }
-    }
 }

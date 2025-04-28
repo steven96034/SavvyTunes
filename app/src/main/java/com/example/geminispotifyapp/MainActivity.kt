@@ -49,7 +49,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize SpotifyDataManager
         spotifyDataManager = SpotifyDataManager(this)
 
         setContent {
@@ -71,7 +70,6 @@ fun CheckAuthAndShowContent(spotifyDataManager: SpotifyDataManager) {
     val accessToken by spotifyDataManager.accessTokenAsFlow.collectAsState(initial = null)
     val isAuthenticated = accessToken != null
 
-    // Using LaunchedEffect to handle side effects, like showing logs or initiating some actions once the value changes.
     LaunchedEffect(isAuthenticated) {
         if (isAuthenticated) {
             Log.d("Auth", "User is authenticated, entering data screen.")
@@ -80,7 +78,6 @@ fun CheckAuthAndShowContent(spotifyDataManager: SpotifyDataManager) {
         }
     }
 
-    // Separating Composable functions for better readability and testing.
     if (!isAuthenticated && context is Activity) {
         LoginScreen(onAuthButtonClicked = { AuthManager.startAuthentication(context) })
     } else {
@@ -123,7 +120,6 @@ fun SpotifyDataScreen(spotifyDataManager: SpotifyDataManager) {
                 // Use supervisorScope to ensure that a single task fails doesn't cancel other tasks
                 supervisorScope {
                     Log.d("SpotifyDataScreen", "Fetching data...")
-//                spotifyDataManager.refreshTokenDataIfNeeded()
 
                     // Use async to fetch data in parallel
                     val topArtistsDeferredShort = async(Dispatchers.IO) {

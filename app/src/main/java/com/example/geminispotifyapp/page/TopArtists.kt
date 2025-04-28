@@ -3,22 +3,18 @@ package com.example.geminispotifyapp.page
 import android.content.Intent
 import android.util.Log
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -30,7 +26,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,19 +41,18 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
 import com.example.geminispotifyapp.data.SpotifyArtist
-import com.example.geminispotifyapp.ui.theme.SpotifyBlack
 import androidx.core.net.toUri
 
 @Composable
-fun TopArtistContent(topArtistsShort: List<SpotifyArtist>, topArtistsMedium: List<SpotifyArtist>, topArtistsLong: List<SpotifyArtist>, navController: NavController) {
+fun TopArtistContent(topArtistsShort: List<SpotifyArtist>, topArtistsMedium: List<SpotifyArtist>, topArtistsLong: List<SpotifyArtist>, navController: NavController, paddingValues: PaddingValues) {
     val scrollState = rememberScrollState()
     var expandedMenuArtist by remember { mutableStateOf(false) }
     var artistPeriodSelection by remember { mutableIntStateOf(0) }
@@ -70,10 +64,11 @@ fun TopArtistContent(topArtistsShort: List<SpotifyArtist>, topArtistsMedium: Lis
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(6.dp, 12.dp)
+                .padding(paddingValues)
                 .verticalScroll(scrollState)
-                .padding(vertical = 8.dp, horizontal = 16.dp)
         ) {
-            Row(
+            Row (
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -118,36 +113,12 @@ fun TopArtistContent(topArtistsShort: List<SpotifyArtist>, topArtistsMedium: Lis
             Log.d("SpotifyDataContent", "Top Artists Long-Period: $topArtistsLong")
         }
     }
-    onArtistSelected?.let { artist ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f)) // Transparent background
-                .pointerInput(Unit) {
-                    detectTapGestures { offset ->
-                        val innerBoxWidth = size.width * 0.8f
-                        val innerBoxHeight = size.height * 0.9f
-                        val innerBoxLeft = (size.width - innerBoxWidth) / 2
-                        val innerBoxTop = (size.height - innerBoxHeight) / 2
 
-                        if (offset.x < innerBoxLeft || offset.x > innerBoxLeft + innerBoxWidth ||
-                            offset.y < innerBoxTop || offset.y > innerBoxTop + innerBoxHeight
-                        ) {
-                            onArtistSelected = null
-                            Log.d("ArtistDetail", "Dismissing artist detail")
-                        }
-                    }
-                }
-
-            , // 半透明黑色背景
-            contentAlignment = Alignment.Center
-        ) {
-            ArtistDetail(
-                artist = artist,
-                onDismiss = { onArtistSelected = null },
-                modifier = Modifier
-            )
-        }
+    DetailBox(selectedValue = onArtistSelected, onDismiss = { onArtistSelected = null }) { artist, onDetailDismiss ->
+        ArtistDetail(
+            artist = artist,
+            onDismiss = onDetailDismiss,
+        )
     }
 }
 
@@ -176,7 +147,6 @@ private fun GetTopArtists(topArtists: List<SpotifyArtist>, onArtistSelected: (Sp
 
 @Composable
 private fun ArtistItem(index: Int, artist: SpotifyArtist, onArtistSelected: (SpotifyArtist) -> Unit) {
-
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
@@ -237,98 +207,96 @@ private fun ArtistItem(index: Int, artist: SpotifyArtist, onArtistSelected: (Spo
 @Composable
 fun ArtistDetail(
     artist: SpotifyArtist,
-    onDismiss: (SpotifyArtist?) -> Unit,
-    modifier: Modifier = Modifier,
+    onDismiss: () -> Unit,
 ) {
-    val scrollState = rememberScrollState()
-    val context = LocalContext.current
-    Surface(
-        color = SpotifyBlack,
-        shape = RoundedCornerShape(16.dp),
-        modifier = modifier
-            .fillMaxWidth(0.8f)
-            .fillMaxHeight(0.9f)
-            .verticalScroll(scrollState)
+    // Artist Image
+    val imageUrl = artist.images?.firstOrNull()?.url
+    if (imageUrl != null) {
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = "Artist image",
+            modifier = Modifier.clip(RoundedCornerShape(2.dp)),
+            contentScale = ContentScale.Inside
+        )
+    } else {
+        Spacer(modifier = Modifier.height(12.dp))
+        Card(modifier = Modifier.padding(16.dp), shape = RectangleShape) {
+            Text(text = "No Image...", style = MaterialTheme.typography.headlineMedium)
+        }
+        Spacer(modifier = Modifier.height(60.dp))
+    }
+    Spacer(modifier = Modifier.height(2.dp))
+
+    // Artist Name
+    Text(
+        text = artist.name,
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+
+    Spacer(modifier = Modifier.height(2.dp))
+    HorizontalDivider()
+    Spacer(modifier = Modifier.height(6.dp))
+
+    // Popularity
+    Text(
+        text = "Popularity: ${artist.popularity}",
+        style = MaterialTheme.typography.bodyMedium
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+
+    // Genres
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxSize() // Ensure Column fills the Surface
-                .wrapContentSize(Alignment.TopCenter), // Align the content to top center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Artist Image
-            val imageUrl = artist.images?.firstOrNull()?.url
-            if (imageUrl != null) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = "Artist image",
-                    modifier = Modifier.clip(RoundedCornerShape(2.dp)),
-                    contentScale = ContentScale.Inside
+        Text(text = "Genres: ${artist.genres.joinToString(", ")}", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+    }
+    Spacer(modifier = Modifier.height(8.dp))
+
+    // Followers count
+    val followers = artist.followers["total"]
+    val formattedFollowers = followers.toString().reversed().chunked(3).joinToString(",").reversed()
+    Text(
+        text = "Followers: $formattedFollowers",
+        style = MaterialTheme.typography.bodyMedium
+    )
+
+    Spacer(modifier = Modifier.height(6.dp))
+    HorizontalDivider()
+    Spacer(modifier = Modifier.height(6.dp))
+
+    // Open in Spotify(URL)
+    val url = artist.externalUrls["spotify"]
+    if (url != null) {
+        val context = LocalContext.current
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(onClick = {
+            val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            if (intent.resolveActivity(context.packageManager) != null) {
+                context.startActivity(intent)
+            }
+        }) {
+            Row {
+                Text(text = "Open in Spotify")
+                Spacer(modifier = Modifier.width(4.dp))
+                Image(
+                    painter = painterResource(R.drawable.primary_logo_green_rgb),
+                    contentDescription = null,
+                    modifier = Modifier.height(20.dp)
                 )
             }
-            else {
-                Spacer(modifier = Modifier.height(12.dp))
-                Card (modifier = Modifier.padding(16.dp), shape = RectangleShape) {
-                    Text(text = "No Image...", style = MaterialTheme.typography.headlineMedium)
-                }
-                Spacer(modifier = Modifier.height(60.dp))
-            }
-            Spacer(modifier = Modifier.width(36.dp))
-
-            Text(
-                text = artist.name,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Popularity: ${artist.popularity}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Genres: ${artist.genres.joinToString(", ")}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            val followers = artist.followers["total"]
-            val formattedFollowers = followers.toString().reversed().chunked(3).joinToString(",").reversed()
-            Text(
-                text = "Followers: $formattedFollowers",
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            val url = artist.externalUrls["spotify"]
-            if (url != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    if (intent.resolveActivity(context.packageManager) != null) {
-                        context.startActivity(intent)
-                    }
-                }) {
-                    Row {
-                        Text(text = "Open in Spotify")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Image(
-                            painter = painterResource(R.drawable.primary_logo_green_rgb),
-                            contentDescription = null,
-                            modifier = Modifier.height(20.dp)
-                        )
-                    }
-                }
-            }
         }
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
-            Button(onClick = { onDismiss(null) },
-                modifier = Modifier.padding(16.dp)) {
-                    Text(text = "Close")
-                }
+    }
+
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
+        Button(
+            onClick = { onDismiss() },
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(text = "Close")
         }
     }
 }

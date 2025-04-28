@@ -11,7 +11,6 @@ import android.widget.Toast
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import com.example.geminispotifyapp.BuildConfig
-import com.example.geminispotifyapp.SpotifyDataManager.Companion.STATE_KEY
 import com.example.geminispotifyapp.utils.toast
 
 
@@ -49,6 +48,7 @@ object AuthManager {
     private const val AUTH_ENDPOINT = "https://accounts.spotify.com/authorize"
     private const val CODE_VERIFIER_PREF_KEY = "spotify_code_verifier"
     private const val PREF_NAME = "spotify_auth_prefs"
+    private const val STATE_KEY = "spotify_auth_state"
 
     // --- PKCE Helper Functions ---
 
@@ -147,12 +147,18 @@ object AuthManager {
         return bytes.map { possibleChars[random.nextInt(possibleChars.length)] }.joinToString("")
     }
 
-    private fun saveState(context: Context, state: String) {
-        getSharedPreferences(context).edit {
-            putString(STATE_KEY, state)
-        }
+    fun getSavedState(context: Context): String? {
+        val pref = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        return pref.getString(STATE_KEY, null)
     }
 
+    private fun saveState(context: Context, state: String) {
+        val pref = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        pref.edit().apply {
+            putString(STATE_KEY, state)
+            apply()
+        }
+    }
     // --- Authentication Flow ---
 
     /**
