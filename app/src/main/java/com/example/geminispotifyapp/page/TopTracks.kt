@@ -17,9 +17,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
@@ -68,59 +67,58 @@ import kotlin.time.DurationUnit
 
 @Composable
 fun TopTrackContent(topTracksShort: List<SpotifyTrack>, topTracksMedium: List<SpotifyTrack>, topTracksLong: List<SpotifyTrack>, navController: NavController, paddingValues: PaddingValues) {
-    val scrollState = rememberScrollState()
     var expandedMenuTrack by remember { mutableStateOf(false) }
     var trackPeriodSelection by remember { mutableIntStateOf(0) }
     var onTrackSelected by remember { mutableStateOf<SpotifyTrack?>(null)}
 
     HandleBackToHome(navController)
 
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(6.dp, 12.dp)
             .padding(paddingValues)
-            .verticalScroll(scrollState)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Image(
-                        painter = painterResource(R.drawable.primary_logo_green_rgb),
-                        contentDescription = null,
-                        modifier = Modifier.height(28.dp)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "Your Top Songs",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.primary_logo_green_rgb),
+                            contentDescription = null,
+                            modifier = Modifier.height(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = "Your Top Songs",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
+                DropDownMenuTemplate(
+                    expanded = expandedMenuTrack,
+                    onExpandChange = { expandedMenuTrack = it },
+                    selectedValue = trackPeriodSelection,
+                    onValueChange = { trackPeriodSelection = it },
+                    options = listOf("Short Term", "Medium Term", "Long Term")
+                )
             }
-            DropDownMenuTemplate(
-                expanded = expandedMenuTrack,
-                onExpandChange = { expandedMenuTrack = it },
-                selectedValue = trackPeriodSelection,
-                onValueChange = { trackPeriodSelection = it },
-                options = listOf("Short Term", "Medium Term", "Long Term")
-            )
-        }
 
-        Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-        when (trackPeriodSelection) {
-            0 -> GetTopTracks(topTracksShort) { onTrackSelected = it }
-            1 -> GetTopTracks(topTracksMedium) { onTrackSelected = it }
-            2 -> GetTopTracks(topTracksLong) { onTrackSelected = it }
-            else -> {}
-        }
+            when (trackPeriodSelection) {
+                0 -> GetTopTracks(topTracksShort) { onTrackSelected = it }
+                1 -> GetTopTracks(topTracksMedium) { onTrackSelected = it }
+                2 -> GetTopTracks(topTracksLong) { onTrackSelected = it }
+                else -> {}
+            }
 //        if (topTracks.isNotEmpty()) {
 //            for (i in 0 until GET_ITEM_NUM) {
 //                val index = i + (trackPeriodSelection * GET_ITEM_NUM)
@@ -133,9 +131,10 @@ fun TopTrackContent(topTracksShort: List<SpotifyTrack>, topTracksMedium: List<Sp
 //            }
 //        }
 
-        Log.d("SpotifyDataContent", "Top Tracks Short-Period: $topTracksShort")
-        Log.d("SpotifyDataContent", "Top Tracks Medium-Period: $topTracksMedium")
-        Log.d("SpotifyDataContent", "Top Tracks Long-Period: $topTracksLong")
+//        Log.d("SpotifyDataContent", "Top Tracks Short-Period: $topTracksShort")
+//        Log.d("SpotifyDataContent", "Top Tracks Medium-Period: $topTracksMedium")
+//        Log.d("SpotifyDataContent", "Top Tracks Long-Period: $topTracksLong")
+        }
     }
 
     DetailBox(selectedValue = onTrackSelected, onDismiss = { onTrackSelected = null }) { track, onDetailDismiss ->
@@ -147,7 +146,7 @@ fun TopTrackContent(topTracksShort: List<SpotifyTrack>, topTracksMedium: List<Sp
 }
 
 @Composable
-private fun GetTopTracks(topTracks: List<SpotifyTrack>, onTrackSelected: (SpotifyTrack) -> Unit){
+fun GetTopTracks(topTracks: List<SpotifyTrack>, onTrackSelected: (SpotifyTrack) -> Unit){
     topTracks.forEachIndexed { index, track ->
         TrackItem(index + 1, track, onTrackSelected)
         if (index < topTracks.size - 1) {
@@ -168,7 +167,7 @@ private fun GetTopTracks(topTracks: List<SpotifyTrack>, onTrackSelected: (Spotif
 }
 
 @Composable
-private fun TrackItem(index: Int, track: SpotifyTrack, onTrackSelected: (SpotifyTrack) -> Unit) {
+fun TrackItem(index: Int, track: SpotifyTrack, onTrackSelected: (SpotifyTrack) -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
@@ -227,7 +226,7 @@ private fun TrackItem(index: Int, track: SpotifyTrack, onTrackSelected: (Spotify
 }
 
 @Composable
-private fun TrackDetail(
+fun TrackDetail(
     track: SpotifyTrack,
     onDismiss: () -> Unit,
 ) {

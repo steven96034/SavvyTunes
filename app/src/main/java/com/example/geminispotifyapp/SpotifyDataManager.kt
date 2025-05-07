@@ -3,6 +3,7 @@ package com.example.geminispotifyapp
 import android.content.Context
 import android.util.Log
 import com.example.geminispotifyapp.data.RecentlyPlayedResponse
+import com.example.geminispotifyapp.data.SearchResponse
 import com.example.geminispotifyapp.data.TopArtistsResponse
 import com.example.geminispotifyapp.data.TopTracksResponse
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -99,6 +100,28 @@ class SpotifyDataManager(private val context: Context) {
             limit = limit,
             before = before,
             after = after
+        )
+    }
+
+    suspend fun searchData(
+        query: String,
+        type: String = "track",
+        limit: Int = 10,
+        offset: Int = 0,
+        market: String? = null,
+        includeExternal: String? = null
+    ): SearchResponse {
+        if (isTokenExpired()) {
+            refreshToken()
+        }
+        return SpotifyUserApiService.service.searchTracks(
+            authorization = getAuthorizationHeader(),
+            query = query,
+            type = type,
+            limit = limit,
+            offset = offset,
+            market = market,
+            includeExternal = includeExternal
         )
     }
 

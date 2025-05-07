@@ -89,6 +89,7 @@ dependencies {
     implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.commons.text)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

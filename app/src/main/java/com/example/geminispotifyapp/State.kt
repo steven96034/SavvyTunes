@@ -3,6 +3,7 @@ package com.example.geminispotifyapp
 import com.example.geminispotifyapp.data.PlayHistoryObject
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
+import com.example.geminispotifyapp.data.TracksAndArtists
 
 // Data class for screen state
 //data class ScreenStateTBD(
@@ -27,3 +28,10 @@ data class ScreenState(
     val topTracksLong: List<SpotifyTrack> = emptyList(),
     val recentlyPlayed: List<PlayHistoryObject> = emptyList()
 )
+
+sealed interface SearchUiState {
+    object Initial : SearchUiState
+    object Loading : SearchUiState
+    data class Success(val data: TracksAndArtists) : SearchUiState
+    data class Error(val message: String) : SearchUiState
+}

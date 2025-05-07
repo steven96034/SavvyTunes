@@ -16,9 +16,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
@@ -66,59 +65,63 @@ import kotlin.time.DurationUnit
 
 @Composable
 fun RecentlyPlayedContent(recentlyPlayed: List<PlayHistoryObject>, navController: NavController, paddingValues: PaddingValues) {
-    val scrollState = rememberScrollState()
     var onHistorySelected by remember { mutableStateOf<PlayHistoryObject?>(null) }
 
     HandleBackToHome(navController)
 
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(6.dp, 12.dp)
             .padding(paddingValues)
-            .verticalScroll(scrollState)
     ) {
-        Spacer(modifier = Modifier.height(2.dp))
-        Row {
-            Column {
-                Row (
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.Start,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Image(painter = painterResource(R.drawable.primary_logo_green_rgb), contentDescription = null, modifier = Modifier.height(28.dp))
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "Recently Played Songs",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+        item {
+            Spacer(modifier = Modifier.height(2.dp))
+            Row {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.primary_logo_green_rgb),
+                            contentDescription = null,
+                            modifier = Modifier.height(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = "Recently Played Songs",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
-        }
-        Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-        recentlyPlayed.forEachIndexed { index, playHistory ->
-            RecentTrackItem(index + 1, playHistory){ onHistorySelected = it }
-            if (index < recentlyPlayed.size - 1) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            recentlyPlayed.forEachIndexed { index, playHistory ->
+                RecentTrackItem(index + 1, playHistory) { onHistorySelected = it }
+                if (index < recentlyPlayed.size - 1) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                }
             }
-        }
-        if (recentlyPlayed.size < GET_ITEM_NUM) {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.Info, contentDescription = "Info Icon")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("You data is not enough to show more recently played songs. (Max = $GET_ITEM_NUM)")
+            if (recentlyPlayed.size < GET_ITEM_NUM) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Info, contentDescription = "Info Icon")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("You data is not enough to show more recently played songs. (Max = $GET_ITEM_NUM)")
+                }
             }
-        }
 
-        Log.d("SpotifyDataContent", "Recently Played: $recentlyPlayed")
+//            Log.d("SpotifyDataContent", "Recently Played: $recentlyPlayed")
+        }
     }
     DetailBox(selectedValue = onHistorySelected, onDismiss = { onHistorySelected = null }) { track, onDetailDismiss ->
         TrackHistoryDetail(

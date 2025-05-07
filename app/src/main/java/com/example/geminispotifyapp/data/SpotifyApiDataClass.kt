@@ -107,11 +107,35 @@ data class RecentlyPlayedResponse(
     val cursors: Map<String, String>?
 )
 
-data class SearchResponse(
+data class Tracks(
     val limit: Int,
     val offset: Int,
     val total: Int,
+    val items: List<SpotifyTrack>
+)
+
+data class Albums(
+    val limit: Int,
+    val offset: Int,
+    val total: Int,
+    val items: List<SpotifyAlbum>
+)
+
+data class Artists(
+    val limit: Int,
+    val offset: Int,
+    val total: Int,
+    val items: List<SpotifyArtist>
+)
+
+
+data class SearchResponse(
+    val tracks: Tracks?,
+    val albums: Albums?,
+    val artists: Artists?
+)
+
+data class TracksAndArtists(
     val tracks: List<SpotifyTrack>?,
-    val albums: List<SpotifyAlbum>?,
     val artists: List<SpotifyArtist>?
 )

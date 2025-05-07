@@ -15,9 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
@@ -53,22 +52,20 @@ import androidx.core.net.toUri
 
 @Composable
 fun TopArtistContent(topArtistsShort: List<SpotifyArtist>, topArtistsMedium: List<SpotifyArtist>, topArtistsLong: List<SpotifyArtist>, navController: NavController, paddingValues: PaddingValues) {
-    val scrollState = rememberScrollState()
     var expandedMenuArtist by remember { mutableStateOf(false) }
     var artistPeriodSelection by remember { mutableIntStateOf(0) }
     var onArtistSelected by remember { mutableStateOf<SpotifyArtist?>(null)}
 
     HandleBackToHome(navController)
 
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(6.dp, 12.dp)
-                .padding(paddingValues)
-                .verticalScroll(scrollState)
-        ) {
-            Row (
+    LazyColumn (
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(6.dp, 12.dp)
+            .padding(paddingValues)
+    ) {
+        item {
+            Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -108,11 +105,12 @@ fun TopArtistContent(topArtistsShort: List<SpotifyArtist>, topArtistsMedium: Lis
                 else -> {}
             }
 
-            Log.d("SpotifyDataContent", "Top Artists Short-Period: $topArtistsShort")
-            Log.d("SpotifyDataContent", "Top Artists Medium-Period: $topArtistsMedium")
-            Log.d("SpotifyDataContent", "Top Artists Long-Period: $topArtistsLong")
+//            Log.d("SpotifyDataContent", "Top Artists Short-Period: $topArtistsShort")
+//            Log.d("SpotifyDataContent", "Top Artists Medium-Period: $topArtistsMedium")
+//            Log.d("SpotifyDataContent", "Top Artists Long-Period: $topArtistsLong")
         }
     }
+
 
     DetailBox(selectedValue = onArtistSelected, onDismiss = { onArtistSelected = null }) { artist, onDetailDismiss ->
         ArtistDetail(
