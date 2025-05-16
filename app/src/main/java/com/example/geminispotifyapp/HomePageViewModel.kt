@@ -2,6 +2,7 @@ package com.example.geminispotifyapp
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
@@ -15,8 +16,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class HomePageViewModel(
-    private val spotifyRepository: SpotifyDataManager
+    private val spotifyRepository: SpotifyRepository
 ) : ViewModel() {
+    // For Search State
+    private var _searchSimilarUiState: MutableStateFlow<SearchUiState> = MutableStateFlow(SearchUiState.Initial)
+    val searchSimilarUiState: StateFlow<SearchUiState> = _searchSimilarUiState.asStateFlow()
+
     // For Gemini API
     private var relatedTracks = mutableListOf<String>()
     private var relatedArtists = mutableListOf<String>()
@@ -28,8 +33,12 @@ class HomePageViewModel(
     private val artistTempList: MutableList<SpotifyArtist> = mutableListOf()
     private val artistNotFoundList: MutableList<String> = mutableListOf()
 
-    private var _searchSimilarUiState: MutableStateFlow<SearchUiState> = MutableStateFlow(SearchUiState.Initial)
-    val searchSimilarUiState: StateFlow<SearchUiState> = _searchSimilarUiState.asStateFlow()
+    // For Input Data (Revealed in Layout)
+    private var _trackInput = MutableStateFlow("")
+    val trackInput: StateFlow<String> = _trackInput.asStateFlow()
+
+    private var _artistInput = MutableStateFlow("")
+    val artistInput: StateFlow<String> = _artistInput.asStateFlow()
 
 
 //    fun searchTrack(trackName: String) {
@@ -49,6 +58,14 @@ class HomePageViewModel(
 //            }
 //        }
 //    }
+
+    fun onTrackInputChange(newTrack: String) {
+        _trackInput.value = newTrack
+    }
+
+    fun onArtistInputChange(newArtist: String) {
+        _artistInput.value = newArtist
+    }
 
     private suspend fun searchForSpecificTrack(trackName: String, artistName: String) {
         try {
@@ -109,15 +126,15 @@ class HomePageViewModel(
         if (s1.isEmpty() || s2.isEmpty()) {
             return 0.0
         }
-        // 使用 Levenshtein Distance 計算編輯距離
+        // Use Levenshtein Distance to calculate the edit distance between the two strings.
         val editDistance = org.apache.commons.text.similarity.LevenshteinDistance.getDefaultInstance().apply(s1, s2)
 
-        // 計算相似度
+        // Calculate the similarity as 1 - (edit distance / max length of the two strings).
         val maxLength = maxOf(s1.length, s2.length)
         val similarity = if (maxLength > 0) {
             1.0 - (editDistance.toDouble() / maxLength)
         } else {
-            1.0 // 若兩者都為空字串，視為完全相似
+            1.0 // If both strings are empty, similarity is 1.0.
         }
 
         return similarity
@@ -283,4 +300,15 @@ class HomePageViewModel(
 //            }
 //        }
 //    }
+}
+
+class HomePageViewModelFactory(private val spotifyRepository: SpotifyRepository) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(HomePageViewModel::class.java)) {
+            @Suppress("Unchecked_cast")
+            return HomePageViewModel(spotifyRepository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+
+    }
 }

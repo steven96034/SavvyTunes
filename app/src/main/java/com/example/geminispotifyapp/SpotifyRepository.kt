@@ -9,7 +9,7 @@ import com.example.geminispotifyapp.data.TopTracksResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-class SpotifyDataManager(private val context: Context) {
+class SpotifyRepository private constructor(private val context: Context) {
 
     companion object {
         const val PREF_NAME = "spotify_token_prefs"
@@ -17,7 +17,16 @@ class SpotifyDataManager(private val context: Context) {
         const val REFRESH_TOKEN_KEY = "refresh_token"
         const val TOKEN_TYPE_KEY = "token_type"
         const val EXPIRES_AT_KEY = "expires_at"
+
+        // Provide a public factory function to create an instance of SpotifyRepository in order not to be constructed by others outside.
+        fun create(context: Context): SpotifyRepository {
+            // Call private constructor here, also pass Application Context.
+            // Ensure that the context is application context.
+            // The instance is hold by MyApplication. (We only call this function in MyApplication.kt)
+            return SpotifyRepository(context.applicationContext)
+        }
     }
+
 
     private val _accessTokenFlow = MutableStateFlow(getAccessToken()) // 使用 getAccessToken() 的初始值
     val accessTokenAsFlow: StateFlow<String?> = _accessTokenFlow

@@ -76,7 +76,7 @@ fun TopArtistContent(topArtistsShort: List<SpotifyArtist>, topArtistsMedium: Lis
                     ) {
                         Image(
                             painter = painterResource(R.drawable.primary_logo_green_rgb),
-                            contentDescription = null,
+                            contentDescription = "Spotify Logo",
                             modifier = Modifier.height(28.dp)
                         )
                         Spacer(modifier = Modifier.width(16.dp))

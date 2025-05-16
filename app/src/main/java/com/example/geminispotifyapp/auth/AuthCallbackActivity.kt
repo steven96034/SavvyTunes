@@ -9,7 +9,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.geminispotifyapp.MainActivity
 import com.example.geminispotifyapp.SpotifyApiService
-import com.example.geminispotifyapp.SpotifyDataManager
+import com.example.geminispotifyapp.SpotifyRepository
+import com.example.geminispotifyapp.app
 import com.example.geminispotifyapp.utils.toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -69,7 +70,7 @@ class AuthCallbackActivity : AppCompatActivity() {
             }
             code != null -> {
                 Log.d(TAG, "Successfully received Authorization Code: $code")
-                exchangeCodeForToken(code)
+                exchangeCodeForToken(code, this.app.spotifyRepository)
             }
             else -> {
                 Log.w(TAG, "Callback URI does not contain code or error")
@@ -79,7 +80,7 @@ class AuthCallbackActivity : AppCompatActivity() {
         }
     }
 
-    private fun exchangeCodeForToken(code: String) {
+    private fun exchangeCodeForToken(code: String, spotifyRepository: SpotifyRepository) {
         val codeVerifier = AuthManager.getSavedCodeVerifier(this)
         if (codeVerifier == null) {
             Log.e(TAG, "Saved Code Verifier not found!")
@@ -100,7 +101,7 @@ class AuthCallbackActivity : AppCompatActivity() {
 
                 Log.d(TAG, "Successfully received Access Token: ${response.accessToken}")
                 saveTokens(response)
-                SpotifyDataManager(applicationContext).updateAccessToken(response.accessToken)
+                spotifyRepository.updateAccessToken(response.accessToken)
 
                 withContext(Dispatchers.Main) {
                     navigateToMainActivity()

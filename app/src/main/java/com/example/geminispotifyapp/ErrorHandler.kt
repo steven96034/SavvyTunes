@@ -27,8 +27,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.geminispotifyapp.auth.AuthManager
 
-fun isAuthenticationExpired(httpStatusCode: Int?) = httpStatusCode == 401
-
 @Composable
 fun AuthenticationExpiredContent(context: Context) {
     Box(Modifier
@@ -64,8 +62,6 @@ fun AuthenticationExpiredContent(context: Context) {
         }
     }
 }
-
-fun isNetworkError(errorMessage: String) = errorMessage == "Network Error"
 
 @Composable
 fun NetworkErrorContent(onRetry: () -> Unit) {

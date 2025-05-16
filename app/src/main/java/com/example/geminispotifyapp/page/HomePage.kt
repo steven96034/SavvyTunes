@@ -39,25 +39,28 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextAlign
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.geminispotifyapp.HomePageViewModel
+import com.example.geminispotifyapp.HomePageViewModelFactory
 import com.example.geminispotifyapp.SearchUiState
+import com.example.geminispotifyapp.SpotifyRepository
 import com.example.geminispotifyapp.data.SpotifyTrack
 import kotlinx.coroutines.launch
 
 
 
 @Composable
-fun HomePage(viewModel: HomePageViewModel, paddingValues: PaddingValues) {
+fun HomePage(spotifyRepository: SpotifyRepository, paddingValues: PaddingValues) {
     val scrollState = rememberScrollState()
-    var trackInput by remember { mutableStateOf("") }
-    var artistInput by remember { mutableStateOf("") }
 
     var onTrackSelected by remember { mutableStateOf<SpotifyTrack?>(null)}
 
+    val viewModel: HomePageViewModel = viewModel(factory = HomePageViewModelFactory(spotifyRepository))
     val uiState by viewModel.searchSimilarUiState.collectAsState()
+    val trackInput by viewModel.trackInput.collectAsState()
+    val artistInput by viewModel.artistInput.collectAsState()
 
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     HomeNavigation()
 
@@ -86,14 +89,15 @@ fun HomePage(viewModel: HomePageViewModel, paddingValues: PaddingValues) {
                 Row {
                     OutlinedTextField(
                         value = trackInput,
-                        onValueChange = { trackInput = it },
+                        onValueChange = { viewModel.onTrackInputChange(it) },
                         label = { Text("Input Song Name") },
-                        modifier = Modifier.fillMaxWidth(0.5f)
+                        modifier = Modifier.fillMaxWidth(0.4f).padding(2.dp)
                     )
                     OutlinedTextField(
                         value = artistInput,
-                        onValueChange = { artistInput = it },
+                        onValueChange = { viewModel.onArtistInputChange(it) },
                         label = { Text("Artist Name") }, //選擇樂團或歌手名稱
+                        modifier = Modifier.fillMaxWidth(0.4f).padding(2.dp)
                     )
                 }
                 Button(

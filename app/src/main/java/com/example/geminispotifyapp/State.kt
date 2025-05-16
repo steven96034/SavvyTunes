@@ -15,11 +15,22 @@ import com.example.geminispotifyapp.data.TracksAndArtists
 //    val recentlyPlayed: List<PlayHistoryObject> = emptyList()
 //)
 
-data class ScreenState(
-    val isLoading: Boolean = true,
-    val httpStatusCode: Int? = null,
-    val errorMessage: String? = null,
-    val errorCause: Throwable? = null,
+//data class ScreenState(
+//    val isLoading: Boolean = true,
+//    val httpStatusCode: Int? = null,
+//    val errorMessage: String? = null,
+//    val errorCause: Throwable? = null,
+//    val userData: UserData = UserData()
+//)
+
+sealed interface DownLoadState {
+    data object Initial : DownLoadState
+    data object Loading : DownLoadState
+    data class Success(val data: UserData) : DownLoadState
+    data class Error(val data: ErrorData) : DownLoadState
+}
+
+data class UserData(
     val topArtistsShort: List<SpotifyArtist> = emptyList(),
     val topArtistsMedium: List<SpotifyArtist> = emptyList(),
     val topArtistsLong: List<SpotifyArtist> = emptyList(),
@@ -29,9 +40,15 @@ data class ScreenState(
     val recentlyPlayed: List<PlayHistoryObject> = emptyList()
 )
 
+data class ErrorData(
+    val httpStatusCode: Int? = null,
+    val errorMessage: String? = null,
+    val errorCause: Throwable? = null
+)
+
 sealed interface SearchUiState {
-    object Initial : SearchUiState
-    object Loading : SearchUiState
+    data object Initial : SearchUiState
+    data object Loading : SearchUiState
     data class Success(val data: TracksAndArtists) : SearchUiState
     data class Error(val message: String) : SearchUiState
 }

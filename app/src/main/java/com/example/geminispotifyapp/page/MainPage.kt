@@ -33,14 +33,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.geminispotifyapp.HomePageViewModel
-import com.example.geminispotifyapp.ScreenState
-import com.example.geminispotifyapp.SpotifyDataManager
+import com.example.geminispotifyapp.DownLoadState
+import com.example.geminispotifyapp.SpotifyRepository
+import com.example.geminispotifyapp.UserData
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainPage(screenState: ScreenState) {
-    val context = LocalContext.current
+fun MainPage(data: UserData, spotifyRepository: SpotifyRepository) {
     val navController = rememberNavController()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
@@ -55,29 +55,29 @@ fun MainPage(screenState: ScreenState) {
                 startDestination = "home"
             ) {
                 composable("home") {
-                    HomePage(HomePageViewModel(SpotifyDataManager(context)), paddingValues)
+                    HomePage(spotifyRepository, paddingValues)
                 }
                 composable("topArtists") {
                     TopArtistContent(
-                        screenState.topArtistsShort,
-                        screenState.topArtistsMedium,
-                        screenState.topArtistsLong,
+                        data.topArtistsShort,
+                        data.topArtistsMedium,
+                        data.topArtistsLong,
                         navController,
                         paddingValues
                     )
                 }
                 composable("topTracks") {
                     TopTrackContent(
-                        screenState.topTracksShort,
-                        screenState.topTracksMedium,
-                        screenState.topTracksLong,
+                        data.topTracksShort,
+                        data.topTracksMedium,
+                        data.topTracksLong,
                         navController,
                         paddingValues
                     )
                 }
                 composable("recentlyPlayed") {
                     RecentlyPlayedContent(
-                        screenState.recentlyPlayed,
+                        data.recentlyPlayed,
                         navController,
                         paddingValues
                     )
