@@ -1,9 +1,8 @@
-package com.example.geminispotifyapp.page
+package com.example.geminispotifyapp.features.userdatadetail.toptracks
 
 import android.content.Intent
-import android.icu.text.SimpleDateFormat
-import android.util.Log
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,8 +17,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,7 +32,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -57,6 +57,11 @@ import coil.compose.AsyncImage
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
+import com.example.geminispotifyapp.features.userdatadetail.DetailBox
+import com.example.geminispotifyapp.features.userdatadetail.DropDownMenuTemplate
+import com.example.geminispotifyapp.features.userdatadetail.HandleBackToHome
+import com.example.geminispotifyapp.features.userdatadetail.Period
+import com.example.geminispotifyapp.features.userdatadetail.formatEnumPeriodName
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 import java.util.Locale
 import kotlin.time.Duration.Companion.hours
@@ -64,11 +69,10 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.DurationUnit
 
-
 @Composable
 fun TopTrackContent(topTracksShort: List<SpotifyTrack>, topTracksMedium: List<SpotifyTrack>, topTracksLong: List<SpotifyTrack>, navController: NavController, paddingValues: PaddingValues) {
     var expandedMenuTrack by remember { mutableStateOf(false) }
-    var trackPeriodSelection by remember { mutableIntStateOf(0) }
+    var trackPeriodSelection by remember { mutableStateOf(Period.SHORT_TERM) }
     var onTrackSelected by remember { mutableStateOf<SpotifyTrack?>(null)}
 
     HandleBackToHome(navController)
@@ -76,8 +80,8 @@ fun TopTrackContent(topTracksShort: List<SpotifyTrack>, topTracksMedium: List<Sp
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(6.dp, 12.dp)
             .padding(paddingValues)
+            .padding(6.dp, 12.dp)
     ) {
         item {
             Row(
@@ -105,64 +109,47 @@ fun TopTrackContent(topTracksShort: List<SpotifyTrack>, topTracksMedium: List<Sp
                 DropDownMenuTemplate(
                     expanded = expandedMenuTrack,
                     onExpandChange = { expandedMenuTrack = it },
-                    selectedValue = trackPeriodSelection,
-                    onValueChange = { trackPeriodSelection = it },
-                    options = listOf("Short Term", "Medium Term", "Long Term")
+                    selectedValue = trackPeriodSelection.ordinal,
+                    onValueChange = { index -> trackPeriodSelection = Period.entries[index] },
+                    options = Period.entries.map { formatEnumPeriodName(it) }
                 )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
+        }
 
-            when (trackPeriodSelection) {
-                0 -> GetTopTracks(topTracksShort) { onTrackSelected = it }
-                1 -> GetTopTracks(topTracksMedium) { onTrackSelected = it }
-                2 -> GetTopTracks(topTracksLong) { onTrackSelected = it }
-                else -> {}
+        val currentTopTracks = when (trackPeriodSelection) {
+            Period.SHORT_TERM -> topTracksShort
+            Period.MEDIUM_TERM -> topTracksMedium
+            Period.LONG_TERM -> topTracksLong
+        }
+
+        itemsIndexed(currentTopTracks) { index, track ->
+            TrackItem(index + 1, track) { onTrackSelected = it }
+            if (index < currentTopTracks.size - 1) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
-//        if (topTracks.isNotEmpty()) {
-//            for (i in 0 until GET_ITEM_NUM) {
-//                val index = i + (trackPeriodSelection * GET_ITEM_NUM)
-//                if (index < topTracks.size) {
-//                    TrackItem(i + 1, topTracks[index])
-//                    if (i < GET_ITEM_NUM - 1) {
-//                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-//                    }
-//                }
-//            }
-//        }
+        }
 
-//        Log.d("SpotifyDataContent", "Top Tracks Short-Period: $topTracksShort")
-//        Log.d("SpotifyDataContent", "Top Tracks Medium-Period: $topTracksMedium")
-//        Log.d("SpotifyDataContent", "Top Tracks Long-Period: $topTracksLong")
+        if (currentTopTracks.size < GET_ITEM_NUM) {
+            item {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Info, contentDescription = "Info Icon")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("You data is not enough to show more tracks. (Max = $GET_ITEM_NUM)")
+                }
+            }
         }
     }
-
     DetailBox(selectedValue = onTrackSelected, onDismiss = { onTrackSelected = null }) { track, onDetailDismiss ->
         TrackDetail(
             track = track,
             onDismiss = onDetailDismiss
         )
-    }
-}
-
-@Composable
-fun GetTopTracks(topTracks: List<SpotifyTrack>, onTrackSelected: (SpotifyTrack) -> Unit){
-    topTracks.forEachIndexed { index, track ->
-        TrackItem(index + 1, track, onTrackSelected)
-        if (index < topTracks.size - 1) {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-        }
-    }
-    if (topTracks.size < GET_ITEM_NUM) {
-        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.Default.Info, contentDescription = "Info Icon")
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("You data is not enough to show more tracks. (Max = $GET_ITEM_NUM)")
-        }
     }
 }
 
@@ -196,8 +183,22 @@ fun TrackItem(index: Int, track: SpotifyTrack, onTrackSelected: (SpotifyTrack) -
                     contentScale = ContentScale.Crop
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-            } else {
-                Spacer(modifier = Modifier.width(72.dp))
+            }
+            else {
+                Box(
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant), // Placeholder background
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.Album,
+                        contentDescription = "No album image available",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
             }
 
             // Song Info

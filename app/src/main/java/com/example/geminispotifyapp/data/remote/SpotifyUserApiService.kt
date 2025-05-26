@@ -1,4 +1,4 @@
-package com.example.geminispotifyapp
+package com.example.geminispotifyapp.data.remote
 
 import com.example.geminispotifyapp.data.RecentlyPlayedResponse
 import com.example.geminispotifyapp.data.SearchResponse

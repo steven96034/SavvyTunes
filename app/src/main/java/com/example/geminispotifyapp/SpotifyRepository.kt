@@ -6,8 +6,8 @@ import com.example.geminispotifyapp.data.RecentlyPlayedResponse
 import com.example.geminispotifyapp.data.SearchResponse
 import com.example.geminispotifyapp.data.TopArtistsResponse
 import com.example.geminispotifyapp.data.TopTracksResponse
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import com.example.geminispotifyapp.data.remote.SpotifyApiService
+import com.example.geminispotifyapp.data.remote.SpotifyUserApiService
 
 class SpotifyRepository private constructor(private val context: Context) {
 
@@ -27,18 +27,17 @@ class SpotifyRepository private constructor(private val context: Context) {
         }
     }
 
-
-    private val _accessTokenFlow = MutableStateFlow(getAccessToken()) // 使用 getAccessToken() 的初始值
-    val accessTokenAsFlow: StateFlow<String?> = _accessTokenFlow
-
-    private fun getAccessToken(): String? {
+    fun getAccessToken(): String? {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         return prefs.getString(ACCESS_TOKEN_KEY, null)
     }
 
-    fun updateAccessToken(accessToken: String?) {
-        _accessTokenFlow.value = accessToken
-        Log.d("Auth", "updateAccessToken: $accessToken")
+    fun updateAccessToken(newToken: String) {
+        val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+        with(prefs.edit()) {
+            putString(ACCESS_TOKEN_KEY, newToken)
+            apply()
+        }
     }
 
     // Always return "Bearer"

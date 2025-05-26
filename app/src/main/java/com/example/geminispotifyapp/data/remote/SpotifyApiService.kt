@@ -1,6 +1,7 @@
-package com.example.geminispotifyapp
+package com.example.geminispotifyapp.data.remote
 
 import android.content.Context
+import com.example.geminispotifyapp.BuildConfig
 import com.example.geminispotifyapp.SpotifyRepository.Companion.PREF_NAME
 import com.example.geminispotifyapp.SpotifyRepository.Companion.REFRESH_TOKEN_KEY
 import com.example.geminispotifyapp.auth.SpotifyTokenResponse

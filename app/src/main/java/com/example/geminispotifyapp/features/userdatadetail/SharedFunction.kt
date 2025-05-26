@@ -1,4 +1,4 @@
-package com.example.geminispotifyapp.page
+package com.example.geminispotifyapp.features.userdatadetail
 
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.example.geminispotifyapp.ui.theme.SpotifyBlack
+import java.util.Locale
 
 /**
  * Handles back navigation in the app. When the current destination is not "home",
@@ -198,3 +199,14 @@ fun <T> DetailBox(
     }
 }
 
+fun formatEnumPeriodName(period: Period): String {
+    return period.name.replace("_", " ").split(" ").joinToString(" ") { word ->
+        word.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+    }
+}
+
+enum class Period {
+    SHORT_TERM,
+    MEDIUM_TERM,
+    LONG_TERM
+}

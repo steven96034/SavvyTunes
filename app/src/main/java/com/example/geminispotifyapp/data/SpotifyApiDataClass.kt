@@ -134,8 +134,3 @@ data class SearchResponse(
     val albums: Albums?,
     val artists: Artists?
 )
-
-data class TracksAndArtists(
-    val tracks: List<SpotifyTrack>?,
-    val artists: List<SpotifyArtist>?
-)

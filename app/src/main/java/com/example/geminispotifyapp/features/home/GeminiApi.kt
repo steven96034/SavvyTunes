@@ -1,5 +1,6 @@
-package com.example.geminispotifyapp
+package com.example.geminispotifyapp.features.home
 
+import com.example.geminispotifyapp.BuildConfig
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.CodeExecutionResultPart
 import com.google.ai.client.generativeai.type.Content
@@ -8,7 +9,7 @@ import com.google.ai.client.generativeai.type.GenerateContentResponse
 import com.google.ai.client.generativeai.type.TextPart
 import kotlinx.coroutines.flow.Flow
 
-class GeminiApi() {
+class GeminiApi {
     // For Gemini Model
     private val generativeModel = GenerativeModel(
         modelName = "gemini-2.0-flash",

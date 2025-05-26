@@ -1,25 +1,29 @@
-package com.example.geminispotifyapp
+package com.example.geminispotifyapp.features.home
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.geminispotifyapp.SearchUiState
+import com.example.geminispotifyapp.SpotifyRepository
+import com.example.geminispotifyapp.TracksAndArtists
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
-import com.example.geminispotifyapp.data.TracksAndArtists
 import com.google.ai.client.generativeai.type.GenerateContentResponse
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class HomePageViewModel(
-    private val spotifyRepository: SpotifyRepository
-) : ViewModel() {
+@HiltViewModel
+class HomeViewModel @Inject constructor(private val spotifyRepository: SpotifyRepository) : ViewModel() {
     // For Search State
-    private var _searchSimilarUiState: MutableStateFlow<SearchUiState> = MutableStateFlow(SearchUiState.Initial)
+    private var _searchSimilarUiState: MutableStateFlow<SearchUiState> = MutableStateFlow(
+        SearchUiState.Initial
+    )
     val searchSimilarUiState: StateFlow<SearchUiState> = _searchSimilarUiState.asStateFlow()
 
     // For Gemini API
@@ -225,7 +229,8 @@ class HomePageViewModel(
                         Log.d("Gemini", "Tracks and Artists Data: $data")
                     }
                     } catch (e: Exception) {
-                    _searchSimilarUiState.value = SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
+                    _searchSimilarUiState.value =
+                        SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
                     Log.d("Gemini", "Error: $e")
                     e.printStackTrace()
                 }
@@ -302,13 +307,13 @@ class HomePageViewModel(
 //    }
 }
 
-class HomePageViewModelFactory(private val spotifyRepository: SpotifyRepository) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(HomePageViewModel::class.java)) {
-            @Suppress("Unchecked_cast")
-            return HomePageViewModel(spotifyRepository) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
-
-    }
-}
+//class HomePageViewModelFactory(private val spotifyRepository: SpotifyRepository) : ViewModelProvider.Factory {
+//    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+//        if (modelClass.isAssignableFrom(HomePageViewModel::class.java)) {
+//            @Suppress("Unchecked_cast")
+//            return HomePageViewModel(spotifyRepository) as T
+//        }
+//        throw IllegalArgumentException("Unknown ViewModel class")
+//
+//    }
+//}

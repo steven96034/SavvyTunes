@@ -1,8 +1,8 @@
-package com.example.geminispotifyapp.page
+package com.example.geminispotifyapp.features.userdatadetail.topartists
 
 import android.content.Intent
-import android.util.Log
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -28,7 +30,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,11 +50,16 @@ import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
 import com.example.geminispotifyapp.data.SpotifyArtist
 import androidx.core.net.toUri
+import com.example.geminispotifyapp.features.userdatadetail.DetailBox
+import com.example.geminispotifyapp.features.userdatadetail.DropDownMenuTemplate
+import com.example.geminispotifyapp.features.userdatadetail.HandleBackToHome
+import com.example.geminispotifyapp.features.userdatadetail.Period
+import com.example.geminispotifyapp.features.userdatadetail.formatEnumPeriodName
 
 @Composable
 fun TopArtistContent(topArtistsShort: List<SpotifyArtist>, topArtistsMedium: List<SpotifyArtist>, topArtistsLong: List<SpotifyArtist>, navController: NavController, paddingValues: PaddingValues) {
     var expandedMenuArtist by remember { mutableStateOf(false) }
-    var artistPeriodSelection by remember { mutableIntStateOf(0) }
+    var artistPeriodSelection by remember { mutableStateOf(Period.SHORT_TERM) }
     var onArtistSelected by remember { mutableStateOf<SpotifyArtist?>(null)}
 
     HandleBackToHome(navController)
@@ -61,11 +67,11 @@ fun TopArtistContent(topArtistsShort: List<SpotifyArtist>, topArtistsMedium: Lis
     LazyColumn (
         modifier = Modifier
             .fillMaxSize()
-            .padding(6.dp, 12.dp)
             .padding(paddingValues)
+            .padding(6.dp, 12.dp)
     ) {
         item {
-            Row(
+            Row (
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -90,24 +96,40 @@ fun TopArtistContent(topArtistsShort: List<SpotifyArtist>, topArtistsMedium: Lis
                 DropDownMenuTemplate(
                     expanded = expandedMenuArtist,
                     onExpandChange = { expandedMenuArtist = it },
-                    selectedValue = artistPeriodSelection,
-                    onValueChange = { artistPeriodSelection = it },
-                    options = listOf("Short Term", "Medium Term", "Long Term")
+                    selectedValue = artistPeriodSelection.ordinal,
+                    onValueChange = { index -> artistPeriodSelection = Period.entries[index] },
+                    options = Period.entries.map { formatEnumPeriodName(it) }
                 )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
+        }
 
-            when (artistPeriodSelection) {
-                0 -> GetTopArtists(topArtistsShort, { onArtistSelected = it })
-                1 -> GetTopArtists(topArtistsMedium, { onArtistSelected = it })
-                2 -> GetTopArtists(topArtistsLong, { onArtistSelected = it })
-                else -> {}
+        val currentTopArtists = when (artistPeriodSelection) {
+            Period.SHORT_TERM -> topArtistsShort
+            Period.MEDIUM_TERM -> topArtistsMedium
+            Period.LONG_TERM -> topArtistsLong
+        }
+
+        itemsIndexed(currentTopArtists) { index, artist ->
+            ArtistItem(index + 1, artist) { onArtistSelected = it }
+            if (index < currentTopArtists.size - 1) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
+        }
 
-//            Log.d("SpotifyDataContent", "Top Artists Short-Period: $topArtistsShort")
-//            Log.d("SpotifyDataContent", "Top Artists Medium-Period: $topArtistsMedium")
-//            Log.d("SpotifyDataContent", "Top Artists Long-Period: $topArtistsLong")
+        if (currentTopArtists.size < GET_ITEM_NUM) {
+            item {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Info, contentDescription = "Info Icon")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("You data is not enough to show more artists. (Max = $GET_ITEM_NUM)")
+                }
+            }
         }
     }
 
@@ -117,29 +139,6 @@ fun TopArtistContent(topArtistsShort: List<SpotifyArtist>, topArtistsMedium: Lis
             artist = artist,
             onDismiss = onDetailDismiss,
         )
-    }
-}
-
-@Composable
-private fun GetTopArtists(topArtists: List<SpotifyArtist>, onArtistSelected: (SpotifyArtist) -> Unit){
-    topArtists.forEachIndexed { index, artist ->
-        ArtistItem(index + 1, artist, onArtistSelected)
-        if (index < topArtists.size - 1
-            && index < GET_ITEM_NUM -1
-        ) {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-        }
-    }
-    if (topArtists.size < GET_ITEM_NUM) {
-        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.Default.Info, contentDescription = "Info Icon")
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("You data is not enough to show more artists. (Max = $GET_ITEM_NUM)")
-        }
     }
 }
 
@@ -178,7 +177,20 @@ private fun ArtistItem(index: Int, artist: SpotifyArtist, onArtistSelected: (Spo
                 Spacer(modifier = Modifier.width(12.dp))
             }
             else {
-                Spacer(modifier = Modifier.width(72.dp))
+                Box(
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant), // Placeholder background
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.Album,
+                        contentDescription = "No album image available",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
             }
 
             // Artist Info

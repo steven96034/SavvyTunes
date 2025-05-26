@@ -1,4 +1,4 @@
-package com.example.geminispotifyapp.page
+package com.example.geminispotifyapp.features
 
 import android.content.res.Configuration
 import android.util.Log
@@ -24,7 +24,6 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -32,15 +31,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.geminispotifyapp.HomePageViewModel
-import com.example.geminispotifyapp.DownLoadState
-import com.example.geminispotifyapp.SpotifyRepository
 import com.example.geminispotifyapp.UserData
+import com.example.geminispotifyapp.features.home.HomeScreen
+import com.example.geminispotifyapp.features.userdatadetail.recentlyplayed.RecentlyPlayedContent
+import com.example.geminispotifyapp.features.userdatadetail.topartists.TopArtistContent
+import com.example.geminispotifyapp.features.userdatadetail.toptracks.TopTrackContent
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainPage(data: UserData, spotifyRepository: SpotifyRepository) {
+fun MainPage(data: UserData) {
     val navController = rememberNavController()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
@@ -55,7 +55,7 @@ fun MainPage(data: UserData, spotifyRepository: SpotifyRepository) {
                 startDestination = "home"
             ) {
                 composable("home") {
-                    HomePage(spotifyRepository, paddingValues)
+                    HomeScreen(paddingValues)
                 }
                 composable("topArtists") {
                     TopArtistContent(
@@ -99,7 +99,7 @@ fun MyTopAppBar(navController: NavController, scrollBehavior: TopAppBarScrollBeh
         "topArtists" -> "Top Artists"
         "topTracks" -> "Top Tracks"
         "recentlyPlayed" -> "Recently Played"
-        else -> "My Spotify Data"
+        else -> "Music Explorer by Gemini"
     }
     val navigationIcon: (@Composable () -> Unit)? = if (currentRoute != "home") {
         {
@@ -111,7 +111,10 @@ fun MyTopAppBar(navController: NavController, scrollBehavior: TopAppBarScrollBeh
         null
     }
     TopAppBar(
-        title = { Text(title) },
+        title = {
+            if (title != "Music Explorer by Gemini") Text(title)
+            else Text("Music Explorer by Gemini", color = SpotifyGreen, style = MaterialTheme.typography.headlineLarge)
+                },
         navigationIcon = navigationIcon ?: {},
         scrollBehavior = scrollBehavior
     )
@@ -156,6 +159,12 @@ fun BottomNavigation(navController: NavController) {
             Icon(Icons.Default.FavoriteBorder, "recentlyPlayed", tint = SpotifyGreen)
         }
     }
+}
+
+@Preview
+@Composable
+fun MainPagePreview() {
+    MainPage(UserData())
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

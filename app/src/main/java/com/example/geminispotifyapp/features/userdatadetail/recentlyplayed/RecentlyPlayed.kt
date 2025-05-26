@@ -1,8 +1,9 @@
-package com.example.geminispotifyapp.page
+package com.example.geminispotifyapp.features.userdatadetail.recentlyplayed
 
 import android.content.Intent
 import android.util.Log
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,9 +17,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -54,6 +57,8 @@ import coil.compose.AsyncImage
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.PlayHistoryObject
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
+import com.example.geminispotifyapp.features.userdatadetail.DetailBox
+import com.example.geminispotifyapp.features.userdatadetail.HandleBackToHome
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -72,8 +77,8 @@ fun RecentlyPlayedContent(recentlyPlayed: List<PlayHistoryObject>, navController
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(6.dp, 12.dp)
             .padding(paddingValues)
+            .padding(6.dp, 12.dp)
     ) {
         item {
             Spacer(modifier = Modifier.height(2.dp))
@@ -101,14 +106,17 @@ fun RecentlyPlayedContent(recentlyPlayed: List<PlayHistoryObject>, navController
                 }
             }
             Spacer(modifier = Modifier.height(14.dp))
+        }
 
-            recentlyPlayed.forEachIndexed { index, playHistory ->
-                RecentTrackItem(index + 1, playHistory) { onHistorySelected = it }
-                if (index < recentlyPlayed.size - 1) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                }
+        itemsIndexed(recentlyPlayed) { index, playHistory ->
+            RecentTrackItem(index + 1, playHistory) { onHistorySelected = it }
+            if (index < recentlyPlayed.size - 1) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
-            if (recentlyPlayed.size < GET_ITEM_NUM) {
+        }
+
+        if (recentlyPlayed.size < GET_ITEM_NUM) {
+            item {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -119,8 +127,6 @@ fun RecentlyPlayedContent(recentlyPlayed: List<PlayHistoryObject>, navController
                     Text("You data is not enough to show more recently played songs. (Max = $GET_ITEM_NUM)")
                 }
             }
-
-//            Log.d("SpotifyDataContent", "Recently Played: $recentlyPlayed")
         }
     }
     DetailBox(selectedValue = onHistorySelected, onDismiss = { onHistorySelected = null }) { track, onDetailDismiss ->
@@ -164,7 +170,20 @@ private fun RecentTrackItem(index: Int, playHistory: PlayHistoryObject, onHistor
                 )
                 Spacer(modifier = Modifier.width(12.dp))
             } else {
-                Spacer(modifier = Modifier.width(72.dp))
+                Box(
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant), // Placeholder background
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.Album,
+                        contentDescription = "No album image available",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
             }
 
             // Song Info

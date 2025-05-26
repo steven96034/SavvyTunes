@@ -1,9 +1,14 @@
-package com.example.geminispotifyapp
+package com.example.geminispotifyapp.init.userdata
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.geminispotifyapp.DownLoadState
+import com.example.geminispotifyapp.ErrorData
+import com.example.geminispotifyapp.SpotifyRepository
+import com.example.geminispotifyapp.UserData
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,15 +17,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import retrofit2.HttpException
 import java.io.IOException
+import javax.inject.Inject
 
-class SpotifyDataScreenViewModel : ViewModel() {
+@HiltViewModel
+class SpotifyDataViewModel @Inject constructor(private val spotifyRepository: SpotifyRepository) : ViewModel() {
 
     private val _downLoadState: MutableStateFlow<DownLoadState> = MutableStateFlow(DownLoadState.Initial)
     val downLoadState: StateFlow<DownLoadState> = _downLoadState
 
 
     // Define a function to fetch data
-    fun fetchData(spotifyRepository: SpotifyRepository) {
+    fun fetchData() {
         if (_downLoadState.value is DownLoadState.Loading || _downLoadState.value is DownLoadState.Success) {
             return
         }

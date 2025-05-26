@@ -1,4 +1,4 @@
-package com.example.geminispotifyapp
+package com.example.geminispotifyapp.init.userdata
 
 import android.content.Context
 import android.util.Log
@@ -25,6 +25,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.auth.AuthManager
 
 @Composable
