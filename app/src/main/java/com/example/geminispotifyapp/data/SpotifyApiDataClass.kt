@@ -15,6 +15,15 @@ data class SpotifyArtist(
     val images: List<SpotifyImage>?
 )
 
+data class SimplifiedArtist(
+    val id: String,
+    val name: String,
+    @SerializedName("external_urls")
+    val externalUrls: Map<String, String>,
+    val uri: String,
+    val href: String
+)
+
 data class SpotifyTrack(
     val id: String,
     val name: String,
@@ -22,7 +31,7 @@ data class SpotifyTrack(
     @SerializedName("external_urls")
     val externalUrls: Map<String, String>,
     val album: SpotifyAlbum,
-    val artists: List<SpotifyArtist>,
+    val artists: List<SimplifiedArtist>,
     @SerializedName("duration_ms")
     val durationMs: Int,
     val uri: String,
@@ -43,7 +52,7 @@ data class SpotifyTrack(
     @SerializedName("is_playable")
     val isPlayable: Boolean,
 
-)
+    )
 
 data class SpotifyAlbum(
     val id: String,
@@ -52,7 +61,7 @@ data class SpotifyAlbum(
     val images: List<SpotifyImage>,
     @SerializedName("external_urls")
     val externalUrls: Map<String, String>,
-    val artists: List<SpotifyArtist>,
+    val artists: List<SimplifiedArtist>,
     @SerializedName("release_date")
     val releaseDate: String,
     @SerializedName("release_date_precision")

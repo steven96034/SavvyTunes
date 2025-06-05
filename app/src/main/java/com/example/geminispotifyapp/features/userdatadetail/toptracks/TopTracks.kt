@@ -1,5 +1,7 @@
 package com.example.geminispotifyapp.features.userdatadetail.toptracks
 
+import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -19,6 +21,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Info
@@ -30,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,8 +57,11 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.example.geminispotifyapp.DownLoadState
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
@@ -63,6 +71,7 @@ import com.example.geminispotifyapp.features.userdatadetail.HandleBackToHome
 import com.example.geminispotifyapp.features.userdatadetail.Period
 import com.example.geminispotifyapp.features.userdatadetail.formatEnumPeriodName
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
+import kotlinx.coroutines.flow.StateFlow
 import java.util.Locale
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
@@ -70,7 +79,19 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.DurationUnit
 
 @Composable
+fun TopTracksScreen(viewModel: TopTracksViewModel = hiltViewModel(), navController: NavController, paddingValues: PaddingValues) {
+
+
+}
+
+// , fetchData: () -> Unit , downLoadStateFlow: StateFlow<DownLoadState>, context: Context
+@Composable
 fun TopTrackContent(topTracksShort: List<SpotifyTrack>, topTracksMedium: List<SpotifyTrack>, topTracksLong: List<SpotifyTrack>, navController: NavController, paddingValues: PaddingValues) {
+
+    // For updating data manually in this layout.
+    //val downLoadState by downLoadStateFlow.collectAsState()
+
+
     var expandedMenuTrack by remember { mutableStateOf(false) }
     var trackPeriodSelection by remember { mutableStateOf(Period.SHORT_TERM) }
     var onTrackSelected by remember { mutableStateOf<SpotifyTrack?>(null)}
@@ -172,10 +193,13 @@ fun TrackItem(index: Int, track: SpotifyTrack, onTrackSelected: (SpotifyTrack) -
             contentPadding = PaddingValues(0.dp)
         ) {
             // Album Cover
-            val imageUrl = track.album.images.firstOrNull()?.url
-            if (imageUrl != null) {
+            val thumbnailUrl = track.album.images.lastOrNull()?.url // Get the smallest image for thumbnail (Spotify provides three sizes for album cover(from largest to smallest).)
+            if (thumbnailUrl != null) {
                 AsyncImage(
-                    model = imageUrl,
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(thumbnailUrl) // Use thumbnail if available, otherwise fallback to larger image
+                        .crossfade(true)
+                        .build(),
                     contentDescription = "Album image",
                     modifier = Modifier
                         .size(60.dp)
@@ -226,20 +250,30 @@ fun TrackItem(index: Int, track: SpotifyTrack, onTrackSelected: (SpotifyTrack) -
     }
 }
 
+@SuppressLint("UnusedContentLambdaTargetStateParameter")
 @Composable
 fun TrackDetail(
     track: SpotifyTrack,
     onDismiss: () -> Unit,
 ) {
+    // TODO: More pics in future.
     // Image
-    val imageUrl = track.album.images.firstOrNull()?.url
-    if (imageUrl != null) {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = "Album image",
-            modifier = Modifier.clip(RoundedCornerShape(2.dp)),
-            contentScale = ContentScale.Inside
-        )
+    val images = track.album.images
+    if (images.isNotEmpty()) {
+        val pagerState = rememberPagerState(pageCount = { images.size })
+        HorizontalPager(state = pagerState) { page ->
+            val imageUrl = images[page].url
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = "Album image ${page + 1}",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp) // Adjust height as needed
+                    .clip(RoundedCornerShape(2.dp)),
+                contentScale = ContentScale.Fit // Or ContentScale.Crop depending on desired look
+            )
+
+        }
     } else {
         Spacer(modifier = Modifier.height(12.dp))
         Card(modifier = Modifier.padding(16.dp), shape = RectangleShape) {
@@ -257,6 +291,8 @@ fun TrackDetail(
         textAlign = TextAlign.Center,
     )
     Spacer(modifier = Modifier.height(2.dp))
+
+
 
     // Artist Name
     Text(

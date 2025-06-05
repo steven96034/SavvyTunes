@@ -30,7 +30,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepository: SpotifyRe
     private var relatedTracks = mutableListOf<String>()
     private var relatedArtists = mutableListOf<String>()
 
-    // For Spotify API
+    // For Spotify API (Not-Found List is for debug.)
     private val trackTempList: MutableList<SpotifyTrack> = mutableListOf()
     private val trackNotFoundList: MutableList<String> = mutableListOf()
 

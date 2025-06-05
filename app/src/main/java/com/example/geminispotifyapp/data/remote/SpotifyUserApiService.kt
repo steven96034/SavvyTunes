@@ -50,33 +50,33 @@ interface SpotifyUserApiService {
         @Query("include_external") includeExternal: String? = null
     ): SearchResponse
 
-    companion object {
-        private const val BASE_URL = "https://api.spotify.com/"
-
-        // Create Retrofit instance
-        private val retrofit by lazy {
-            Retrofit.Builder()
-                .baseUrl(BASE_URL)
-                .addConverterFactory(GsonConverterFactory.create())
-                .client(createOkHttpClient())
-                .build()
-        }
-
-        // Create OkHttpClient instance
-        private fun createOkHttpClient(): OkHttpClient {
-            return OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(30, TimeUnit.SECONDS)
-                .addInterceptor(HttpLoggingInterceptor().apply {
-                    level = HttpLoggingInterceptor.Level.BODY
-                })
-                .build()
-        }
-
-        // Provide API service
-        val service: SpotifyUserApiService by lazy {
-            retrofit.create(SpotifyUserApiService::class.java)
-        }
-    }
+//    companion object {
+//        private const val BASE_URL = "https://api.spotify.com/"
+//
+//        // Create Retrofit instance
+//        private val retrofit by lazy {
+//            Retrofit.Builder()
+//                .baseUrl(BASE_URL)
+//                .addConverterFactory(GsonConverterFactory.create())
+//                .client(createOkHttpClient())
+//                .build()
+//        }
+//
+//        // Create OkHttpClient instance
+//        private fun createOkHttpClient(): OkHttpClient {
+//            return OkHttpClient.Builder()
+//                .connectTimeout(30, TimeUnit.SECONDS)
+//                .readTimeout(30, TimeUnit.SECONDS)
+//                .writeTimeout(30, TimeUnit.SECONDS)
+//                .addInterceptor(HttpLoggingInterceptor().apply {
+//                    level = HttpLoggingInterceptor.Level.BODY
+//                })
+//                .build()
+//        }
+//
+//        // Provide API service
+//        val service: SpotifyUserApiService by lazy {
+//            retrofit.create(SpotifyUserApiService::class.java)
+//        }
+//    }
 }

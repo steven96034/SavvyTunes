@@ -2,6 +2,7 @@ package com.example.geminispotifyapp
 
 import android.content.Context
 import android.util.Log
+import com.example.geminispotifyapp.auth.SpotifyTokenResponse
 import com.example.geminispotifyapp.data.RecentlyPlayedResponse
 import com.example.geminispotifyapp.data.SearchResponse
 import com.example.geminispotifyapp.data.TopArtistsResponse
@@ -9,7 +10,7 @@ import com.example.geminispotifyapp.data.TopTracksResponse
 import com.example.geminispotifyapp.data.remote.SpotifyApiService
 import com.example.geminispotifyapp.data.remote.SpotifyUserApiService
 
-class SpotifyRepository private constructor(private val context: Context) {
+class SpotifyRepository private constructor(private val context: Context, private val spotifyUserApiService: SpotifyUserApiService, private val spotifyApiService: SpotifyApiService) {
 
     companion object {
         const val PREF_NAME = "spotify_token_prefs"
@@ -19,11 +20,8 @@ class SpotifyRepository private constructor(private val context: Context) {
         const val EXPIRES_AT_KEY = "expires_at"
 
         // Provide a public factory function to create an instance of SpotifyRepository in order not to be constructed by others outside.
-        fun create(context: Context): SpotifyRepository {
-            // Call private constructor here, also pass Application Context.
-            // Ensure that the context is application context.
-            // The instance is hold by MyApplication. (We only call this function in MyApplication.kt)
-            return SpotifyRepository(context.applicationContext)
+        fun create(context: Context, spotifyUserApiService: SpotifyUserApiService, spotifyApiService: SpotifyApiService): SpotifyRepository {
+            return SpotifyRepository(context.applicationContext, spotifyUserApiService, spotifyApiService)
         }
     }
 
@@ -69,7 +67,7 @@ class SpotifyRepository private constructor(private val context: Context) {
             refreshToken()
         }
 
-        return SpotifyUserApiService.service.getTopArtists(
+        return spotifyUserApiService.getTopArtists(
             authorization = getAuthorizationHeader(),
             timeRange = timeRange,
             limit = limit,
@@ -86,7 +84,7 @@ class SpotifyRepository private constructor(private val context: Context) {
             refreshToken()
         }
 
-        return SpotifyUserApiService.service.getTopTracks(
+        return spotifyUserApiService.getTopTracks(
             authorization = getAuthorizationHeader(),
             timeRange = timeRange,
             limit = limit,
@@ -103,7 +101,7 @@ class SpotifyRepository private constructor(private val context: Context) {
             refreshToken()
         }
 
-        return SpotifyUserApiService.service.getRecentlyPlayed(
+        return spotifyUserApiService.getRecentlyPlayed(
             authorization = getAuthorizationHeader(),
             limit = limit,
             before = before,
@@ -122,7 +120,7 @@ class SpotifyRepository private constructor(private val context: Context) {
         if (isTokenExpired()) {
             refreshToken()
         }
-        return SpotifyUserApiService.service.searchTracks(
+        return spotifyUserApiService.searchTracks(
             authorization = getAuthorizationHeader(),
             query = query,
             type = type,
@@ -138,7 +136,19 @@ class SpotifyRepository private constructor(private val context: Context) {
             val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
             Log.d("SpotifyData", "pref.accessToken before: ${prefs.getString(ACCESS_TOKEN_KEY, null)}")
 
-            val response = SpotifyApiService.refreshToken(context = context)
+            // static refresh token method
+            val refreshToken = prefs.getString(REFRESH_TOKEN_KEY, "") ?: ""
+            val clientId = BuildConfig.SPOTIFY_WEB_API_KEY
+            if (refreshToken.isEmpty()) {
+                Log.d("SpotifyData", "Empty Refresh Token")
+                return
+            }
+            val requestBody = HashMap<String, String>().apply {
+                put("grant_type", "refresh_token")
+                put("refresh_token", refreshToken)
+                put("client_id", clientId)
+            }
+            val response = spotifyApiService.refreshAccessToken(requestBody)
 
             // Save the new access token and expiration time
             with(prefs.edit()) {
@@ -160,5 +170,24 @@ class SpotifyRepository private constructor(private val context: Context) {
             Log.e("SpotifyData refresh token", "Failed to refresh Access Token", e)
             throw e
         }
+    }
+
+
+
+    // static get access token method, call from AuthCallbackActivity
+    suspend fun getAccessToken(
+        grantType: String,
+        code: String,
+        redirectUri: String,
+        clientId: String,
+        codeVerifier: String
+    ): SpotifyTokenResponse {
+        return spotifyApiService.getAccessToken(
+            grantType = grantType,
+            code = code,
+            redirectUri = redirectUri,
+            clientId = clientId,
+            codeVerifier = codeVerifier
+        )
     }
 }

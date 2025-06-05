@@ -96,7 +96,7 @@ class AuthCallbackActivity : AppCompatActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val response = SpotifyApiService.getAccessToken(
+                val response = spotifyRepository.getAccessToken(
                     grantType = "authorization_code",
                     code = code,
                     redirectUri = AuthManager.REDIRECT_URI,

@@ -2,6 +2,8 @@ package com.example.geminispotifyapp.di
 
 import android.content.Context
 import com.example.geminispotifyapp.SpotifyRepository
+import com.example.geminispotifyapp.data.remote.SpotifyApiService
+import com.example.geminispotifyapp.data.remote.SpotifyUserApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -14,7 +16,7 @@ import javax.inject.Singleton
 object RepositoryModule {
     @Provides
     @Singleton
-    fun provideSpotifyRepository(@ApplicationContext context: Context): SpotifyRepository {
-        return SpotifyRepository.create(context)
+    fun provideSpotifyRepository(@ApplicationContext context: Context, spotifyUserApiService: SpotifyUserApiService, spotifyApiService: SpotifyApiService): SpotifyRepository {
+        return SpotifyRepository.create(context, spotifyUserApiService, spotifyApiService)
     }
 }
