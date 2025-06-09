@@ -26,7 +26,6 @@ class AuthCallbackActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "AuthCallbackActivity"
-        private const val PREFS_NAME = "spotify_token_prefs"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -105,7 +104,14 @@ class AuthCallbackActivity : AppCompatActivity() {
                 )
 
                 Log.d(TAG, "Successfully received Access Token: ${response.accessToken}")
-                saveTokens(response)
+
+                //saveTokens(response)
+                spotifyRepository.updateTokenResponse(response)
+                Log.d(
+                    TAG,
+                    "Token saved to SharedPreferences. Expires at: ${Date(System.currentTimeMillis() + (response.expiresIn * 1000))}"
+                )
+
                 spotifyRepository.updateAccessToken(response.accessToken)
 
                 withContext(Dispatchers.Main) {
@@ -119,22 +125,6 @@ class AuthCallbackActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    private fun saveTokens(tokenResponse: SpotifyTokenResponse) {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().apply {
-            putString("access_token", tokenResponse.accessToken)
-            putString("refresh_token", tokenResponse.refreshToken)
-            putString("token_type", tokenResponse.tokenType)
-            putLong("expires_at", System.currentTimeMillis() + (tokenResponse.expiresIn * 1000))
-            putString("scope", tokenResponse.scope)
-            apply()
-        }
-        Log.d(
-            TAG,
-            "Token saved to SharedPreferences. Expires at: ${Date(System.currentTimeMillis() + (tokenResponse.expiresIn * 1000))}"
-        )
     }
 
     private fun navigateToMainActivity() {

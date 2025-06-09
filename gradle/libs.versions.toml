@@ -7,6 +7,9 @@ coilComposeVersion = "2.4.0"
 commonsText = "1.9"
 converterGson = "2.9.0"
 coreKtxVersion = "1.13.1"
+datastore = "1.1.7"
+datastorePreferences = "1.1.7"
+datastorePreferencesCore = "1.1.7"
 generativeaiVersion = "0.9.0"
 gson = "2.10.1"
 hilt = "2.51.1"
@@ -44,6 +47,9 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 androidx-core-ktx-v1131 = { module = "androidx.core:core-ktx", version.ref = "coreKtxVersion" }
 androidx-core-ktx-v1140 = { module = "androidx.core:core-ktx", version.ref = "androidxCoreKtx" }
 #androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+androidx-datastore = { module = "androidx.datastore:datastore", version.ref = "datastore" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
+androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "datastorePreferencesCore" }
 androidx-material-icons-core = { module = "androidx.compose.material:material-icons-core", version.ref = "materialIconsCore" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
