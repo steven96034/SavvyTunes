@@ -6,49 +6,56 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.widget.Toast
-import androidx.core.content.edit
 import androidx.core.net.toUri
 import com.example.geminispotifyapp.BuildConfig
+import com.example.geminispotifyapp.data.local.AppDatabase
 import com.example.geminispotifyapp.utils.toast
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
 
-object AuthManager {
+@Singleton
+class AuthManager @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val appDatabase: AppDatabase
+) {
+    companion object {
+        // --- Constants ---
 
-    // --- Constants ---
+        /**
+         *  **Important**: Replace `YOUR_CLIENT_ID` with your actual Spotify Client ID from the Spotify Developer Dashboard.
+         */
+        const val CLIENT_ID = BuildConfig.SPOTIFY_WEB_API_KEY
 
-    /**
-     *  **Important**: Replace `YOUR_CLIENT_ID` with your actual Spotify Client ID from the Spotify Developer Dashboard.
-     */
-    const val CLIENT_ID = BuildConfig.SPOTIFY_WEB_API_KEY
+        /**
+         *  **Important**: The redirect URI must exactly match the one configured in the Spotify Developer Dashboard.
+         *
+         *  Also, ensure that the `Activity` in `AndroidManifest.xml` that handles this URI is configured with an appropriate `intent-filter`.
+         */
+        const val REDIRECT_URI = "geminispotifyapp://callback"
 
-    /**
-     *  **Important**: The redirect URI must exactly match the one configured in the Spotify Developer Dashboard.
-     *
-     *  Also, ensure that the `Activity` in `AndroidManifest.xml` that handles this URI is configured with an appropriate `intent-filter`.
-     */
-    const val REDIRECT_URI = "geminispotifyapp://callback"
+        /**
+         * The list of scopes/permissions required for your application.
+         *
+         * [Spotify Scopes documentation](https://developer.spotify.com/documentation/general/guides/scopes/)
+         */
+        private val SCOPES = listOf(
+            "playlist-read-private", // Read access to user's private playlists.
+            "playlist-modify-private", // Write/delete access to the list of artists and other users that the user follows.
+            "user-follow-read", // Read access to the list of artists and other users that the user follows.
+            "user-library-modify", // Write/delete access to a user's "Your Music" library.
+            "user-library-read", // Read access to a user's library.
+            "user-top-read", // Read access to a user's top artists and tracks.
+            "user-read-recently-played" // Read access to a user’s recently played tracks.
+        )
 
-    /**
-     * The list of scopes/permissions required for your application.
-     *
-     * [Spotify Scopes documentation](https://developer.spotify.com/documentation/general/guides/scopes/)
-     */
-    private val SCOPES = listOf(
-        "playlist-read-private", // Read access to user's private playlists.
-        "playlist-modify-private", // Write/delete access to the list of artists and other users that the user follows.
-        "user-follow-read", // Read access to the list of artists and other users that the user follows.
-        "user-library-modify", // Write/delete access to a user's "Your Music" library.
-        "user-library-read", // Read access to a user's library.
-        "user-top-read", // Read access to a user's top artists and tracks.
-        "user-read-recently-played" // Read access to a user’s recently played tracks.
-    )
-
-    private const val AUTH_ENDPOINT = "https://accounts.spotify.com/authorize"
-    private const val CODE_VERIFIER_PREF_KEY = "spotify_code_verifier"
-    private const val PREF_NAME = "spotify_auth_prefs"
-    private const val STATE_KEY = "spotify_auth_state"
+        private const val AUTH_ENDPOINT = "https://accounts.spotify.com/authorize"
+//        private const val CODE_VERIFIER_PREF_KEY = "spotify_code_verifier"
+//        private const val PREF_NAME = "spotify_auth_prefs"
+//        private const val STATE_KEY = "spotify_auth_state"
+    }
 
     // --- PKCE Helper Functions ---
 
@@ -110,9 +117,9 @@ object AuthManager {
      * @param context The application context.
      * @return The SharedPreferences instance.
      */
-    private fun getSharedPreferences(context: Context): SharedPreferences {
-        return context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-    }
+//    private fun getSharedPreferences(context: Context): SharedPreferences {
+//        return context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+//    }
 
     /**
      * Saves the generated PKCE Code Verifier to SharedPreferences.
@@ -120,11 +127,11 @@ object AuthManager {
      * @param context The application context.
      * @param codeVerifier The Code Verifier to save.
      */
-    private fun saveCodeVerifier(context: Context, codeVerifier: String) {
-        getSharedPreferences(context).edit {
-            putString(CODE_VERIFIER_PREF_KEY, codeVerifier)
-        }
-    }
+//    private fun saveCodeVerifier(context: Context, codeVerifier: String) {
+//        getSharedPreferences(context).edit {
+//            putString(CODE_VERIFIER_PREF_KEY, codeVerifier)
+//        }
+//    }
 
     /**
      * Retrieves the saved PKCE Code Verifier from SharedPreferences.
@@ -135,8 +142,11 @@ object AuthManager {
      * @param context The application context.
      * @return The saved Code Verifier, or `null` if not found.
      */
-    fun getSavedCodeVerifier(context: Context): String? {
-        return getSharedPreferences(context).getString(CODE_VERIFIER_PREF_KEY, null)
+//    fun getSavedCodeVerifier(context: Context): String? {
+//        return getSharedPreferences(context).getString(CODE_VERIFIER_PREF_KEY, null)
+//    }
+    suspend fun getCodeVerifier(): String? {
+        return appDatabase.getCodeVerifier()
     }
 
     private fun generateRandomState(length: Int = 32): String {
@@ -147,18 +157,22 @@ object AuthManager {
         return bytes.map { possibleChars[random.nextInt(possibleChars.length)] }.joinToString("")
     }
 
-    fun getSavedState(context: Context): String? {
-        val pref = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        return pref.getString(STATE_KEY, null)
+//    fun getSavedState(context: Context): String? {
+//        val pref = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+//        return pref.getString(STATE_KEY, null)
+//    }
+//
+//    private fun saveState(context: Context, state: String) {
+//        val pref = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+//        pref.edit().apply {
+//            putString(STATE_KEY, state)
+//            apply()
+//        }
+//    }
+    suspend fun getAuthState(): String? {
+        return appDatabase.getAuthState()
     }
 
-    private fun saveState(context: Context, state: String) {
-        val pref = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        pref.edit().apply {
-            putString(STATE_KEY, state)
-            apply()
-        }
-    }
     // --- Authentication Flow ---
 
     /**
@@ -166,19 +180,21 @@ object AuthManager {
      *
      * @param context The Activity or Application context.
      */
-    fun startAuthentication(context: Context) {
+    suspend fun startAuthentication() {
         // 1. Generate Code Verifier
         val codeVerifier = generateCodeVerifier()
 
         // 2. Save Code Verifier for later token exchange
-        saveCodeVerifier(context, codeVerifier)
+        //saveCodeVerifier(context, codeVerifier)
+        appDatabase.saveCodeVerifier(codeVerifier)
 
         // 3. Generate Code Challenge
         val codeChallenge = generateCodeChallenge(codeVerifier)
 
         // 4. Generate and Save State
         val state = generateRandomState()
-        saveState(context, state)
+        //saveState(context, state)
+        appDatabase.saveAuthState(state)
 
         // 5. Build Authorization URL
         val authUri = AUTH_ENDPOINT.toUri().buildUpon().apply {
@@ -192,7 +208,9 @@ object AuthManager {
         }.build()
 
         // 6. Open the URL in a browser or Chrome Custom Tab
-        val intent = Intent(Intent.ACTION_VIEW, authUri)
+        val intent = Intent(Intent.ACTION_VIEW, authUri).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
 
         try {
             context.startActivity(intent)

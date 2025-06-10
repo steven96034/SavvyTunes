@@ -52,9 +52,6 @@ fun HomeScreen(paddingValues: PaddingValues, viewModel: HomeViewModel = hiltView
     val trackInput by viewModel.trackInput.collectAsState()
     val artistInput by viewModel.artistInput.collectAsState()
 
-    // Use "remember" to prevent the ViewModel from being recreated on configuration changes.
-//    val factory = remember { HomePageViewModelFactory(spotifyRepository) }
-//    val viewModel: HomePageViewModel = viewModel(factory = factory)
 
     HomePage(
         uiState,
@@ -143,7 +140,10 @@ fun HomePage(
                     .padding(top = 8.dp)
                     .fillMaxWidth()
             ) {
-                Text("Search similar tracks and artists!")
+                if (uiState != SearchUiState.Loading)
+                    Text("Search similar tracks and artists!")
+                else
+                    Text("Loading... (Tap to Cancel)")
             }
         }
         //item {

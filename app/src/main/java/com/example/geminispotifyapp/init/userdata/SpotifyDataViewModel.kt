@@ -7,6 +7,7 @@ import com.example.geminispotifyapp.DownLoadState
 import com.example.geminispotifyapp.ErrorData
 import com.example.geminispotifyapp.SpotifyRepository
 import com.example.geminispotifyapp.UserData
+import com.example.geminispotifyapp.auth.AuthManager
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -20,11 +21,16 @@ import java.io.IOException
 import javax.inject.Inject
 
 @HiltViewModel
-class SpotifyDataViewModel @Inject constructor(private val spotifyRepository: SpotifyRepository) : ViewModel() {
+class SpotifyDataViewModel @Inject constructor(private val spotifyRepository: SpotifyRepository, private val authManager: AuthManager) : ViewModel() {
 
     private val _downLoadState: MutableStateFlow<DownLoadState> = MutableStateFlow(DownLoadState.Initial)
     val downLoadState: StateFlow<DownLoadState> = _downLoadState
 
+    fun startAuthentication() {
+        viewModelScope.launch {
+            authManager.startAuthentication()
+        }
+    }
 
     // Define a function to fetch data
     fun fetchData() {

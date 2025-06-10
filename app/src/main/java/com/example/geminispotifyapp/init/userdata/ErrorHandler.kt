@@ -1,6 +1,5 @@
 package com.example.geminispotifyapp.init.userdata
 
-import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -20,16 +19,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.geminispotifyapp.R
-import com.example.geminispotifyapp.auth.AuthManager
 
 @Composable
-fun AuthenticationExpiredContent(context: Context) {
+fun AuthenticationExpiredContent(startAuthentication: () -> Unit) {
     Box(Modifier
         .fillMaxSize()
         .padding(4.dp)) {
@@ -42,7 +39,7 @@ fun AuthenticationExpiredContent(context: Context) {
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
-                    AuthManager.startAuthentication(context)
+                    startAuthentication()
                 },
                 contentPadding = PaddingValues(16.dp)
             ) {
@@ -125,7 +122,7 @@ fun ErrorContent(errorMessage: String?, onRetry: () -> Unit) {
 @Preview
 @Composable
 fun AuthenticationExpiredContentPreview() {
-    AuthenticationExpiredContent(context = LocalContext.current)
+    AuthenticationExpiredContent(startAuthentication = {})
 }
 
 @Preview

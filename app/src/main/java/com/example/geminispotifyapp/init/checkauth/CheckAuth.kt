@@ -20,7 +20,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.geminispotifyapp.auth.AuthManager
 import com.example.geminispotifyapp.init.userdata.SpotifyDataScreen
 
 
@@ -39,7 +38,7 @@ fun CheckAuth(viewModel: CheckAuthViewModel = hiltViewModel()) {
     }
 
     if (!isAuthenticated && context is Activity) {
-        LoginPage(onAuthButtonClicked = { AuthManager.startAuthentication(context) })
+        LoginPage(onAuthButtonClicked = { viewModel.startAuthentication() })
     } else {
         SpotifyDataScreen()
     }

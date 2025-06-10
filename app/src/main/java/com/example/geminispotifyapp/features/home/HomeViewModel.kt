@@ -8,18 +8,23 @@ import com.example.geminispotifyapp.SpotifyRepository
 import com.example.geminispotifyapp.TracksAndArtists
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
+import com.example.geminispotifyapp.features.SnackbarMessage
+import com.example.geminispotifyapp.features.UiEventManager
 import com.google.ai.client.generativeai.type.GenerateContentResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.CancellationException
 import javax.inject.Inject
 
 @HiltViewModel
-class HomeViewModel @Inject constructor(private val spotifyRepository: SpotifyRepository) : ViewModel() {
+class HomeViewModel @Inject constructor(private val spotifyRepository: SpotifyRepository, private val uiEventManager: UiEventManager) : ViewModel() {
     // For Search State
     private var _searchSimilarUiState: MutableStateFlow<SearchUiState> = MutableStateFlow(
         SearchUiState.Initial
@@ -146,13 +151,25 @@ class HomeViewModel @Inject constructor(private val spotifyRepository: SpotifyRe
 
 
     private lateinit var response: GenerateContentResponse
+    private var searchJob: Job? = null
     fun searchSimilarTracksAndArtists(track: String, artist: String) {
-        viewModelScope.launch {
+
+        // Check if the search is already in progress, if yes, then return and display initial.
+        if (_searchSimilarUiState.value is SearchUiState.Loading) {
+            searchJob?.cancel(CancellationException("Cancel search by user."))
+            viewModelScope.launch {
+                uiEventManager.showSnackbar(SnackbarMessage.TextMessage("Previous search has successfully cancelled."))
+            }
+            _searchSimilarUiState.value = SearchUiState.Initial
+            return
+        }
+
+        searchJob = viewModelScope.launch {
 
             _searchSimilarUiState.value = SearchUiState.Loading
 
-            withContext(Dispatchers.IO) {
-                try {
+            try {
+                withContext(Dispatchers.IO) {
                     response = GeminiApi().askGemini(
                         """Please list five music tracks of related genres of $track##$artist, where the format mentioned is: Song Name##Artists Name.
                                 List only one related music track in each row using format: Song Name##Artist Name,                                
@@ -175,7 +192,12 @@ class HomeViewModel @Inject constructor(private val spotifyRepository: SpotifyRe
                             // First five rows: tracks
                             relatedTracks.addAll(lines.subList(0, minOf(5, blankLineIndex)))
                             // Last five rows: artists
-                            relatedArtists.addAll(lines.subList(blankLineIndex + 1, minOf(blankLineIndex + 6, lines.size)))
+                            relatedArtists.addAll(
+                                lines.subList(
+                                    blankLineIndex + 1,
+                                    minOf(blankLineIndex + 6, lines.size)
+                                )
+                            )
                         } else {
                             Log.e("Gemini", "Response format error")
                             //fallback to all tracks
@@ -226,15 +248,37 @@ class HomeViewModel @Inject constructor(private val spotifyRepository: SpotifyRe
 
                         val data = TracksAndArtists(trackTempList.toList(), artistTempList.toList())
                         _searchSimilarUiState.value = SearchUiState.Success(data)
+                        uiEventManager.showSnackbar(SnackbarMessage.TextMessage("Search successfully completed."))
                         Log.d("Gemini", "Tracks and Artists Data: $data")
                     }
-                    } catch (e: Exception) {
+                } ?: if(isActive) { // 如果 response.text 是 null
+                    _searchSimilarUiState.value =
+                        SearchUiState.Error("Failed to get a valid response from Gemini.")
+                } else null
+            }
+//            catch (e: CancellationException) {
+//                    Log.d("Gemini", "Search coroutine was cancelled.")
+//                    _searchSimilarUiState.value = SearchUiState.Initial
+//                    throw e
+//                }
+            catch (e: Exception) {
+                if (isActive) {
                     _searchSimilarUiState.value =
                         SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
+                    uiEventManager.showSnackbar(SnackbarMessage.ExceptionMessage(e))
                     Log.d("Gemini", "Error: $e")
                     e.printStackTrace()
                 }
+            } finally {
+                // The "isActive" here is the status of the coroutine that is in finally block
+                // If the coroutine is cancelled, isActive will be false in finally block
+                // Ensure that this is caused by cancellation and that searchJob is the one that is being cancelled.
+                if (_searchSimilarUiState.value is SearchUiState.Loading && !isActive && searchJob?.isCancelled == true) {
+                    _searchSimilarUiState.value = SearchUiState.Initial
+                    Log.d("Gemini", "Search was cancelled and UI state reset to Initial in finally.")
+                }
             }
+            Log.d("Gemini", "Search job finished.")
         }
     }
 
