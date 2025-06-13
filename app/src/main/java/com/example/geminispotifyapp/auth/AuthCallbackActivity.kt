@@ -114,7 +114,6 @@ class AuthCallbackActivity : AppCompatActivity() {
 
                 Log.d(TAG, "Successfully received Access Token: ${response.accessToken}")
 
-                //saveTokens(response)
                 spotifyRepository.updateTokenResponse(response)
                 Log.d(
                     TAG,

@@ -53,6 +53,8 @@ fun AuthenticationExpiredContent(startAuthentication: () -> Unit) {
                     )
                 }
             }
+            // code == 400 is for refresh token expired
+            // code == 401 is for authentication expired (no way to be happened under normal circumstances, we only have to refresh access token and retry)
             Log.d(
                 "AuthenticationExpiredContent",
                 "Authentication has expired. Please re-login to your Spotify account"

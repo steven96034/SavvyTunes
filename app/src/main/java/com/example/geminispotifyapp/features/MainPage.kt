@@ -2,8 +2,12 @@ package com.example.geminispotifyapp.features
 
 import android.content.res.Configuration
 import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -28,22 +32,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navOptions
 import com.example.geminispotifyapp.UserData
 import com.example.geminispotifyapp.features.home.HomeScreen
 import com.example.geminispotifyapp.features.userdatadetail.recentlyplayed.RecentlyPlayedContent
 import com.example.geminispotifyapp.features.userdatadetail.topartists.TopArtistContent
 import com.example.geminispotifyapp.features.userdatadetail.toptracks.TopTrackContent
+import com.example.geminispotifyapp.features.userdatadetail.toptracks.TopTracksScreen
+import com.example.geminispotifyapp.ui.theme.SpotifyBlack
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 import kotlinx.coroutines.launch
 
@@ -71,7 +81,7 @@ fun MainPage(data: UserData, viewModel: MainViewModel = hiltViewModel()) {
                         )
                         //messageText = event.message
                     }
-
+                    // TODO: Make more user friendly error message...
                     is SnackbarMessage.ExceptionMessage -> {
                         //snackbarHostState.showSnackbar(event.exception.localizedMessage ?: "Some Error Happened...")
                         result = snackbarHostState.showSnackbar(
@@ -133,10 +143,7 @@ fun MainPage(data: UserData, viewModel: MainViewModel = hiltViewModel()) {
                 )
             }
             composable("topTracks") {
-                TopTrackContent(
-                    data.topTracksShort,
-                    data.topTracksMedium,
-                    data.topTracksLong,
+                TopTracksScreen(
                     navController,
                     paddingValues
                 )
@@ -181,45 +188,88 @@ fun MyTopAppBar(navController: NavController, scrollBehavior: TopAppBarScrollBeh
         scrollBehavior = scrollBehavior
     )
 }
-
+data class CustomBottomNavItem(
+    val route: String,
+    val icon: @Composable (tint: Color) -> Unit, // Let the caller decide how to display the icon
+    val label: String
+)
 
 @Composable
 fun BottomNavigation(navController: NavController) {
+    val items = listOf(
+        CustomBottomNavItem("topArtists", { Icon(Icons.Default.AccountCircle, "topArtists", tint = it) }, "Top Artists"),
+        CustomBottomNavItem("topTracks", { Icon(Icons.Default.Favorite, "topTracks", tint = it) }, "Top Tracks"),
+        CustomBottomNavItem("recentlyPlayed", { Icon(Icons.Default.FavoriteBorder, "recentlyPlayed", tint = it) }, "Recently Played")
+    )
+
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+
+
     Row (
         modifier = Modifier.fillMaxWidth()
     ) {
-        Button(
-            onClick = { navController.navigate("topArtists"); Log.d("BottomNavigation", "$currentRoute -> next") },
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(0.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
-//            if (isSystemInDarkTheme()) {
-//                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
-//            } else {
-//                ButtonDefaults.buttonColors()
-//            }
+        items.forEach { item ->
+            val isSelected = currentRoute == item.route
+            val itemColor = if (isSelected) SpotifyBlack else SpotifyGreen // Change color based on selection
+            Column(
+                modifier = Modifier
+                    .background(if (isSelected) SpotifyGreen.copy(alpha = 0.3f) else SpotifyBlack)
+                    .clickable {
+                        // Navigation logic should be placed here
+                        if (currentRoute != item.route) { // Prevent navigating to the same destination
+                            navController.navigate(item.route, navOptions {
+                                // Pop up to the start destination of the graph to avoid building up a large stack of destinations
+                                // on the back stack as users select items
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                // Avoid multiple copies of the same destination when reselecting the same item
+                                launchSingleTop = true
+                                // Restore state when reselecting a previously selected item
+                                restoreState = true
+                            })
+                        }
+                    }
+                    .weight(1f)
+                    .padding(vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                item.icon(itemColor) // Pass the itemColor to the icon composable
+                Text(text = item.label, color = itemColor)
+            }
+        }
 
-        ) {
-            Icon(Icons.Default.AccountCircle, "topArtists", tint = SpotifyGreen)
-        }
-        Button(
-            onClick = { navController.navigate("topTracks"); Log.d("BottomNavigation", "$currentRoute  -> next") },
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(0.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
-
-        ) {
-            Icon(Icons.Default.Favorite, "topTracks", tint = SpotifyGreen)
-        }
-        Button(
-            onClick = { navController.navigate("recentlyPlayed"); Log.d("BottomNavigation", "$currentRoute  -> next") },
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(0.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
-        ) {
-            Icon(Icons.Default.FavoriteBorder, "recentlyPlayed", tint = SpotifyGreen)
-        }
+//        Button(
+//            onClick = { navController.navigate("topArtists"); Log.d("BottomNavigation", "$currentRoute -> next") },
+//            modifier = Modifier.weight(1f),
+//            shape = RoundedCornerShape(0.dp),
+//            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
+////            if (isSystemInDarkTheme()) {
+////                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
+////            } else {
+////                ButtonDefaults.buttonColors()
+////            }
+//
+//        ) {
+//            Icon(Icons.Default.AccountCircle, "topArtists", tint = SpotifyGreen)
+//        }
+//        Button(
+//            onClick = { navController.navigate("topTracks"); Log.d("BottomNavigation", "$currentRoute  -> next") },
+//            modifier = Modifier.weight(1f),
+//            shape = RoundedCornerShape(0.dp),
+//            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
+//
+//        ) {
+//            Icon(Icons.Default.Favorite, "topTracks", tint = SpotifyGreen)
+//        }
+//        Button(
+//            onClick = { navController.navigate("recentlyPlayed"); Log.d("BottomNavigation", "$currentRoute  -> next") },
+//            modifier = Modifier.weight(1f),
+//            shape = RoundedCornerShape(0.dp),
+//            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
+//        ) {
+//            Icon(Icons.Default.FavoriteBorder, "recentlyPlayed", tint = SpotifyGreen)
+//        }
     }
 }
 

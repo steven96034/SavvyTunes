@@ -86,16 +86,24 @@ class AppDatabase @Inject constructor(
         }
     }
 
-    suspend fun saveRefreshToken(token: String) {
-        dataStore.edit { preferences ->
-            preferences[REFRESH_TOKEN_KEY] = encryptedPreferenceManager.encrypt(token)
+    // TODO: Test if encrypted refresh token is working.
+    suspend fun saveRefreshToken(token: String?) {
+        if (!token.isNullOrBlank()) {
+            dataStore.edit { preferences ->
+                preferences[REFRESH_TOKEN_KEY] = token//encryptedPreferenceManager.encrypt(token)
+            }
         }
     }
 
     suspend fun getRefreshToken(): String? {
-        return dataStore.data.map { preferences ->
-            preferences[REFRESH_TOKEN_KEY]?.let { encryptedPreferenceManager.decrypt(it) }
-        }.first()
+        return try {
+            dataStore.data.map { preferences ->
+                preferences[REFRESH_TOKEN_KEY]//?.let { encryptedPreferenceManager.decrypt(it) }
+            }.first()
+        } catch (e: Exception) {
+            Log.e("AppDatabase", "Error getting refresh token", e)
+            null
+        }
     }
 
     suspend fun saveTokenResponse(tokenResponse: SpotifyTokenResponse) {
@@ -105,7 +113,7 @@ class AppDatabase @Inject constructor(
             preferences[EXPIRES_AT_KEY] = System.currentTimeMillis() + (tokenResponse.expiresIn * 1000)
             preferences[SCOPE_KEY] = tokenResponse.scope ?: ""
             if (!tokenResponse.refreshToken.isNullOrBlank()) {
-                preferences[REFRESH_TOKEN_KEY] = encryptedPreferenceManager.encrypt(tokenResponse.refreshToken)
+                preferences[REFRESH_TOKEN_KEY] = tokenResponse.refreshToken//encryptedPreferenceManager.encrypt(tokenResponse.refreshToken)
                 Log.d("AppDatabase", "New refresh token saved.")
             }
             else Log.d("AppDatabase", "No new refresh token in the response. Existing refresh token (if any) will be kept.")

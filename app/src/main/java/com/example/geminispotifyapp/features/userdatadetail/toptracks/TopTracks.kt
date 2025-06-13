@@ -1,7 +1,6 @@
 package com.example.geminispotifyapp.features.userdatadetail.toptracks
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -29,6 +28,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -61,7 +61,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.geminispotifyapp.DownLoadState
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
@@ -71,7 +70,6 @@ import com.example.geminispotifyapp.features.userdatadetail.HandleBackToHome
 import com.example.geminispotifyapp.features.userdatadetail.Period
 import com.example.geminispotifyapp.features.userdatadetail.formatEnumPeriodName
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
-import kotlinx.coroutines.flow.StateFlow
 import java.util.Locale
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
@@ -79,92 +77,99 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.DurationUnit
 
 @Composable
-fun TopTracksScreen(viewModel: TopTracksViewModel = hiltViewModel(), navController: NavController, paddingValues: PaddingValues) {
-
-
+fun TopTracksScreen(navController: NavController, paddingValues: PaddingValues, viewModel: TopTracksViewModel = hiltViewModel()) {
+    val uiState by viewModel.downLoadState.collectAsState()
+    TopTrackContent(uiState, navController, paddingValues)
 }
 
-// , fetchData: () -> Unit , downLoadStateFlow: StateFlow<DownLoadState>, context: Context
 @Composable
-fun TopTrackContent(topTracksShort: List<SpotifyTrack>, topTracksMedium: List<SpotifyTrack>, topTracksLong: List<SpotifyTrack>, navController: NavController, paddingValues: PaddingValues) {
-
-    // For updating data manually in this layout.
-    //val downLoadState by downLoadStateFlow.collectAsState()
-
+fun TopTrackContent(uiState: TopTracksViewModel.DownLoadState, navController: NavController, paddingValues: PaddingValues) {
 
     var expandedMenuTrack by remember { mutableStateOf(false) }
     var trackPeriodSelection by remember { mutableStateOf(Period.SHORT_TERM) }
-    var onTrackSelected by remember { mutableStateOf<SpotifyTrack?>(null)}
+    var onTrackSelected by remember { mutableStateOf<SpotifyTrack?>(null) }
 
     HandleBackToHome(navController)
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-            .padding(6.dp, 12.dp)
-    ) {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+    when (uiState) {
+        TopTracksViewModel.DownLoadState.Initial -> TODO() // For first time loading state.
+
+        TopTracksViewModel.DownLoadState.Loading ->
+            CircularProgressIndicator()
+
+        is TopTracksViewModel.DownLoadState.Error -> TODO() // Just display the error message with snackbar.
+
+        is TopTracksViewModel.DownLoadState.Success ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(6.dp, 12.dp)
             ) {
-                Column {
+                item {
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Image(
-                            painter = painterResource(R.drawable.primary_logo_green_rgb),
-                            contentDescription = null,
-                            modifier = Modifier.height(28.dp)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = "Your Top Songs",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Image(
+                                    painter = painterResource(R.drawable.primary_logo_green_rgb),
+                                    contentDescription = null,
+                                    modifier = Modifier.height(28.dp)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = "Your Top Songs",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        DropDownMenuTemplate(
+                            expanded = expandedMenuTrack,
+                            onExpandChange = { expandedMenuTrack = it },
+                            selectedValue = trackPeriodSelection.ordinal,
+                            onValueChange = { index ->
+                                trackPeriodSelection = Period.entries[index]
+                            },
+                            options = Period.entries.map { formatEnumPeriodName(it) }
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-                DropDownMenuTemplate(
-                    expanded = expandedMenuTrack,
-                    onExpandChange = { expandedMenuTrack = it },
-                    selectedValue = trackPeriodSelection.ordinal,
-                    onValueChange = { index -> trackPeriodSelection = Period.entries[index] },
-                    options = Period.entries.map { formatEnumPeriodName(it) }
-                )
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
-        }
+                val currentTopTracks = when (trackPeriodSelection) {
+                    Period.SHORT_TERM -> uiState.data.topTracksShort
+                    Period.MEDIUM_TERM -> uiState.data.topTracksMedium
+                    Period.LONG_TERM -> uiState.data.topTracksLong
+                }
 
-        val currentTopTracks = when (trackPeriodSelection) {
-            Period.SHORT_TERM -> topTracksShort
-            Period.MEDIUM_TERM -> topTracksMedium
-            Period.LONG_TERM -> topTracksLong
-        }
+                itemsIndexed(currentTopTracks) { index, track ->
+                    TrackItem(index + 1, track) { onTrackSelected = it }
+                    if (index < currentTopTracks.size - 1) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    }
+                }
 
-        itemsIndexed(currentTopTracks) { index, track ->
-            TrackItem(index + 1, track) { onTrackSelected = it }
-            if (index < currentTopTracks.size - 1) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-        }
-
-        if (currentTopTracks.size < GET_ITEM_NUM) {
-            item {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Info, contentDescription = "Info Icon")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("You data is not enough to show more tracks. (Max = $GET_ITEM_NUM)")
+                if (currentTopTracks.size < GET_ITEM_NUM) {
+                    item {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Info, contentDescription = "Info Icon")
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("You data is not enough to show more tracks. (Max = $GET_ITEM_NUM)")
+                        }
+                    }
                 }
             }
-        }
     }
     DetailBox(selectedValue = onTrackSelected, onDismiss = { onTrackSelected = null }) { track, onDetailDismiss ->
         TrackDetail(

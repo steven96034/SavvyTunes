@@ -111,18 +111,18 @@ fun HomePage(
             HorizontalDivider(modifier = Modifier.padding(8.dp))
         }
         item {
-            Row {
+            Row(horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = trackInput,
                     onValueChange = { onTrackInputChange(it) },
                     label = { Text("Input Song Name") },
-                    modifier = Modifier.fillMaxWidth(0.5f)
+                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
                 )
                 OutlinedTextField(
                     value = artistInput,
                     onValueChange = { onArtistInputChange(it) },
                     label = { Text("Artist Name") }, //選擇樂團或歌手名稱
-                    modifier = Modifier.fillMaxWidth(0.5f)
+                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
                 )
             }
         }

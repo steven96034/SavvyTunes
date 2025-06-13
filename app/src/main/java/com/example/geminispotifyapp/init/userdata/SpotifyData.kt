@@ -46,7 +46,7 @@ private fun SpotifyDataPage(fetchData: () -> Unit , downLoadStateFlow: StateFlow
 
         is DownLoadState.Error -> {
             val errorData = (downLoadState as DownLoadState.Error).data
-            if (errorData.httpStatusCode == 401) {
+            if (errorData.httpStatusCode == 400) { // || errorData.httpStatusCode == 401
                 AuthenticationExpiredContent(startAuthentication)
             } else if (errorData.errorMessage == "Network Error") {
                 NetworkErrorContent(onRetry = { fetchData() })

@@ -22,8 +22,6 @@ class AuthManager @Inject constructor(
     private val appDatabase: AppDatabase
 ) {
     companion object {
-        // --- Constants ---
-
         /**
          *  **Important**: Replace `YOUR_CLIENT_ID` with your actual Spotify Client ID from the Spotify Developer Dashboard.
          */
@@ -52,9 +50,6 @@ class AuthManager @Inject constructor(
         )
 
         private const val AUTH_ENDPOINT = "https://accounts.spotify.com/authorize"
-//        private const val CODE_VERIFIER_PREF_KEY = "spotify_code_verifier"
-//        private const val PREF_NAME = "spotify_auth_prefs"
-//        private const val STATE_KEY = "spotify_auth_state"
     }
 
     // --- PKCE Helper Functions ---
@@ -109,42 +104,6 @@ class AuthManager @Inject constructor(
         return base64UrlEncode(hashedBytes)
     }
 
-    // --- Code Verifier Storage ---
-
-    /**
-     * Gets the SharedPreferences instance for this application.
-     *
-     * @param context The application context.
-     * @return The SharedPreferences instance.
-     */
-//    private fun getSharedPreferences(context: Context): SharedPreferences {
-//        return context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-//    }
-
-    /**
-     * Saves the generated PKCE Code Verifier to SharedPreferences.
-     *
-     * @param context The application context.
-     * @param codeVerifier The Code Verifier to save.
-     */
-//    private fun saveCodeVerifier(context: Context, codeVerifier: String) {
-//        getSharedPreferences(context).edit {
-//            putString(CODE_VERIFIER_PREF_KEY, codeVerifier)
-//        }
-//    }
-
-    /**
-     * Retrieves the saved PKCE Code Verifier from SharedPreferences.
-     *
-     * This method is typically called after receiving the Authorization Code from Spotify,
-     * when exchanging it for an Access Token.
-     *
-     * @param context The application context.
-     * @return The saved Code Verifier, or `null` if not found.
-     */
-//    fun getSavedCodeVerifier(context: Context): String? {
-//        return getSharedPreferences(context).getString(CODE_VERIFIER_PREF_KEY, null)
-//    }
     suspend fun getCodeVerifier(): String? {
         return appDatabase.getCodeVerifier()
     }
@@ -157,18 +116,6 @@ class AuthManager @Inject constructor(
         return bytes.map { possibleChars[random.nextInt(possibleChars.length)] }.joinToString("")
     }
 
-//    fun getSavedState(context: Context): String? {
-//        val pref = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-//        return pref.getString(STATE_KEY, null)
-//    }
-//
-//    private fun saveState(context: Context, state: String) {
-//        val pref = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-//        pref.edit().apply {
-//            putString(STATE_KEY, state)
-//            apply()
-//        }
-//    }
     suspend fun getAuthState(): String? {
         return appDatabase.getAuthState()
     }
