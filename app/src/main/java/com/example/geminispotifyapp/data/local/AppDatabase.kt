@@ -25,9 +25,10 @@ class AppDatabase @Inject constructor(
 
         val ACCESS_TOKEN_KEY = stringPreferencesKey("encrypted_access_token")
         val REFRESH_TOKEN_KEY = stringPreferencesKey("encrypted_refresh_token")
-        val TOKEN_TYPE_KEY = stringPreferencesKey("token_type")
+        //val TOKEN_TYPE_KEY = stringPreferencesKey("token_type")
         val EXPIRES_AT_KEY = longPreferencesKey("expires_at")
         val SCOPE_KEY = stringPreferencesKey("scope")
+        //var testRefreshToken = true
     }
 
     suspend fun saveCodeVerifier(codeVerifier: String) {
@@ -73,12 +74,12 @@ class AppDatabase @Inject constructor(
         }
     }
 
-    private suspend fun getAccessToken(): String? {
-        return dataStore.data.map { preferences ->
-            preferences[ACCESS_TOKEN_KEY]?.let { encryptedPreferenceManager.decrypt(it) }
-        }.first()
-        //return encryptedPreferenceManager.readData(ACCESS_TOKEN_KEY).first()
-    }
+//    suspend fun getAccessToken(): String? {
+//        return dataStore.data.map { preferences ->
+//            preferences[ACCESS_TOKEN_KEY]?.let { encryptedPreferenceManager.decrypt(it) }
+//        }.first()
+//        //return encryptedPreferenceManager.readData(ACCESS_TOKEN_KEY).first()
+//    }
 
     fun getAccessTokenFlow(): Flow<String?> {
         return dataStore.data.map { preferences ->
@@ -109,7 +110,7 @@ class AppDatabase @Inject constructor(
     suspend fun saveTokenResponse(tokenResponse: SpotifyTokenResponse) {
         dataStore.edit { preferences ->
             preferences[ACCESS_TOKEN_KEY] = encryptedPreferenceManager.encrypt(tokenResponse.accessToken)
-            preferences[TOKEN_TYPE_KEY] = tokenResponse.tokenType
+            //preferences[TOKEN_TYPE_KEY] = tokenResponse.tokenType
             preferences[EXPIRES_AT_KEY] = System.currentTimeMillis() + (tokenResponse.expiresIn * 1000)
             preferences[SCOPE_KEY] = tokenResponse.scope ?: ""
             if (!tokenResponse.refreshToken.isNullOrBlank()) {
@@ -127,29 +128,69 @@ class AppDatabase @Inject constructor(
         }
     }
 
-    // Always return "Bearer"
-    private suspend fun getTokenType(): String? {
+    fun getExpiresAtFlow(): Flow<Long?> {
         return dataStore.data.map { preferences ->
-            preferences[TOKEN_TYPE_KEY]// ?: "Bearer"
-        }.first()
-    }
-
-    // Check if the token has expired
-    suspend fun isTokenExpired(): Boolean {
-        val expiresAt = dataStore.data.map { preferences ->
-            preferences[EXPIRES_AT_KEY] ?: 0L
-        }.first()
-        return System.currentTimeMillis() > expiresAt
-    }
-
-    suspend fun getAuthorizationHeader(): String? {
-        val tokenType = getTokenType()
-        val accessToken = getAccessToken()
-        return if (tokenType != null && accessToken != null) {
-            "$tokenType $accessToken"
-        } else {
-            // Handle the case where tokenType or accessToken is null
-            null
+            preferences[EXPIRES_AT_KEY]
         }
     }
+
+//    // Clear all session tokens to try to resign in.
+//    suspend fun clearAllSessionTokens() {
+//        dataStore.edit { preferences ->
+//            preferences.remove(ACCESS_TOKEN_KEY)
+//            preferences.remove(REFRESH_TOKEN_KEY)
+//            //preferences.remove(TOKEN_TYPE_KEY)
+//            preferences.remove(EXPIRES_AT_KEY)
+//            preferences.remove(SCOPE_KEY)
+//            Log.d("AppDatabase", "All session tokens cleared.")
+//        }
+//    }
+
+    // Clear all auth data for the current user. (notice some user preference may be added in the future, so don't use it.clear())
+    suspend fun logout() {
+        dataStore.edit { preferences ->
+            // it.clear()
+            preferences.remove(ACCESS_TOKEN_KEY)
+            preferences.remove(REFRESH_TOKEN_KEY)
+            preferences.remove(EXPIRES_AT_KEY)
+            preferences.remove(SCOPE_KEY)
+            preferences.remove(CODE_VERIFIER_KEY)
+            preferences.remove(AUTH_STATE_KEY)
+            Log.d("AppDatabase", "All session tokens cleared.")
+        }
+    }
+
+//    // Always return "Bearer"
+//    private suspend fun getTokenType(): String? {
+//        return dataStore.data.map { preferences ->
+//            preferences[TOKEN_TYPE_KEY]// ?: "Bearer"
+//        }.first()
+//    }
+
+//    // Check if the token has expired
+//    suspend fun isTokenExpired(): Boolean {
+////        if (testRefreshToken) {
+////            Log.d("RefreshToken", "test refresh token")
+////            testRefreshToken = false
+////            return true
+////        }
+//        Log.d("RefreshToken", "Passed")
+//        val expiresAt = dataStore.data.map { preferences ->
+//            preferences[EXPIRES_AT_KEY] // ?: 0L
+//        }.first()
+//        if (expiresAt == null || expiresAt == 0L)
+//            return true
+//        return System.currentTimeMillis() > expiresAt
+//    }
+
+//    suspend fun getAuthorizationHeader(): String? {
+//        val tokenType = getTokenType()
+//        val accessToken = getAccessToken()
+//        return if (tokenType != null && accessToken != null) {
+//            "$tokenType $accessToken"
+//        } else {
+//            // Handle the case where tokenType or accessToken is null
+//            null
+//        }
+//    }
 }

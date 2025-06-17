@@ -43,7 +43,7 @@ class TopTracksViewModel @Inject constructor(private val spotifyRepository: Spot
                 // Use supervisorScope to ensure that a single task fails doesn't cancel other tasks
                 supervisorScope {
                     Log.d("SpotifyDataScreen", "Fetching data...")
-
+                    //if (spotifyRepository.isTokenExpired()) spotifyRepository.refreshToken()
                     // Use async to fetch data in parallel
 
                     val topTracksDeferredShort = async(Dispatchers.IO) {

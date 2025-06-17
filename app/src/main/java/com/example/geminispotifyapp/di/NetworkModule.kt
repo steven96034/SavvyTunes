@@ -1,5 +1,7 @@
 package com.example.geminispotifyapp.di
 
+import com.example.geminispotifyapp.AppAuthenticator
+import com.example.geminispotifyapp.AuthInterceptor
 import com.example.geminispotifyapp.data.remote.SpotifyApiService
 import com.example.geminispotifyapp.data.remote.SpotifyUserApiService
 import dagger.Module
@@ -44,7 +46,10 @@ object NetWorkModule {
     // Singleton OkHttpClient instance
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideOkHttpClient(
+        authenticator: AppAuthenticator,
+        authInterceptor: AuthInterceptor
+    ): OkHttpClient {
         return OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -52,6 +57,8 @@ object NetWorkModule {
             .addInterceptor(HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BODY
             })
+            .addInterceptor(authInterceptor)
+            .authenticator(authenticator)
             .build()
     }
 }

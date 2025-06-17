@@ -26,8 +26,9 @@ import com.example.geminispotifyapp.init.userdata.SpotifyDataScreen
 @Composable
 fun CheckAuth(viewModel: CheckAuthViewModel = hiltViewModel()) {
     val context = LocalContext.current
-    val accessToken by viewModel.accessToken.collectAsState(initial = null)
-    val isAuthenticated = accessToken != null
+//    val accessToken by viewModel.accessToken.collectAsState(initial = null)
+//    val isAuthenticated = accessToken != null
+    val isAuthenticated by viewModel.isAuthenticated.collectAsState()
 
     LaunchedEffect(isAuthenticated) {
         if (isAuthenticated) {
@@ -37,6 +38,7 @@ fun CheckAuth(viewModel: CheckAuthViewModel = hiltViewModel()) {
         }
     }
 
+    // TODO: Improve the context check, and modify and migrate the startAuthentication(context) call to here, also check the AuthManager for some improvement.
     if (!isAuthenticated && context is Activity) {
         LoginPage(onAuthButtonClicked = { viewModel.startAuthentication() })
     } else {

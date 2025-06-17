@@ -104,7 +104,7 @@ class AuthCallbackActivity : AppCompatActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val response = spotifyRepository.getAccessToken(
+                val response = spotifyRepository.getAccessTokenThruAuth(
                     grantType = "authorization_code",
                     code = code,
                     redirectUri = AuthManager.REDIRECT_URI,
@@ -113,14 +113,13 @@ class AuthCallbackActivity : AppCompatActivity() {
                 )
 
                 Log.d(TAG, "Successfully received Access Token: ${response.accessToken}")
+                Log.d("RefreshToken", "Successfully received Refresh Token: ${response.refreshToken}")
 
                 spotifyRepository.updateTokenResponse(response)
                 Log.d(
                     TAG,
                     "Token saved to SharedPreferences. Expires at: ${Date(System.currentTimeMillis() + (response.expiresIn * 1000))}"
                 )
-
-                spotifyRepository.updateAccessToken(response.accessToken)
 
                 withContext(Dispatchers.Main) {
                     navigateToMainActivity()
