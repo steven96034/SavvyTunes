@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "com.example.geminispotifyapp"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.geminispotifyapp"
         minSdk = 34
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -69,6 +69,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    //implementation("com.google.android.material:material:1.12.0")
     implementation(libs.generativeai)
     implementation(libs.generativeai.v090)
     implementation(libs.adamratzman.spotify.api.kotlin.core)
@@ -98,6 +99,8 @@ dependencies {
     implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.accompanist.navigation.animation)
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

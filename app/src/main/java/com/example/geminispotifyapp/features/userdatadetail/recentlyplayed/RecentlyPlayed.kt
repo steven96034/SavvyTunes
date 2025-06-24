@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
@@ -26,11 +28,16 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,13 +59,12 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import androidx.navigation.NavController
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.PlayHistoryObject
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
-import com.example.geminispotifyapp.features.userdatadetail.DetailBox
-import com.example.geminispotifyapp.features.userdatadetail.HandleBackToHome
+import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -69,72 +75,112 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.DurationUnit
 
 @Composable
-fun RecentlyPlayedContent(recentlyPlayed: List<PlayHistoryObject>, navController: NavController, paddingValues: PaddingValues) {
-    var onHistorySelected by remember { mutableStateOf<PlayHistoryObject?>(null) }
+fun RecentlyPlayedScreen(onHistoryClick: (PlayHistoryObject) -> Unit, viewModel: RecentlyPlayedViewModel = hiltViewModel()) {
+    val uiState by viewModel.downLoadState.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
 
-    HandleBackToHome(navController)
+    LaunchedEffect(Unit) {
+        viewModel.fetchRecentlyPlayedIfNeeded()
+    }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-            .padding(6.dp, 12.dp)
+    RecentlyPlayedContent(uiState, isRefreshing, onHistoryClick, { viewModel.refreshRecentlyPlayed() })
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RecentlyPlayedContent(
+    uiState: FetchResult<List<PlayHistoryObject>>,
+    isRefreshing: Boolean,
+    onHistoryClick: (PlayHistoryObject) -> Unit,
+    onRefresh: () -> Unit
+) {
+    //var onHistorySelected by remember { mutableStateOf<PlayHistoryObject?>(null) }
+    Log.d("RecentlyPlayedContent", "Using Basic Box. isRefreshing=$isRefreshing")
+
+    //HandleBackToHome(navController)
+
+    PullToRefreshBox (
+        isRefreshing = isRefreshing, // Control the visibility of refreshing indicator
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
     ) {
-        item {
-            Spacer(modifier = Modifier.height(2.dp))
-            Row {
-                Column {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp),
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Image(
-                            painter = painterResource(R.drawable.primary_logo_green_rgb),
-                            contentDescription = null,
-                            modifier = Modifier.height(28.dp)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = "Recently Played Songs",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+        when (uiState) {
+            FetchResult.Initial -> { CircularProgressIndicator()
+            Log.d("RecentlyPlayedScreen", "Initial state")}
+            //TODO() // For first time loading state.
+
+            FetchResult.Loading ->
+            {CircularProgressIndicator()
+                Log.d("RecentlyPlayedScreen", "Loading state")}
+
+
+            is FetchResult.Error -> TODO() // Just display the error message with snackbar.
+
+            is FetchResult.Success -> LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    //.padding(paddingValues)
+                    .padding(horizontal = 6.dp)
+            ) {
+                item {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Row {
+                        Column {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp),
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Image(
+                                    painter = painterResource(R.drawable.primary_logo_green_rgb),
+                                    contentDescription = null,
+                                    modifier = Modifier.height(28.dp)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = "Recently Played Songs",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+                val recentlyPlayed = uiState.data
+                itemsIndexed(recentlyPlayed) { index, playHistory ->
+                    RecentTrackItem(index + 1, playHistory) { //onHistorySelected = it
+                        onHistoryClick(it)
+                    }
+                    if (index < recentlyPlayed.size - 1) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    } else Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                if (recentlyPlayed.size < GET_ITEM_NUM) {
+                    item {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Info, contentDescription = "Info Icon")
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("You data is not enough to show more recently played songs. (Max = $GET_ITEM_NUM)")
+                        }
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(14.dp))
-        }
-
-        itemsIndexed(recentlyPlayed) { index, playHistory ->
-            RecentTrackItem(index + 1, playHistory) { onHistorySelected = it }
-            if (index < recentlyPlayed.size - 1) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-        }
-
-        if (recentlyPlayed.size < GET_ITEM_NUM) {
-            item {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Info, contentDescription = "Info Icon")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("You data is not enough to show more recently played songs. (Max = $GET_ITEM_NUM)")
-                }
-            }
         }
     }
-    DetailBox(selectedValue = onHistorySelected, onDismiss = { onHistorySelected = null }) { track, onDetailDismiss ->
-        TrackHistoryDetail(
-            historyTrack = track,
-            onDismiss = onDetailDismiss,
-        )
-    }
+//    DetailBox(selectedValue = onHistorySelected, onDismiss = { onHistorySelected = null }) { track, onDetailDismiss ->
+//        TrackHistoryDetail(
+//            historyTrack = track,
+//            onDismiss = onDetailDismiss,
+//        )
+//    }
 }
 
 @Composable
@@ -158,10 +204,14 @@ private fun RecentTrackItem(index: Int, playHistory: PlayHistoryObject, onHistor
             contentPadding = PaddingValues(0.dp)
         ) {
             // Album Cover
-            val imageUrl = track.album.images.firstOrNull()?.url
-            if (imageUrl != null) {
+            val thumbnailUrl =
+                if (track.album.images.size >= 2)
+                    track.album.images[1].url
+                else
+                    track.album.images.firstOrNull()?.url
+            if (thumbnailUrl != null) {
                 AsyncImage(
-                    model = imageUrl,
+                    model = thumbnailUrl,
                     contentDescription = "Album image",
                     modifier = Modifier
                         .size(60.dp)
@@ -250,21 +300,29 @@ private fun formatTime(dateString: String): String {
 
 
 @Composable
-private fun TrackHistoryDetail(
+internal fun TrackHistoryDetail(
     historyTrack: PlayHistoryObject,
     onDismiss: () -> Unit,
 ) {
     val track = historyTrack.track
 
     // Image
-    val imageUrl = track.album.images.firstOrNull()?.url
-    if (imageUrl != null) {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = "Album image",
-            modifier = Modifier.clip(RoundedCornerShape(2.dp)),
-            contentScale = ContentScale.Inside
-        )
+    val images = track.album.images
+    if (images.isNotEmpty()) {
+        val pagerState = rememberPagerState(pageCount = { images.size })
+        HorizontalPager(state = pagerState) { page ->
+            val imageUrl = images[page].url
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = "Album image ${page + 1}",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp) // Adjust height as needed
+                    .clip(RoundedCornerShape(2.dp)),
+                contentScale = ContentScale.Fit // Or ContentScale.Crop depending on desired look
+            )
+
+        }
     } else {
         Spacer(modifier = Modifier.height(12.dp))
         Card(modifier = Modifier.padding(16.dp), shape = RectangleShape) {

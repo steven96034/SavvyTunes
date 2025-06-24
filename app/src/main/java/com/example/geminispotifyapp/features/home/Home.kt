@@ -7,7 +7,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,12 +27,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import com.example.geminispotifyapp.R
-
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextAlign
@@ -41,13 +37,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.geminispotifyapp.SearchUiState
 import com.example.geminispotifyapp.TracksAndArtists
+import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
-import com.example.geminispotifyapp.features.userdatadetail.DetailBox
-import com.example.geminispotifyapp.features.userdatadetail.toptracks.TrackDetail
+import com.example.geminispotifyapp.features.userdatadetail.topartists.ArtistItem
+import com.example.geminispotifyapp.features.userdatadetail.toptracks.TrackItem
 import kotlinx.coroutines.launch
 
 @Composable
-fun HomeScreen(paddingValues: PaddingValues, viewModel: HomeViewModel = hiltViewModel()) { // Use hiltViewModel() to inject the ViewModel...
+fun HomeScreen(onArtistClick: (SpotifyArtist) -> Unit, onTrackClick: (SpotifyTrack) -> Unit, viewModel: HomeViewModel = hiltViewModel()) { // Use hiltViewModel() to inject the ViewModel...
     val uiState by viewModel.searchSimilarUiState.collectAsState()
     val trackInput by viewModel.trackInput.collectAsState()
     val artistInput by viewModel.artistInput.collectAsState()
@@ -57,10 +54,11 @@ fun HomeScreen(paddingValues: PaddingValues, viewModel: HomeViewModel = hiltView
         uiState,
         trackInput,
         artistInput,
+        onArtistClick,
+        onTrackClick,
         { newTrack -> viewModel.onTrackInputChange(newTrack) },
         { newArtist -> viewModel.onArtistInputChange(newArtist) },
-        { track, artist -> viewModel.searchSimilarTracksAndArtists(track, artist) },
-        paddingValues
+        { track, artist -> viewModel.searchSimilarTracksAndArtists(track, artist) }
     )
 }
 
@@ -69,14 +67,15 @@ fun HomePage(
     uiState: SearchUiState,
     trackInput: String,
     artistInput: String,
+    onArtistClick: (SpotifyArtist) -> Unit,
+    onTrackClick: (SpotifyTrack) -> Unit,
     onTrackInputChange: (String) -> Unit,
     onArtistInputChange: (String) -> Unit,
-    searchSimilarTracksAndArtists: (String, String) -> Unit,
-    paddingValues: PaddingValues
+    searchSimilarTracksAndArtists: (String, String) -> Unit
 ) {
     //val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
-    var onTrackSelected by remember { mutableStateOf<SpotifyTrack?>(null) }
+    //var onTrackSelected by remember { mutableStateOf<SpotifyTrack?>(null) }
 
     HomeNavigation()
 
@@ -86,8 +85,8 @@ fun HomePage(
         verticalArrangement = Arrangement.Top,
         modifier = Modifier
             .fillMaxSize()
-            .padding(6.dp, 12.dp)
-            .padding(paddingValues)
+            .padding(6.dp, 0.dp, 6.dp, 12.dp)
+            //.padding(paddingValues)
         //.verticalScroll(scrollState)
     ) {
         item {
@@ -156,80 +155,86 @@ fun HomePage(
             }
 
             is SearchUiState.Success -> {
-                item {
-                    Text(
-                        "Success",
-                        fontSize = MaterialTheme.typography.headlineMedium.fontSize,
-                        textAlign = TextAlign.Center
-                    )
-                }
+//                item {
+//                    Text(
+//                        "Success",
+//                        fontSize = MaterialTheme.typography.headlineMedium.fontSize,
+//                        textAlign = TextAlign.Center
+//                    )
+//                }
                 val artists = uiState.data.artists
                 val tracks = uiState.data.tracks
                 item {
+                    Spacer(Modifier.padding(4.dp))
                     Text(
-                        "相似歌曲:",
+                        "Similar Tracks:",
                         fontSize = MaterialTheme.typography.headlineSmall.fontSize
                     )
                 }
                 if (tracks != null) {
                     item {
+                        Spacer(Modifier.padding(4.dp))
                         Column {
                             tracks.forEachIndexed { index, track ->
-//                                    TrackItem(index + 1, track) { onTrackSelected = it }
+                                TrackItem(index + 1, track) { onTrackClick(it) }
 
-                                Row {
-                                    Text(
-                                        "$index. " + track.name,
-                                        modifier = Modifier.padding(2.dp)
-                                    )
-                                    Column {
-                                        Text(
-                                            "Artists: " + track.artists.joinToString(
-                                                ", "
-                                            ) { it.name },
-                                            modifier = Modifier.padding(2.dp)
-                                        )
-                                        Text(
-                                            "Popularity: " + track.popularity.toString(),
-                                            modifier = Modifier.padding(2.dp)
-                                        )
-                                    }
-                                }
-                                //HorizontalDivider(modifier = Modifier.padding(2.dp))
+//                                Row {
+//                                    Text(
+//                                        "$index. " + track.name,
+//                                        modifier = Modifier.padding(2.dp)
+//                                    )
+//                                    Column {
+//                                        Text(
+//                                            "Artists: " + track.artists.joinToString(
+//                                                ", "
+//                                            ) { it.name },
+//                                            modifier = Modifier.padding(2.dp)
+//                                        )
+//                                        Text(
+//                                            "Popularity: " + track.popularity.toString(),
+//                                            modifier = Modifier.padding(2.dp)
+//                                        )
+//                                    }
+//                                }
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                             }
                         }
                     }
                 } else {
                     item { Text("No tracks found") }
                 }
-                item { HorizontalDivider(modifier = Modifier.padding(8.dp)) }
+                //item { HorizontalDivider(modifier = Modifier.padding(8.dp)) }
                 item {
+                    Spacer(Modifier.padding(4.dp))
                     Text(
-                        "相似藝人:",
-                        fontSize = MaterialTheme.typography.headlineSmall.fontSize
+                        "Similar Artists:",
+                        fontSize = MaterialTheme.typography.headlineSmall.fontSize,
+                        textAlign = TextAlign.Center
                     )
                 }
                 if (artists != null) {
                     item {
+                        Spacer(Modifier.padding(4.dp))
                         Column {
-                            artists.forEach { artist ->
-                                Row {
-                                    Column(modifier = Modifier.padding(2.dp)) {
-                                        Text(
-                                            artist.name,
-                                            modifier = Modifier.padding(2.dp)
-                                        )
-                                        Text(
-                                            "Pop: " + artist.popularity.toString(),
-                                            modifier = Modifier.padding(2.dp)
-                                        )
-                                    }
-                                    Text(
-                                        "Genres:\n" + artist.genres.joinToString(", "),
-                                        modifier = Modifier.padding(2.dp)
-                                    )
-                                }
-                                HorizontalDivider(modifier = Modifier.padding(2.dp))
+                            artists.forEachIndexed { index, artist ->
+                                ArtistItem (index + 1, artist) { onArtistClick(it) }
+//                                Row {
+//                                    Column(modifier = Modifier.padding(2.dp)) {
+//                                        Text(
+//                                            artist.name,
+//                                            modifier = Modifier.padding(2.dp)
+//                                        )
+//                                        Text(
+//                                            "Pop: " + artist.popularity.toString(),
+//                                            modifier = Modifier.padding(2.dp)
+//                                        )
+//                                    }
+//                                    Text(
+//                                        "Genres:\n" + artist.genres.joinToString(", "),
+//                                        modifier = Modifier.padding(2.dp)
+//                                    )
+//                                }
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                             }
                         }
                     }
@@ -281,14 +286,14 @@ fun HomePage(
     }
     //}
     //item {
-    DetailBox(
-        selectedValue = onTrackSelected,
-        onDismiss = { onTrackSelected = null }) { track, onDetailDismiss ->
-        TrackDetail(
-            track = track,
-            onDismiss = onDetailDismiss
-        )
-    }
+//    DetailBox(
+//        selectedValue = onTrackSelected,
+//        onDismiss = { onTrackSelected = null }) { track, onDetailDismiss ->
+//        TrackDetail(
+//            track = track,
+//            onDismiss = onDetailDismiss
+//        )
+//    }
     //}
 }
 
@@ -333,5 +338,5 @@ fun HomePagePreview() {
         // TODO: mock data
     }
 
-    HomePage(state, "", "", {}, {}, { _, _ -> mockSearchSimilar() }, PaddingValues(12.dp))
+    HomePage(state, "", "", {}, {}, {}, {}, { _, _ -> mockSearchSimilar() })
 }

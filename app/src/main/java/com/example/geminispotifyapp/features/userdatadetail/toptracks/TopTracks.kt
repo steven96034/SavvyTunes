@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -58,15 +59,13 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
-import com.example.geminispotifyapp.features.userdatadetail.DetailBox
 import com.example.geminispotifyapp.features.userdatadetail.DropDownMenuTemplate
-import com.example.geminispotifyapp.features.userdatadetail.HandleBackToHome
+import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import com.example.geminispotifyapp.features.userdatadetail.Period
 import com.example.geminispotifyapp.features.userdatadetail.formatEnumPeriodName
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
@@ -77,34 +76,39 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.DurationUnit
 
 @Composable
-fun TopTracksScreen(navController: NavController, paddingValues: PaddingValues, viewModel: TopTracksViewModel = hiltViewModel()) {
+fun TopTracksScreen(onTrackClick: (SpotifyTrack) -> Unit, viewModel: TopTracksViewModel = hiltViewModel()) {
     val uiState by viewModel.downLoadState.collectAsState()
-    TopTrackContent(uiState, navController, paddingValues)
+    LaunchedEffect(Unit) {
+        viewModel.fetchTopTracks()
+    }
+    TopTrackContent(uiState, onTrackClick)
 }
 
 @Composable
-fun TopTrackContent(uiState: TopTracksViewModel.DownLoadState, navController: NavController, paddingValues: PaddingValues) {
+fun TopTrackContent(uiState: FetchResult<TopTrackData>, onTrackClick: (SpotifyTrack) -> Unit) {
 
     var expandedMenuTrack by remember { mutableStateOf(false) }
     var trackPeriodSelection by remember { mutableStateOf(Period.SHORT_TERM) }
-    var onTrackSelected by remember { mutableStateOf<SpotifyTrack?>(null) }
+    //var onTrackSelected by remember { mutableStateOf<SpotifyTrack?>(null) }
 
-    HandleBackToHome(navController)
+    //HandleBackToHome(navController)
 
     when (uiState) {
-        TopTracksViewModel.DownLoadState.Initial -> TODO() // For first time loading state.
+        FetchResult.Initial ->
+            CircularProgressIndicator()
+        //TODO() // For first time loading state.
 
-        TopTracksViewModel.DownLoadState.Loading ->
+        FetchResult.Loading ->
             CircularProgressIndicator()
 
-        is TopTracksViewModel.DownLoadState.Error -> TODO() // Just display the error message with snackbar.
+        is FetchResult.Error -> TODO() // Just display the error message with snackbar.
 
-        is TopTracksViewModel.DownLoadState.Success ->
+        is FetchResult.Success ->
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(6.dp, 12.dp)
+                    //.padding(paddingValues)
+                    .padding(horizontal = 6.dp)
             ) {
                 item {
                     Row(
@@ -150,10 +154,12 @@ fun TopTrackContent(uiState: TopTracksViewModel.DownLoadState, navController: Na
                 }
 
                 itemsIndexed(currentTopTracks) { index, track ->
-                    TrackItem(index + 1, track) { onTrackSelected = it }
+                    TrackItem(index + 1, track) { //onTrackSelected = it
+                        onTrackClick(it)
+                    }
                     if (index < currentTopTracks.size - 1) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    }
+                    } else Spacer(modifier = Modifier.height(12.dp))
                 }
 
                 if (currentTopTracks.size < GET_ITEM_NUM) {
@@ -171,12 +177,12 @@ fun TopTrackContent(uiState: TopTracksViewModel.DownLoadState, navController: Na
                 }
             }
     }
-    DetailBox(selectedValue = onTrackSelected, onDismiss = { onTrackSelected = null }) { track, onDetailDismiss ->
-        TrackDetail(
-            track = track,
-            onDismiss = onDetailDismiss
-        )
-    }
+//    DetailBox(selectedValue = onTrackSelected, onDismiss = { onTrackSelected = null }) { track, onDetailDismiss ->
+//        TrackDetail(
+//            track = track,
+//            onDismiss = onDetailDismiss
+//        )
+//    }
 }
 
 @Composable
@@ -198,7 +204,11 @@ fun TrackItem(index: Int, track: SpotifyTrack, onTrackSelected: (SpotifyTrack) -
             contentPadding = PaddingValues(0.dp)
         ) {
             // Album Cover
-            val thumbnailUrl = track.album.images.lastOrNull()?.url // Get the smallest image for thumbnail (Spotify provides three sizes for album cover(from largest to smallest).)
+            val thumbnailUrl =
+                if (track.album.images.size >= 2)
+                    track.album.images[1].url
+                else
+                    track.album.images.firstOrNull()?.url // Get the second largest image for thumbnail (Spotify provides three sizes for album cover(from largest to smallest).)
             if (thumbnailUrl != null) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
@@ -261,7 +271,6 @@ fun TrackDetail(
     track: SpotifyTrack,
     onDismiss: () -> Unit,
 ) {
-    // TODO: More pics in future.
     // Image
     val images = track.album.images
     if (images.isNotEmpty()) {

@@ -15,14 +15,9 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    // Move the SpotifyRepository instance initialization to MyApplication.
-//    private lateinit var spotifyRepository: SpotifyRepository
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-//        spotifyRepository = SpotifyRepository(this.applicationContext)
-//        val spotifyRepository = this.app.spotifyRepository
 
         setContent {
             GeminiSpotifyAppTheme {

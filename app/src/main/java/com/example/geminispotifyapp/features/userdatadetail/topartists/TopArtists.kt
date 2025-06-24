@@ -17,18 +17,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,106 +49,127 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
 import com.example.geminispotifyapp.data.SpotifyArtist
 import androidx.core.net.toUri
-import com.example.geminispotifyapp.features.userdatadetail.DetailBox
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.geminispotifyapp.features.userdatadetail.DropDownMenuTemplate
-import com.example.geminispotifyapp.features.userdatadetail.HandleBackToHome
 import com.example.geminispotifyapp.features.userdatadetail.Period
 import com.example.geminispotifyapp.features.userdatadetail.formatEnumPeriodName
+import com.example.geminispotifyapp.features.userdatadetail.FetchResult
+
 
 @Composable
-fun TopArtistContent(topArtistsShort: List<SpotifyArtist>, topArtistsMedium: List<SpotifyArtist>, topArtistsLong: List<SpotifyArtist>, navController: NavController, paddingValues: PaddingValues) {
-    var expandedMenuArtist by remember { mutableStateOf(false) }
-    var artistPeriodSelection by remember { mutableStateOf(Period.SHORT_TERM) }
-    var onArtistSelected by remember { mutableStateOf<SpotifyArtist?>(null)}
-
-    HandleBackToHome(navController)
-
-    LazyColumn (
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-            .padding(6.dp, 12.dp)
-    ) {
-        item {
-            Row (
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Image(
-                            painter = painterResource(R.drawable.primary_logo_green_rgb),
-                            contentDescription = "Spotify Logo",
-                            modifier = Modifier.height(28.dp)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Text(
-                            text = "Your Top Artists",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-                DropDownMenuTemplate(
-                    expanded = expandedMenuArtist,
-                    onExpandChange = { expandedMenuArtist = it },
-                    selectedValue = artistPeriodSelection.ordinal,
-                    onValueChange = { index -> artistPeriodSelection = Period.entries[index] },
-                    options = Period.entries.map { formatEnumPeriodName(it) }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        val currentTopArtists = when (artistPeriodSelection) {
-            Period.SHORT_TERM -> topArtistsShort
-            Period.MEDIUM_TERM -> topArtistsMedium
-            Period.LONG_TERM -> topArtistsLong
-        }
-
-        itemsIndexed(currentTopArtists) { index, artist ->
-            ArtistItem(index + 1, artist) { onArtistSelected = it }
-            if (index < currentTopArtists.size - 1) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-        }
-
-        if (currentTopArtists.size < GET_ITEM_NUM) {
-            item {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Info, contentDescription = "Info Icon")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("You data is not enough to show more artists. (Max = $GET_ITEM_NUM)")
-                }
-            }
-        }
+fun TopArtistsScreen(onArtistClick: (SpotifyArtist) -> Unit, viewModel: TopArtistsViewModel = hiltViewModel()) {
+    val uiState by viewModel.downLoadState.collectAsState()
+    LaunchedEffect(Unit) {
+        viewModel.fetchTopArtists()
     }
-
-
-    DetailBox(selectedValue = onArtistSelected, onDismiss = { onArtistSelected = null }) { artist, onDetailDismiss ->
-        ArtistDetail(
-            artist = artist,
-            onDismiss = onDetailDismiss,
-        )
-    }
+    TopArtistContent(uiState, onArtistClick)
 }
 
 @Composable
-private fun ArtistItem(index: Int, artist: SpotifyArtist, onArtistSelected: (SpotifyArtist) -> Unit) {
+fun TopArtistContent(uiState: FetchResult<TopArtistsData>, onArtistClick: (SpotifyArtist) -> Unit) { //topArtistsShort: List<SpotifyArtist>, topArtistsMedium: List<SpotifyArtist>, topArtistsLong: List<SpotifyArtist>, navController: NavController, paddingValues: PaddingValues
+    var expandedMenuArtist by remember { mutableStateOf(false) }
+    var artistPeriodSelection by remember { mutableStateOf(Period.SHORT_TERM) }
+    //var onArtistSelected by remember { mutableStateOf<SpotifyArtist?>(null)}
+
+    //HandleBackToHome(navController)
+
+    when (uiState) {
+        FetchResult.Initial ->
+            CircularProgressIndicator()
+         //TODO() // For first time loading state.
+
+        FetchResult.Loading ->
+            CircularProgressIndicator()
+
+        is FetchResult.Error -> TODO() // Just display the error message with snackbar.
+
+        is FetchResult.Success -> LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                //.padding(paddingValues)
+                .padding(horizontal = 6.dp)
+        ) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Image(
+                                painter = painterResource(R.drawable.primary_logo_green_rgb),
+                                contentDescription = "Spotify Logo",
+                                modifier = Modifier.height(28.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                text = "Your Top Artists",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    DropDownMenuTemplate(
+                        expanded = expandedMenuArtist,
+                        onExpandChange = { expandedMenuArtist = it },
+                        selectedValue = artistPeriodSelection.ordinal,
+                        onValueChange = { index -> artistPeriodSelection = Period.entries[index] },
+                        options = Period.entries.map { formatEnumPeriodName(it) }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            val currentTopArtists = when (artistPeriodSelection) {
+                Period.SHORT_TERM -> uiState.data.topArtistsShort
+                Period.MEDIUM_TERM -> uiState.data.topArtistsMedium
+                Period.LONG_TERM -> uiState.data.topArtistsLong
+            }
+
+            itemsIndexed(currentTopArtists) { index, artist ->
+                ArtistItem(index + 1, artist) { //onArtistSelected = it
+                    onArtistClick(it)
+                }
+                if (index < currentTopArtists.size - 1) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                } else Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            if (currentTopArtists.size < GET_ITEM_NUM) {
+                item {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Info, contentDescription = "Info Icon")
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("You data is not enough to show more artists. (Max = $GET_ITEM_NUM)")
+                    }
+                }
+            }
+        }
+    }
+
+//    DetailBox(selectedValue = onArtistSelected, onDismiss = { onArtistSelected = null }) { artist, onDetailDismiss ->
+//        ArtistDetail(
+//            artist = artist,
+//            onDismiss = onDetailDismiss,
+//        )
+//    }
+}
+
+@Composable
+fun ArtistItem(index: Int, artist: SpotifyArtist, onArtistSelected: (SpotifyArtist) -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
@@ -163,10 +189,15 @@ private fun ArtistItem(index: Int, artist: SpotifyArtist, onArtistSelected: (Spo
             contentPadding = PaddingValues(0.dp)
         ) {
             // Artist Image
-            val imageUrl = artist.images?.firstOrNull()?.url
-            if (imageUrl != null) {
+            val thumbnailUrl = artist.images?.size?.let {
+                if (it >= 2)
+                    artist.images[1].url
+                else
+                    artist.images.firstOrNull()?.url
+            }
+            if (thumbnailUrl != null) {
                 AsyncImage(
-                    model = imageUrl,
+                    model = thumbnailUrl,
                     contentDescription = "Artist image",
 
                     modifier = Modifier
@@ -185,8 +216,8 @@ private fun ArtistItem(index: Int, artist: SpotifyArtist, onArtistSelected: (Spo
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Filled.Album,
-                        contentDescription = "No album image available",
+                        Icons.Filled.Person,
+                        contentDescription = "No artists image available",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -220,14 +251,22 @@ fun ArtistDetail(
     onDismiss: () -> Unit,
 ) {
     // Artist Image
-    val imageUrl = artist.images?.firstOrNull()?.url
-    if (imageUrl != null) {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = "Artist image",
-            modifier = Modifier.clip(RoundedCornerShape(2.dp)),
-            contentScale = ContentScale.Inside
-        )
+    val images = artist.images
+    if (images != null) {
+        val pagerState = rememberPagerState(pageCount = { images.size })
+        HorizontalPager(state = pagerState) { page ->
+            val imageUrl = images[page].url
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = "Album image ${page + 1}",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp) // Adjust height as needed
+                    .clip(RoundedCornerShape(2.dp)),
+                contentScale = ContentScale.Fit // Or ContentScale.Crop depending on desired look
+            )
+
+        }
     } else {
         Spacer(modifier = Modifier.height(12.dp))
         Card(modifier = Modifier.padding(16.dp), shape = RectangleShape) {
@@ -240,7 +279,7 @@ fun ArtistDetail(
     // Artist Name
     Text(
         text = artist.name,
-        style = MaterialTheme.typography.headlineSmall,
+        style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold
     )
     Spacer(modifier = Modifier.height(8.dp))
