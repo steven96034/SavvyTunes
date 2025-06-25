@@ -5,12 +5,16 @@ import okhttp3.Interceptor
 import okhttp3.Response
 import javax.inject.Inject
 import javax.inject.Provider
+import javax.inject.Singleton
 
-class AuthInterceptor @Inject constructor(
+@Singleton
+class TokenInterceptor @Inject constructor(
     private val spotifyRepositoryProvider: Provider<SpotifyRepository> // Use Provider to prevent dependency cycle
 ) : Interceptor {
+
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
+        val originalResponse: Response
 
         // Check if the request contains the "No-Auth" header (for auth api service)
         if (originalRequest.header(AuthConstants.NO_AUTH_HEADER) != null) {
@@ -19,7 +23,6 @@ class AuthInterceptor @Inject constructor(
         }
 
         val accessToken = spotifyRepositoryProvider.get().getCurrentAccessToken()
-
 
         // If there's an Access Token, add it to the request headers
         val authorizedRequest = if (accessToken != null) {

@@ -1,5 +1,7 @@
 package com.example.geminispotifyapp
 
+import com.example.geminispotifyapp.features.SnackbarMessage
+import com.example.geminispotifyapp.features.UiEventManager
 import kotlinx.coroutines.runBlocking
 import okhttp3.Authenticator
 import okhttp3.Request
@@ -11,17 +13,23 @@ import javax.inject.Singleton
 
 // Only handle under circumstances: HTTP 401 Unauthorized(Main) or 407 Proxy Authentication Required. (Authentication Failed)
 @Singleton
-class AppAuthenticator @Inject constructor(
+class TokenAuthenticator @Inject constructor(
+    private val uiEventManager: UiEventManager,
     private val spotifyRepositoryProvider: Provider<SpotifyRepository> // Use Provider to prevent dependency cycle
 ) : Authenticator {
     override fun authenticate(route: Route?, response: Response): Request? {
+
+        // Ignore HTTP 407 Proxy Authentication Required
+        if (response.code != 401) {
+            return null
+        }
 
         val originalRequest = response.request
         val originalAuthorizationHeader = originalRequest.header("Authorization")
 
         // Check if the original request was a token refresh request leading to HTTP 401
         // Notice: Avoid infinite loop if the token refresh request failed itself
-        // Just implement in SpotifyRepository...(Keep it for further maintenance...)
+        // Just implemented the logic in SpotifyRepository...(Keep it for further maintenance...)
         // if (originalRequest.url.pathSegments.contains("refresh_token")) {
         //     return null
         // }
@@ -41,6 +49,7 @@ class AppAuthenticator @Inject constructor(
         }
 
         // If can't get new Access Token (e.g. Refresh Token is also invalid), return null to fail the original request
+        uiEventManager.showSnackbar(SnackbarMessage.ApiErrorMessage("Authentication required. Please log in again"))
         return null
     }
 }

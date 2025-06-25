@@ -8,4 +8,5 @@ sealed class SnackbarMessage {
     data class ResourceMessage(@StringRes val resourceId: Int, val duration: SnackbarDuration = SnackbarDuration.Short) : SnackbarMessage()
     data class ExceptionMessage(val exception: Exception, val duration: SnackbarDuration = SnackbarDuration.Short) : SnackbarMessage()
     data class ActionMessage(val message: String, val duration: SnackbarDuration = SnackbarDuration.Short, val actionLabel: String, val onAction: () -> Unit) : SnackbarMessage()
+    data class ApiErrorMessage(val message: String, val duration: SnackbarDuration = SnackbarDuration.Short) : SnackbarMessage()
 }

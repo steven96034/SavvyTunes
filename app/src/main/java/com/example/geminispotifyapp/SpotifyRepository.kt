@@ -67,6 +67,8 @@ class SpotifyRepository @Inject constructor(
                 return currentAccessToken
             }
 
+
+            // TODO: Try to integrate the interceptor with centralized error handling.
             // Perform actual token refresh in a coroutine
             if (!isRefreshing) { // Avoid multiple concurrent refreshes inside of tokenRefreshMutex
                 isRefreshing = true
@@ -134,6 +136,10 @@ class SpotifyRepository @Inject constructor(
         return System.currentTimeMillis() > expiryTime
 
         //return appDatabase.isTokenExpired()
+    }
+
+    suspend fun performLogOutAndCleanUp() {
+        appDatabase.logout()
     }
 
 

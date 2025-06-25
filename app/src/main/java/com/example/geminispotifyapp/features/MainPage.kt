@@ -128,6 +128,13 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
                         )
                         //event.exception.localizedMessage ?: "Some Error Happened..."
                     }
+                    is SnackbarMessage.ApiErrorMessage -> {
+                        result = snackbarHostState.showSnackbar(
+                            message = event.message,
+                            withDismissAction = true,
+                            duration = event.duration
+                        )
+                    }
 
                     is SnackbarMessage.ActionMessage -> {
                         result = snackbarHostState.showSnackbar(
