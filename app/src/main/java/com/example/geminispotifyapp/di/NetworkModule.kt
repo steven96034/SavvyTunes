@@ -5,6 +5,8 @@ import com.example.geminispotifyapp.ErrorHandlingInterceptor
 import com.example.geminispotifyapp.TokenInterceptor
 import com.example.geminispotifyapp.data.remote.SpotifyApiService
 import com.example.geminispotifyapp.data.remote.SpotifyUserApiService
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -63,5 +65,11 @@ object NetWorkModule {
             .authenticator(authenticator)
             .addInterceptor(errorHandlingInterceptor)
             .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideGson(): Gson {
+        return GsonBuilder().create()
     }
 }

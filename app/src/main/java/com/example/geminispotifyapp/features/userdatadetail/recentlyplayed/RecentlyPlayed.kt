@@ -64,7 +64,7 @@ import coil.compose.AsyncImage
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.PlayHistoryObject
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
-import com.example.geminispotifyapp.features.userdatadetail.FetchResult
+import com.example.geminispotifyapp.features.userdatadetail.FetchResultWithEtag
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -78,19 +78,21 @@ import kotlin.time.DurationUnit
 fun RecentlyPlayedScreen(onHistoryClick: (PlayHistoryObject) -> Unit, viewModel: RecentlyPlayedViewModel = hiltViewModel()) {
     val uiState by viewModel.downLoadState.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val displayedRecentlyPlayed by viewModel.displayedRecentlyPlayed.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.fetchRecentlyPlayedIfNeeded()
     }
 
-    RecentlyPlayedContent(uiState, isRefreshing, onHistoryClick, { viewModel.refreshRecentlyPlayed() })
+    RecentlyPlayedContent(uiState, isRefreshing, displayedRecentlyPlayed, onHistoryClick, { viewModel.refreshRecentlyPlayed() })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecentlyPlayedContent(
-    uiState: FetchResult<List<PlayHistoryObject>>,
+    uiState: FetchResultWithEtag<List<PlayHistoryObject>>,
     isRefreshing: Boolean,
+    displayedRecentlyPlayed: List<PlayHistoryObject>,
     onHistoryClick: (PlayHistoryObject) -> Unit,
     onRefresh: () -> Unit
 ) {
@@ -105,18 +107,25 @@ fun RecentlyPlayedContent(
         modifier = Modifier.fillMaxSize()
     ) {
         when (uiState) {
-            FetchResult.Initial -> { CircularProgressIndicator()
-            Log.d("RecentlyPlayedScreen", "Initial state")}
-            //TODO() // For first time loading state.
-
-            FetchResult.Loading ->
-            {CircularProgressIndicator()
-                Log.d("RecentlyPlayedScreen", "Loading state")}
 
 
-            is FetchResult.Error -> TODO() // Just display the error message with snackbar.
+            is FetchResultWithEtag.Error ->  TODO() //Just display the error message with snackbar.
 
-            is FetchResult.Success -> LazyColumn(
+            is FetchResultWithEtag.Initial -> {
+                CircularProgressIndicator()
+                Log.d("RecentlyPlayedScreen", "Initial state")
+                //TODO() // For first time loading state.
+            }
+
+            FetchResultWithEtag.Loading -> {
+                CircularProgressIndicator()
+                Log.d("RecentlyPlayedScreen", "Loading state")
+            }
+
+            //FetchResultWithEtag.NotModified -> TODO()
+
+            is FetchResultWithEtag.Success, is FetchResultWithEtag.NotModified ->
+                LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     //.padding(paddingValues)
@@ -149,17 +158,17 @@ fun RecentlyPlayedContent(
                     }
                     Spacer(modifier = Modifier.height(14.dp))
                 }
-                val recentlyPlayed = uiState.data
-                itemsIndexed(recentlyPlayed) { index, playHistory ->
+                //val recentlyPlayed = uiState.data
+                itemsIndexed(displayedRecentlyPlayed) { index, playHistory ->
                     RecentTrackItem(index + 1, playHistory) { //onHistorySelected = it
                         onHistoryClick(it)
                     }
-                    if (index < recentlyPlayed.size - 1) {
+                    if (index < displayedRecentlyPlayed.size - 1) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     } else Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                if (recentlyPlayed.size < GET_ITEM_NUM) {
+                if (displayedRecentlyPlayed.size < GET_ITEM_NUM) {
                     item {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                         Row(
@@ -534,36 +543,4 @@ internal fun TrackHistoryDetail(
             Text(text = "Close")
         }
     }
-
-    // Deprecated Data
-//            Text(
-//                text = "Is Local: ${track.isLocal}",
-//                style = MaterialTheme.typography.bodyMedium
-//            )
-//            Spacer(modifier = Modifier.height(4.dp))
-
-//            Text(
-//                text = "Is Playable: ${track.isPlayable}",
-//                style = MaterialTheme.typography.bodyMedium
-//            )
-//            Spacer(modifier = Modifier.height(4.dp))
-
-//            Text(
-//                text = "External URLs: ${track.externalUrls.values.joinToString(", ")}",
-//                style = MaterialTheme.typography.bodyMedium
-//            )
-//            Spacer(modifier = Modifier.height(4.dp))
-
-//            Text(
-//                text = "URI: ${track.uri}",
-//                style = MaterialTheme.typography.bodyMedium
-//            )
-//            Spacer(modifier = Modifier.height(4.dp))
-
-//            val restrictions = track.restrictions["reason"]
-//            Text(
-//                text = if (restrictions == null) "Restrictions: None" else "Restrictions: $restrictions",
-//                style = MaterialTheme.typography.bodyMedium
-//            )
-//            Spacer(modifier = Modifier.height(4.dp))
 }

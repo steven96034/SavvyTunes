@@ -9,12 +9,11 @@ import javax.inject.Singleton
 
 @Singleton
 class TokenInterceptor @Inject constructor(
-    private val spotifyRepositoryProvider: Provider<SpotifyRepository> // Use Provider to prevent dependency cycle
+    private val spotifyRepositoryImplProvider: Provider<SpotifyRepositoryImpl> // Use Provider to prevent dependency cycle
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
-        val originalResponse: Response
 
         // Check if the request contains the "No-Auth" header (for auth api service)
         if (originalRequest.header(AuthConstants.NO_AUTH_HEADER) != null) {
@@ -22,7 +21,7 @@ class TokenInterceptor @Inject constructor(
             return chain.proceed(originalRequest.newBuilder().removeHeader(AuthConstants.NO_AUTH_HEADER).build())
         }
 
-        val accessToken = spotifyRepositoryProvider.get().getCurrentAccessToken()
+        val accessToken = spotifyRepositoryImplProvider.get().getCurrentAccessToken()
 
         // If there's an Access Token, add it to the request headers
         val authorizedRequest = if (accessToken != null) {

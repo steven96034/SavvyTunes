@@ -4,6 +4,7 @@ import com.example.geminispotifyapp.data.RecentlyPlayedResponse
 import com.example.geminispotifyapp.data.SearchResponse
 import com.example.geminispotifyapp.data.TopArtistsResponse
 import com.example.geminispotifyapp.data.TopTracksResponse
+import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Query
@@ -29,10 +30,11 @@ interface SpotifyUserApiService {
     @GET("v1/me/player/recently-played")
     suspend fun getRecentlyPlayed(
         @Header("Authorization") authorization: String,
+        @Header("If-None-Match") etag: String? = null,
         @Query("limit") limit: Int = 20,
         @Query("before") before: Long? = null,
         @Query("after") after: Long? = null
-    ): RecentlyPlayedResponse
+    ): Response<RecentlyPlayedResponse>
 
     @GET("v1/search")
     suspend fun searchTracks(

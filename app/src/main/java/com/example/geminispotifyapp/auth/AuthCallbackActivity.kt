@@ -7,7 +7,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.geminispotifyapp.ui.MainActivity
-import com.example.geminispotifyapp.SpotifyRepository
+import com.example.geminispotifyapp.SpotifyRepositoryImpl
 import com.example.geminispotifyapp.utils.toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -20,7 +20,7 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class AuthCallbackActivity : AppCompatActivity() {
 
-    @Inject lateinit var spotifyRepository: SpotifyRepository
+    @Inject lateinit var spotifyRepositoryImpl: SpotifyRepositoryImpl
     @Inject lateinit var authManager: AuthManager
 
     companion object {
@@ -104,7 +104,7 @@ class AuthCallbackActivity : AppCompatActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val response = spotifyRepository.getAccessTokenThruAuth(
+                val response = spotifyRepositoryImpl.getAccessTokenThruAuth(
                     grantType = "authorization_code",
                     code = code,
                     redirectUri = AuthManager.REDIRECT_URI,
@@ -115,7 +115,7 @@ class AuthCallbackActivity : AppCompatActivity() {
                 Log.d(TAG, "Successfully received Access Token: ${response.accessToken}")
                 Log.d("RefreshToken", "Successfully received Refresh Token: ${response.refreshToken}")
 
-                spotifyRepository.updateTokenResponse(response)
+                spotifyRepositoryImpl.updateTokenResponse(response)
                 Log.d(
                     TAG,
                     "Token saved to SharedPreferences. Expires at: ${Date(System.currentTimeMillis() + (response.expiresIn * 1000))}"

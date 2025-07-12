@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.SearchUiState
-import com.example.geminispotifyapp.SpotifyRepository
+import com.example.geminispotifyapp.SpotifyRepositoryImpl
 import com.example.geminispotifyapp.TracksAndArtists
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
@@ -24,7 +24,7 @@ import java.util.concurrent.CancellationException
 import javax.inject.Inject
 
 @HiltViewModel
-class HomeViewModel @Inject constructor(private val spotifyRepository: SpotifyRepository, private val uiEventManager: UiEventManager) : ViewModel() {
+class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: SpotifyRepositoryImpl, private val uiEventManager: UiEventManager) : ViewModel() {
     // For Search State
     private var _searchSimilarUiState: MutableStateFlow<SearchUiState> = MutableStateFlow(
         SearchUiState.Initial
@@ -78,7 +78,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepository: SpotifyRe
 
     private suspend fun searchForSpecificTrack(trackName: String, artistName: String) {
         try {
-            val response = spotifyRepository.searchData("track%2520$trackName", "track")
+            val response = spotifyRepositoryImpl.searchData("track%2520$trackName", "track")
 
             val foundTrack = response.tracks!!.items.take(20).find { track ->
                 track.artists.any { artist ->
@@ -113,7 +113,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepository: SpotifyRe
 
     private suspend fun searchForSpecificArtists(artistName: String) {
             try {
-                val response = spotifyRepository.searchData("artist%2520$artistName", "artist")
+                val response = spotifyRepositoryImpl.searchData("artist%2520$artistName", "artist")
                 val mostSimilarArtist = response.artists?.items?.maxByOrNull { artist ->
                     calculateSimilarity(artist.name, artistName)
                 }
@@ -254,7 +254,9 @@ class HomeViewModel @Inject constructor(private val spotifyRepository: SpotifyRe
                 } ?: if(isActive) { // 如果 response.text 是 null
                     _searchSimilarUiState.value =
                         SearchUiState.Error("Failed to get a valid response from Gemini.")
-                } else null
+                } else {
+                    Log.d("Gemini", "Response is null.")
+                }
             }
 //            catch (e: CancellationException) {
 //                    Log.d("Gemini", "Search coroutine was cancelled.")

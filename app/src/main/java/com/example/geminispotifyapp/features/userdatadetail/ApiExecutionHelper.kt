@@ -2,13 +2,13 @@ package com.example.geminispotifyapp.features.userdatadetail
 
 import android.util.Log
 import com.example.geminispotifyapp.ApiError
-import com.example.geminispotifyapp.features.UiEventManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.supervisorScope
+import retrofit2.Response
 import javax.inject.Inject
 
-class ApiExecutionHelper @Inject constructor(private val uiEventManager: UiEventManager) {
+class ApiExecutionHelper @Inject constructor() {
 
     /**
      * Executes a list of asynchronous API operations and transforms their results.
@@ -45,47 +45,98 @@ class ApiExecutionHelper @Inject constructor(private val uiEventManager: UiEvent
                 val deferredTasks = operations()
                 deferredTasks.map {
                     try {
-                        it.await() // 等待每個異步操作
+                        it.await() // Wait for each async operation
                     } catch (e: Exception) {
                         Log.d("MainViewModel", "Single operation failed: $e")
-                        throw e // 重新拋出，讓外層 try-catch 處理
+                        throw e
                     }
                 }
             }
             val successData = transformSuccess(results)
             Log.d("MainViewModel", "All operations succeeded")
             FetchResult.Success(successData)
-        }
-//        catch (e: ApiError) {
-//            //val errorData = e.message
-//            FetchResult.Error(e)
-//        }
-        catch (e: Exception) {
+        } catch (e: Exception) {
             throw e
         }
-//        catch (e: HttpException) {
-//            val errorData = ErrorData(e.response()?.code(), e.message(), e)
-//            Log.e("MainViewModel", "HttpException: ${e.response()?.code()}, ${e.message}", e)
-//            uiEventManager.showSnackbar(SnackbarMessage.ExceptionMessage(e))
-//            FetchResult.Error(errorData)
-//        } catch (e: IOException) {
-//            val errorData = ErrorData(null, "Network Error: ${e.message}", e)
-//            Log.e("MainViewModel", "IOException: ${e.message}", e)
-//            uiEventManager.showSnackbar(SnackbarMessage.ExceptionMessage(e))
-//            FetchResult.Error(errorData)
-//        } catch (e: Exception) {
-//            val errorData = ErrorData(null, "Failed to load data: ${e.message}", e)
-//            Log.e("MainViewModel", "Generic Exception: ${e.message}", e)
-//            uiEventManager.showSnackbar(SnackbarMessage.ExceptionMessage(e))
-//            FetchResult.Error(errorData)
-//        }
+    }
+
+    /**
+     * Executes an operation that supports ETag-based caching.
+     *
+     * This function performs an API call and handles different HTTP response codes:
+     * - **200 (OK):** The operation was successful. The response body is transformed into the desired
+     *   `SuccessDataType`, and the ETag from the response headers is extracted.
+     * - **304 (Not Modified):** The resource has not changed since the last request (identified by
+     *   the ETag provided in the request). No data is returned.
+     * - **Other codes:** An error is considered to have occurred.
+     *
+     * The function returns a [FetchResultWithEtag] to indicate the outcome, which can be used to
+     * update a StateFlow or other reactive streams.
+     *
+     * @param ResultType The type of the raw data returned by the API operation.
+     * @param SuccessDataType The type of the data after successful transformation.
+     * @param operation A suspend function that executes the actual network request and returns a Retrofit [Response].
+     *                  This operation is expected to handle potential network exceptions internally or allow them to propagate.
+     * @param transformSuccess A function that takes the raw `ResultType` from a successful (200) API response
+     *                         and transforms it into the final `SuccessDataType`.
+     * @return A [FetchResultWithEtag] object representing the outcome of the operation:
+     *         - [FetchResultWithEtag.Success]: If the operation was successful (HTTP 200) and the response body is not null.
+     *           Contains the transformed data and the ETag.
+     *         - [FetchResultWithEtag.NotModified]: If the server responded with HTTP 304.
+     *         - [FetchResultWithEtag.Error]: If the response code is not 200 or 304, or if the response body is null for a 200 response.
+     *           Contains an [ApiError] detailing the issue.
+     * @throws Exception If the `operation` suspend function throws an exception (e.g., network issues not handled by Retrofit).
+     *                   This exception will be re-thrown by `executeEtaggedOperation`.
+     */
+    suspend fun <ResultType, SuccessDataType> executeEtaggedOperation(
+        operation: suspend () -> Response<ResultType>,
+        transformSuccess: (ResultType) -> SuccessDataType// Transform ResultType into final SuccessDataType
+        ): FetchResultWithEtag<SuccessDataType> { // Return result to caller to update StateFlow
+        return try {
+            val response = operation()
+            when (response.code()) {
+                200 -> {
+                    val result = response.body()
+                    if (result != null) {
+                        val successData = transformSuccess(result)
+                        Log.d("MainViewModel", "All operations succeeded")
+                        Log.d("MainViewModel", "${response.headers()}")
+                        Log.d("MainViewModel", "ETag: ${response.headers()["ETag"]}")
+                        FetchResultWithEtag.Success(successData, response.headers()["ETag"])
+                    } else {
+                        Log.d("MainViewModel", "Response body is null")
+                        FetchResultWithEtag.Error(ApiError.UnknownError("Response body is null"))
+                    }
+                }
+                304 -> {
+                    Log.d("MainViewModel", "Not Modified")
+                    FetchResultWithEtag.NotModified(response.headers()["ETag"])
+                }
+                else -> {
+                    Log.d("MainViewModel", "Response code is not 200 or 304")
+                    FetchResultWithEtag.Error(ApiError.UnknownError("Response code is not 200 or 304"))
+                }
+            }
+        } catch (e: Exception) {
+            throw e
+        }
     }
 }
 
-// 定義一個通用的結果狀態，類似於您目前的 DownLoadState，但更通用
+
+
+// Define a generic result state
 sealed interface FetchResult<out T> {
     data object Initial : FetchResult<Nothing>
     data object Loading : FetchResult<Nothing>
     data class Success<T>(val data: T) : FetchResult<T>
-    data class Error(val errorData: ApiError) : FetchResult<Nothing> // ErrorData 來自您的項目
+    data class Error(val errorData: ApiError) : FetchResult<Nothing>
+}
+
+sealed interface FetchResultWithEtag<out T> {
+    data object Initial : FetchResultWithEtag<Nothing>
+    data object Loading : FetchResultWithEtag<Nothing>
+    data class Success<T>(val data: T, val eTag: String?) : FetchResultWithEtag<T>
+    data class NotModified(val eTag: String?) : FetchResultWithEtag<Nothing>
+    data class Error(val errorData: ApiError) : FetchResultWithEtag<Nothing>
 }

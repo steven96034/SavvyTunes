@@ -4,11 +4,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.ApiError
-import com.example.geminispotifyapp.SpotifyRepository
+import com.example.geminispotifyapp.SpotifyRepositoryImpl
 import com.example.geminispotifyapp.data.SharedData
 import com.example.geminispotifyapp.data.SpotifyArtist
-import com.example.geminispotifyapp.data.TopArtistsResponse
-import com.example.geminispotifyapp.features.UiEventManager
 import com.example.geminispotifyapp.features.userdatadetail.ApiExecutionHelper
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,7 +26,7 @@ data class TopArtistsData(
 // TODO: Could update top artists data by button.
 @HiltViewModel
 class TopArtistsViewModel @Inject constructor(
-    private val spotifyRepository: SpotifyRepository,
+    private val spotifyRepositoryImpl: SpotifyRepositoryImpl,
     private val apiExecutionHelper: ApiExecutionHelper,
     //private val uiEventManager: UiEventManager
 ): ViewModel() {
@@ -57,19 +55,19 @@ class TopArtistsViewModel @Inject constructor(
                 val result = apiExecutionHelper.executeApiOperations(
                     operations = {
                         val topArtistsDeferredShort = async(Dispatchers.IO) {
-                            spotifyRepository.getUserTopArtists(
+                            spotifyRepositoryImpl.getUserTopArtists(
                                 timeRange = "short_term",
                                 limit = SharedData.GET_ITEM_NUM
                             )
                         }
                         val topArtistsDeferredMedium = async(Dispatchers.IO) {
-                            spotifyRepository.getUserTopArtists(
+                            spotifyRepositoryImpl.getUserTopArtists(
                                 timeRange = "medium_term",
                                 limit = SharedData.GET_ITEM_NUM
                             )
                         }
                         val topTracksDeferredLong = async(Dispatchers.IO) {
-                            spotifyRepository.getUserTopArtists(
+                            spotifyRepositoryImpl.getUserTopArtists(
                                 timeRange = "long_term",
                                 limit = SharedData.GET_ITEM_NUM
                             )
@@ -85,11 +83,11 @@ class TopArtistsViewModel @Inject constructor(
                     transformSuccess = { results ->
                         // Results is a list of SpotifyArtistsResponse, ensure type conversion is correct
                         val shortTermArtist =
-                            (results.getOrNull(0) as? TopArtistsResponse)?.items ?: emptyList()
+                            results.getOrNull(0)?.items ?: emptyList()
                         val mediumTermArtists =
-                            (results.getOrNull(1) as? TopArtistsResponse)?.items ?: emptyList()
+                            results.getOrNull(1)?.items ?: emptyList()
                         val longTermArtists =
-                            (results.getOrNull(2) as? TopArtistsResponse)?.items ?: emptyList()
+                            results.getOrNull(2)?.items ?: emptyList()
 
                         TopArtistsData(
                             topArtistsShort = shortTermArtist,
@@ -127,7 +125,7 @@ class TopArtistsViewModel @Inject constructor(
 
                     is ApiError.Unauthorized -> {
                         Log.d("TopArtistsViewModel", "Unauthorized: ${e.message}")
-                        spotifyRepository.performLogOutAndCleanUp()
+                        spotifyRepositoryImpl.performLogOutAndCleanUp()
                         TODO() // Navigate to login screen.
                     }
 

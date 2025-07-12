@@ -2,7 +2,7 @@ package com.example.geminispotifyapp.init.checkauth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.geminispotifyapp.SpotifyRepository
+import com.example.geminispotifyapp.SpotifyRepositoryImpl
 import com.example.geminispotifyapp.auth.AuthManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -13,9 +13,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class CheckAuthViewModel @Inject constructor(spotifyRepository: SpotifyRepository, private val authManager: AuthManager) : ViewModel() {
+class CheckAuthViewModel @Inject constructor(spotifyRepositoryImpl: SpotifyRepositoryImpl, private val authManager: AuthManager) : ViewModel() {
     // Expose the StateFlow directly from the Repository
-    val isAuthenticated: StateFlow<Boolean> = spotifyRepository.currentAccessTokenFlow
+    val isAuthenticated: StateFlow<Boolean> = spotifyRepositoryImpl.currentAccessTokenFlow
         .map { accessToken ->
             // Transform the Access Token into a Boolean value, indicating whether logged in
             accessToken != null
@@ -25,19 +25,9 @@ class CheckAuthViewModel @Inject constructor(spotifyRepository: SpotifyRepositor
             initialValue = false // Initial value, not logged in
         )
 
-//    val accessToken: StateFlow<String?> = spotifyRepository.currentAccessTokenFlow.stateIn(
-//        scope = viewModelScope,
-//        started = SharingStarted.WhileSubscribed(5000),
-//        initialValue = null
-//    )
-
     fun startAuthentication() {
         viewModelScope.launch {
             authManager.startAuthentication()
         }
     }
-//
-//    init {
-//        spotifyRepository.getAccessTokenFlow().onEach { _accessToken.value = it }.launchIn(viewModelScope)
-//    }
 }
