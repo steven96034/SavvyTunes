@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 class GeminiApi {
     // For Gemini Model
     private val generativeModel = GenerativeModel(
-        modelName = "gemini-2.0-flash",
+        modelName = "gemini-2.5-pro",
         apiKey = BuildConfig.apiKey
     )
 

@@ -165,9 +165,9 @@ fun HomePage(
                 val artists = uiState.data.artists
                 val tracks = uiState.data.tracks
                 item {
-                    Spacer(Modifier.padding(4.dp))
+                    Spacer(Modifier.padding(8.dp))
                     Text(
-                        "Similar Tracks:",
+                        "Similar Tracks",
                         fontSize = MaterialTheme.typography.headlineSmall.fontSize
                     )
                 }
@@ -177,25 +177,6 @@ fun HomePage(
                         Column {
                             tracks.forEachIndexed { index, track ->
                                 TrackItem(index + 1, track) { onTrackClick(it) }
-
-//                                Row {
-//                                    Text(
-//                                        "$index. " + track.name,
-//                                        modifier = Modifier.padding(2.dp)
-//                                    )
-//                                    Column {
-//                                        Text(
-//                                            "Artists: " + track.artists.joinToString(
-//                                                ", "
-//                                            ) { it.name },
-//                                            modifier = Modifier.padding(2.dp)
-//                                        )
-//                                        Text(
-//                                            "Popularity: " + track.popularity.toString(),
-//                                            modifier = Modifier.padding(2.dp)
-//                                        )
-//                                    }
-//                                }
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                             }
                         }
@@ -205,9 +186,9 @@ fun HomePage(
                 }
                 //item { HorizontalDivider(modifier = Modifier.padding(8.dp)) }
                 item {
-                    Spacer(Modifier.padding(4.dp))
+                    Spacer(Modifier.padding(8.dp))
                     Text(
-                        "Similar Artists:",
+                        "Similar Artists",
                         fontSize = MaterialTheme.typography.headlineSmall.fontSize,
                         textAlign = TextAlign.Center
                     )
@@ -218,22 +199,6 @@ fun HomePage(
                         Column {
                             artists.forEachIndexed { index, artist ->
                                 ArtistItem (index + 1, artist) { onArtistClick(it) }
-//                                Row {
-//                                    Column(modifier = Modifier.padding(2.dp)) {
-//                                        Text(
-//                                            artist.name,
-//                                            modifier = Modifier.padding(2.dp)
-//                                        )
-//                                        Text(
-//                                            "Pop: " + artist.popularity.toString(),
-//                                            modifier = Modifier.padding(2.dp)
-//                                        )
-//                                    }
-//                                    Text(
-//                                        "Genres:\n" + artist.genres.joinToString(", "),
-//                                        modifier = Modifier.padding(2.dp)
-//                                    )
-//                                }
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                             }
                         }

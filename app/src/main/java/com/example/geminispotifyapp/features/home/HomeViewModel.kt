@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.SearchUiState
 import com.example.geminispotifyapp.SpotifyRepositoryImpl
 import com.example.geminispotifyapp.TracksAndArtists
+import com.example.geminispotifyapp.data.SearchResponse
+import com.example.geminispotifyapp.data.SharedData.FIND_SIMILAR_NUM
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.features.SnackbarMessage
@@ -76,34 +78,66 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
         _artistInput.value = newArtist
     }
 
-    private suspend fun searchForSpecificTrack(trackName: String, artistName: String) {
-        try {
-            val response = spotifyRepositoryImpl.searchData("track%2520$trackName", "track")
 
-            val foundTrack = response.tracks!!.items.take(20).find { track ->
-                track.artists.any { artist ->
-                    artist.name.equals(artistName, ignoreCase = true)
-                }
+    // (Pass from Gemini response)
+    // Here check the equality of track name, album name and artist name, then calculate the most similar track.
+    // To get more reachable in spotify search, due to the miswrite of album name of the track from Gemini response,
+    //      we need to just search by the track name and artist name but more selection criteria (TBD).
+    private suspend fun searchForSpecificTrack(trackName: String, albumName: String, artistName: String) {
+        lateinit var response: SearchResponse
+        try {
+            var query: String? = ""
+            if (trackName.isNotEmpty()) query += "track:\"$trackName\""
+            if (albumName.isNotEmpty()) query += " album:\"$albumName\""
+            if (artistName.isNotEmpty()) query += " artist:\"$artistName\""
+            Log.d("Gemini", "Query: $query")
+            if (query.isNullOrEmpty()) {
+                Log.d("Gemini", "Query is empty. No search performed.")
+                return
+            }
+            response = spotifyRepositoryImpl.searchData(query, "track")
+
+            // Explicitly check for null and assign to a local variable
+            val tracks = response.tracks
+            if (tracks == null || tracks.total == 0) {
+                // Handle the case where response.tracks is null
+                trackNotFoundList.add("$trackName by $artistName")
+                Log.e("Gemini", "response.tracks is null")
+                return
+            }
+            //val candidateTempList = mutableListOf<SpotifyTrack>() // For further filtering
+            val foundTrack = tracks.items.take(20).find { track ->
+                track.name.equals(trackName, ignoreCase = true) &&
+                        track.album.name.equals(albumName, ignoreCase = true) &&
+                        track.artists.any { artist ->
+                            artist.name.equals(artistName, ignoreCase = true)
+                        }
             }
             if (foundTrack != null) {
                 trackTempList.add(foundTrack)
                 Log.d("Gemini", "Track found: ${foundTrack.name}")
-            }
-            else {
+            } else {
                 //find the most closed track name
-                val mostSimilarTrack = response.tracks.items.maxByOrNull { track ->
-                    val trackNameSimilarity = calculateSimilarity(track.name, trackName)
-                    val artistNameSimilarity = track.artists.maxOfOrNull { artist ->
-                        calculateSimilarity(artist.name, artistName)
-                    } ?: 0.0
-                    trackNameSimilarity + artistNameSimilarity
-                }
+                val mostSimilarTrack =
+                    tracks.items.maxByOrNull { track -> // Use the local 'tracks' variable
+                        val trackNameSimilarity = calculateSimilarity(track.name, trackName)
+                        val albumNameSimilarity =
+                            calculateSimilarity(track.album.name, albumName)
+                        val artistNameSimilarity = track.artists.maxOfOrNull { artist ->
+                            calculateSimilarity(artist.name, artistName)
+                        } ?: 0.0
+                        trackNameSimilarity * 1.5 + albumNameSimilarity * 2 + artistNameSimilarity
+                    }
                 if (mostSimilarTrack != null) {
                     trackTempList.add(mostSimilarTrack)
-                    Log.d("Gemini", "Track not found: $trackName, but similar track found: ${mostSimilarTrack.name}")
-                } else {
-                    trackNotFoundList.add(trackName)
-                    Log.d("Gemini", "Track not found: $trackName")
+                    Log.d(
+                        "Gemini",
+                        "Track not found: $trackName, but similar track found: ${mostSimilarTrack.name}"
+                    )
+                }
+                else {
+                    trackNotFoundList.add("$trackName by $artistName")
+                    Log.e("Gemini", "Track not found: $trackName")
                 }
             }
         } catch (e: Exception) {
@@ -111,11 +145,17 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
         }
     }
 
+    // (Pass from Gemini response)
+    // To simply get artists, we only get the artists with enough popularity.
+    // (More precise still wait for translation of artist name... some modification of prompt in the future.)
+    // (Or TBD for searching the tracks or albums of the artists to get most precise artists.)
     private suspend fun searchForSpecificArtists(artistName: String) {
             try {
-                val response = spotifyRepositoryImpl.searchData("artist%2520$artistName", "artist")
+                val response = spotifyRepositoryImpl.searchData("artist:\"$artistName\"", "artist")
                 val mostSimilarArtist = response.artists?.items?.maxByOrNull { artist ->
-                    calculateSimilarity(artist.name, artistName)
+                    val simVal = calculateSimilarity(artist.name, artistName)
+                    val notEnoughPop = if (artist.popularity < 10) 0.5 else if (artist.popularity < 20) 0.3 else 0.0
+                    simVal - notEnoughPop
                 }
                 if (mostSimilarArtist != null) {
                     artistTempList.add(mostSimilarArtist)
@@ -169,13 +209,14 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
             _searchSimilarUiState.value = SearchUiState.Loading
 
             try {
+                val numOfSearch = FIND_SIMILAR_NUM
                 withContext(Dispatchers.IO) {
                     response = GeminiApi().askGemini(
-                        """Please list five music tracks of related genres of $track##$artist, where the format mentioned is: Song Name##Artists Name.
-                                List only one related music track in each row using format: Song Name##Artist Name,                                
+                        """Please list $numOfSearch music tracks of related genres of $track##$artist, where the format mentioned is: Song Name##Artists Name.
+                                List only one related music track in each row using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,                               
                                     if there is more than one artist, just separate them with comma, also do not use blank row to separate each track(only use one row for each track). 
-                                Also, list most related five music artists/band name of the song mentioned before. 
-                                List only one related music artist name in each row using format: Artists Name, also do not use blank row to separate each artist(only use one row for each artist)
+                                Also, list most related $numOfSearch music artists/band name of the song genre mentioned before, while followed by the famous song name and its album of the artists/band. 
+                                List only one related music artist name in each row using format: Artists Name##Song Name##Album Name, also do not use blank row to separate each artist(only use one row for each artist)
                                 Other response rule: Do not use No., and do not respond any other statement, neither.
                                     Use one blank row to separate the response of related music tracks and the response of related music artists."""
                     )
@@ -189,19 +230,19 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                         val blankLineIndex = lines.indexOf("")
 
                         if (blankLineIndex != -1) {
-                            // First five rows: tracks
-                            relatedTracks.addAll(lines.subList(0, minOf(5, blankLineIndex)))
-                            // Last five rows: artists
+                            // First $numOfSearch rows: tracks
+                            relatedTracks.addAll(lines.subList(0, minOf(numOfSearch, blankLineIndex)))
+                            // Last $numOfSearch rows: artists
                             relatedArtists.addAll(
                                 lines.subList(
                                     blankLineIndex + 1,
-                                    minOf(blankLineIndex + 6, lines.size)
+                                    minOf(blankLineIndex + numOfSearch + 1, lines.size)
                                 )
                             )
                         } else {
                             Log.e("Gemini", "Response format error")
                             //fallback to all tracks
-                            relatedTracks.addAll(lines.subList(0, minOf(5, lines.size)))
+                            relatedTracks.addAll(lines.subList(0, minOf(numOfSearch, lines.size)))
                         }
                         Log.d("Gemini", "relatedTracks: $relatedTracks")
                         Log.d("Gemini", "relatedArtists: $relatedArtists")
@@ -215,12 +256,13 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
 
                         relatedTracks.forEach { trackInfo ->
                             val parts = trackInfo.split("##")
-                            if (parts.size == 2) {
+                            if (parts.size == 3) {
                                 val trackName = parts[0].trim()
-                                val artistName = parts[1].trim()
-                                Log.d("Gemini", "track: $trackName, artist: $artistName")
+                                val albumName = parts[1].trim()
+                                val artistName = parts[2].trim()
+                                Log.d("Gemini", "track: $trackName, album: $albumName, artist: $artistName")
                                 try {
-                                    searchForSpecificTrack(trackName, artistName)
+                                    searchForSpecificTrack(trackName, albumName, artistName)
                                 } catch (e: Exception) {
                                     Log.e("Gemini", "Error searching for specific track: $e")
                                     throw e
@@ -231,19 +273,30 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                             }
                         }
 
-                        relatedArtists.forEach { artist ->
-                            Log.d("Gemini", "artist: $artist")
-                            try {
-                                searchForSpecificArtists(artist)
-                            } catch (e: Exception) {
-                                Log.e("Gemini", "Error searching for specific artist: $e")
-                                throw e
+                        relatedArtists.forEach { trackInfo ->
+                            val parts = trackInfo.split("##")
+                            if (parts.size == 3) {
+                                val artistName = parts[0].trim()
+                                val trackName = parts[1].trim()
+                                val albumName = parts[2].trim()
+                                Log.d("Gemini", "artist: $artistName, track: $trackName, album: $albumName")
+                                try {
+                                    // TODO: Next Test...
+                                    searchForSpecificArtists(artistName)
+                                } catch (e: Exception) {
+                                    Log.e("Gemini", "Error searching for specific track: $e")
+                                    throw e
+                                }
+                            } else {
+                                Log.e("Gemini", "Unexpected track format: $trackInfo")
+                                // Should be handled here.
                             }
                         }
+
                         Log.d("Gemini", "trackNotFoundList: $trackNotFoundList")
                         Log.d("Gemini", "artistNotFoundList: $artistNotFoundList")
-                        Log.d("Gemini", "trackTempList: $trackTempList")
-                        Log.d("Gemini", "artistTempList: $artistTempList")
+                        Log.d("Gemini", "trackTempList: ${trackTempList.joinToString { it.name }}")
+                        Log.d("Gemini", "artistTempList: ${artistTempList.joinToString { it.name }}")
 
 
                         val data = TracksAndArtists(trackTempList.toList(), artistTempList.toList())
