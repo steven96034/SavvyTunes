@@ -2,6 +2,7 @@ package com.example.geminispotifyapp.features.userdatadetail
 
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -17,6 +18,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
@@ -112,4 +117,18 @@ enum class Period {
     SHORT_TERM,
     MEDIUM_TERM,
     LONG_TERM
+}
+
+/**
+ *  Set a modifier for onTap to hide keyboard and clear focus.
+ */
+fun Modifier.autoCloseKeyboardClearFocus(): Modifier = composed {
+    val keyBoardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    pointerInput(this) {
+        detectTapGestures(onTap = {
+            keyBoardController?.hide()
+            focusManager.clearFocus()
+        })
+    }
 }

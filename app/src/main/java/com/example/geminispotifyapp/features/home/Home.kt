@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import com.example.geminispotifyapp.R
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -75,6 +76,7 @@ fun HomePage(
 ) {
     //val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
     //var onTrackSelected by remember { mutableStateOf<SpotifyTrack?>(null) }
 
     HomeNavigation()
@@ -134,6 +136,7 @@ fun HomePage(
                             artistInput
                         )
                     }
+                    focusManager.clearFocus()
                 },
                 modifier = Modifier
                     .padding(top = 8.dp)

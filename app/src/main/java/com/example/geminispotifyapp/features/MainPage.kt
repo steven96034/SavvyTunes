@@ -44,10 +44,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -61,6 +65,7 @@ import com.example.geminispotifyapp.data.PlayHistoryObject
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.features.home.HomeScreen
+import com.example.geminispotifyapp.features.userdatadetail.autoCloseKeyboardClearFocus
 import com.example.geminispotifyapp.features.userdatadetail.recentlyplayed.RecentlyPlayedScreen
 import com.example.geminispotifyapp.features.userdatadetail.recentlyplayed.TrackHistoryDetail
 import com.example.geminispotifyapp.features.userdatadetail.topartists.ArtistDetail
@@ -178,6 +183,8 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
             pagerState.animateScrollToPage(pagerState.currentPage - currentScreenIndex)
         }
     }
+
+
 //    // 創建 PagerState 來管理底部導航頁面的狀態
 //    val pagerState = rememberPagerState(initialPage = 0) {
 //        bottomNavItems.size // 底部導航頁面的總數
@@ -221,7 +228,7 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
     Box(modifier = Modifier.fillMaxSize()) {
     val selectedScreen = pagerState.currentPage % bottomNavItems.size
     Scaffold (
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).autoCloseKeyboardClearFocus(),
         topBar = {
             //TODO: Replace MyTopAppBar with SmallTopAppBar
             TopAppBar(title = {Text("Music Explorer by Gemini")})

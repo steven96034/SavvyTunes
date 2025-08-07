@@ -12,7 +12,6 @@ coreKtxVersion = "1.13.1"
 datastore = "1.1.7"
 datastorePreferences = "1.1.7"
 datastorePreferencesCore = "1.1.7"
-generativeaiVersion = "0.9.0"
 gson = "2.10.1"
 hilt = "2.51.1"
 hiltNavigationCompose = "1.2.0"
@@ -61,7 +60,6 @@ coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coilCo
 coil-kt-coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilComposeVersion" }
 commons-text = { module = "org.apache.commons:commons-text", version.ref = "commonsText" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
-generativeai-v090 = { module = "com.google.ai.client.generativeai:generativeai", version.ref = "generativeaiVersion" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hilt" }
