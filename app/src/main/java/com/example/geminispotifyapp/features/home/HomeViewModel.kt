@@ -28,10 +28,11 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: SpotifyRepositoryImpl, private val uiEventManager: UiEventManager) : ViewModel() {
     // For Search State
-    private var _searchSimilarUiState: MutableStateFlow<SearchUiState> = MutableStateFlow(
-        SearchUiState.Initial
-    )
+    private var _searchSimilarUiState: MutableStateFlow<SearchUiState> = MutableStateFlow(SearchUiState.Initial)
     val searchSimilarUiState: StateFlow<SearchUiState> = _searchSimilarUiState.asStateFlow()
+
+    private var _searchDataUiState: MutableStateFlow<SearchUiState> = MutableStateFlow(SearchUiState.Initial)
+    val searchDataUiState: StateFlow<SearchUiState> = _searchDataUiState.asStateFlow()
 
     // For Gemini API
     private var relatedTracks = mutableListOf<String>()
@@ -51,24 +52,66 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
     private var _artistInput = MutableStateFlow("")
     val artistInput: StateFlow<String> = _artistInput.asStateFlow()
 
+    private var searchInputJob: Job? = null
+    var searchCount = 0
 
-//    fun searchTrack(trackName: String) {
-//        viewModelScope.launch {
-//            _searchTrackUiState.value = SearchUiState.Loading
-//            try {
-//                val response = spotifyRepository.searchData("track:$trackName", "track")
-//                // 處理前十個結果
+    fun searchTrack(trackName: String) {
+
+        if (_searchDataUiState.value is SearchUiState.Loading) {
+            searchInputJob?.cancel(CancellationException("New search by user."))
+            Log.d("Gemini", "New search by user. Total searchCount so far: $searchCount")
+//            viewModelScope.launch {
+//                uiEventManager.showSnackbar(SnackbarMessage.TextMessage("Previous search has successfully cancelled."))
+//            }
+//            _searchDataUiState.value = SearchUiState.Initial
+        }
+
+        searchInputJob = viewModelScope.launch {
+            ++searchCount
+            _searchDataUiState.value = SearchUiState.Loading
+            try {
+                val response = spotifyRepositoryImpl.searchData("track:$trackName", "track", 10)
+                if (response.tracks == null || response.tracks.items.isEmpty()) {
+                    _searchDataUiState.value = SearchUiState.Error("No tracks found")
+                    return@launch
+                }
+                val tracks = response.tracks.items
+                _searchDataUiState.value = SearchUiState.Success((TracksAndArtists(tracks, null)))
+            }
+            catch (e: CancellationException) {
+                Log.d("Gemini", "Search for \"$trackName\" was cancelled: ${e.message}")
+                //_searchDataUiState.value = SearchUiState.Initial
+            }
+            catch (e: Exception) {
+                uiEventManager.showSnackbar(SnackbarMessage.ExceptionMessage(e))
+                _searchDataUiState.value = SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
+            }
+        }
+    }
+
+    fun searchArtist(artistName: String) {
+        viewModelScope.launch {
+            _searchDataUiState.value = SearchUiState.Loading
+            try {
+                val response = spotifyRepositoryImpl.searchData("artist:$artistName", "artist", 10)
+                if (response.artists == null || response.artists.items.isEmpty()) {
+                    _searchDataUiState.value = SearchUiState.Error("No artists found")
+                    return@launch
+                }
+                // 處理前十個結果
 //                val artists = response.tracks!!.items
 //                    .take(10)
 //                    .flatMap { it.artists }
 //                    .map { it.name }
 //                    .distinct()//移除重複的名稱
-//                _searchTrackUiState.value = SearchUiState.Success(artists)
-//            } catch (e: Exception) {
-//                _searchTrackUiState.value = SearchUiState.Error("Search error")
-//            }
-//        }
-//    }
+                val artists = response.artists.items
+                _searchDataUiState.value = SearchUiState.Success((TracksAndArtists(null, artists)))
+            } catch (e: Exception) {
+                uiEventManager.showSnackbar(SnackbarMessage.ExceptionMessage(e))
+                _searchDataUiState.value = SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
+            }
+        }
+    }
 
     fun onTrackInputChange(newTrack: String) {
         _trackInput.value = newTrack

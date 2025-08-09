@@ -1,13 +1,20 @@
 package com.example.geminispotifyapp.init.userdata
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.geminispotifyapp.ApiError
 import com.example.geminispotifyapp.DownLoadState
 import com.example.geminispotifyapp.SpotifyRepositoryImpl
 import com.example.geminispotifyapp.auth.AuthManager
+import com.example.geminispotifyapp.domain.TokenRefreshFailedException
+import com.example.geminispotifyapp.domain.UserReAuthenticationRequiredException
+import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -15,7 +22,7 @@ import javax.inject.Inject
 class SpotifyDataViewModel @Inject constructor(private val spotifyRepositoryImpl: SpotifyRepositoryImpl, private val authManager: AuthManager) : ViewModel() {
 
     private val _downLoadState: MutableStateFlow<DownLoadState> = MutableStateFlow(DownLoadState.Initial)
-    val downLoadState: StateFlow<DownLoadState> = _downLoadState
+    val downLoadState: StateFlow<DownLoadState> = _downLoadState.asStateFlow()
 
     fun startAuthentication() {
         viewModelScope.launch {
@@ -25,11 +32,70 @@ class SpotifyDataViewModel @Inject constructor(private val spotifyRepositoryImpl
 
     // Define a function to fetch data
     fun fetchData() {
-//        if (_downLoadState.value is DownLoadState.Loading || _downLoadState.value is DownLoadState.Success) {
-//            return
-//        }
-//
-//        _downLoadState.value = DownLoadState.Loading
+        if (_downLoadState.value is DownLoadState.Loading || _downLoadState.value is DownLoadState.Success) {
+            return
+        }
+
+        _downLoadState.value = DownLoadState.Loading
+
+        viewModelScope.launch {
+            try {
+                Log.d("SpotifyDataScreen", "Fetching user profile...")
+                val userProfile = spotifyRepositoryImpl.getUserProfile()
+                Log.d("SpotifyDataScreen", "User Profile: $userProfile")
+                _downLoadState.value = DownLoadState.Success(userProfile)
+            } catch (e: ApiError) {
+                Log.d("SpotifyDataScreen", "ABABA ApiError: $e")
+                when (e) {
+                    is ApiError.BadRequest -> Log.d(
+                        "TopTracksViewModel",
+                        "BadRequest: ${e.message}"
+                    )
+
+                    is ApiError.Forbidden -> Log.d("TopTracksViewModel", "Forbidden: ${e.message}")
+                    is ApiError.HttpError -> Log.d("TopTracksViewModel", "HttpError: ${e.message}")
+                    is ApiError.NetworkConnectionError -> Log.d(
+                        "TopTracksViewModel",
+                        "NetworkConnectionError: ${e.message}"
+                    )
+
+                    is ApiError.NotFound -> Log.d("TopTracksViewModel", "NotFound: ${e.message}")
+                    is ApiError.ServerError -> Log.d(
+                        "TopTracksViewModel",
+                        "ServerError: ${e.message}"
+                    )
+                    is ApiError.TooManyRequests -> Log.d(
+                        "TopTracksViewModel",
+                        "TooManyRequests: ${e.message}"
+                    )
+
+                    is ApiError.Unauthorized -> {
+                        Log.d("TopTracksViewModel", "Unauthorized: ${e.message}")
+                        spotifyRepositoryImpl.performLogOutAndCleanUp()
+                        TODO() // Navigate to login screen.
+                    }
+
+                    else -> Log.d("TopTracksViewModel", "UnknownError of ApiError: ${e.message}")
+                }
+            } catch (e: Exception) {
+                Log.d("SpotifyDataScreen", "ABABAA ApiError: $e")
+                // 捕獲任何未被 ApiError 處理的、非預期的其他異常。
+                // 這通常是您程式碼中的 bug 或預料之外的運行時問題。
+                if (e is UserReAuthenticationRequiredException || e is TokenRefreshFailedException) {
+                    Log.d("TopTracksViewModel", "UserReAuthenticationRequiredException: ${e.message}")
+                    spotifyRepositoryImpl.performLogOutAndCleanUp()
+                    _downLoadState.value = DownLoadState.Error("ReAuthenticationRequired")
+                    //ReAuthenticationRequiredContent()
+                    //TODO() // Navigate to login screen.
+                } else {
+                    Log.e("TopTracksViewModel", "發生未預期錯誤: ${e.message}", e)
+                    _downLoadState.value =
+                        DownLoadState.Error("發生非預期錯誤，請稍後再試。")
+                }
+                // 同樣可以發送一個 SnackBar 提示，如果 GlobalUiEventPublisher 沒有處理這種通用異常的話
+                // globalUiEventPublisher.publishMessage("發生非預期錯誤。")
+            }
+        }
 //
 //        viewModelScope.launch {
 //            try {

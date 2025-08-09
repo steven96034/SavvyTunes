@@ -143,3 +143,17 @@ data class SearchResponse(
     val albums: Albums?,
     val artists: Artists?
 )
+
+data class UserProfileResponse(
+    val country: String,
+    val displayName: String,
+    val email: String,
+    val explicitContent: Map<String, Boolean>,
+    val externalUrls: Map<String, String>,
+    val followers: Map<String, Int>,
+    val id: String,
+    val images: List<SpotifyImage>,
+    val product: String,
+    val type: String,
+    val uri: String,
+)

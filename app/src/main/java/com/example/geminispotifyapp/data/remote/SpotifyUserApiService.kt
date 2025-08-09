@@ -4,6 +4,7 @@ import com.example.geminispotifyapp.data.RecentlyPlayedResponse
 import com.example.geminispotifyapp.data.SearchResponse
 import com.example.geminispotifyapp.data.TopArtistsResponse
 import com.example.geminispotifyapp.data.TopTracksResponse
+import com.example.geminispotifyapp.data.UserProfileResponse
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Header
@@ -46,4 +47,9 @@ interface SpotifyUserApiService {
         @Query("offset") offset: Int = 0,
         @Query("include_external") includeExternal: String? = null
     ): SearchResponse
+
+    @GET("v1/me")
+    suspend fun getUserProfile(
+        @Header("Authorization") authorization: String
+    ): UserProfileResponse
 }

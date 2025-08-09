@@ -97,6 +97,43 @@ fun NetworkErrorContent(onRetry: () -> Unit) {
 }
 
 @Composable
+fun ReAuthenticationRequiredContent(onRetry: () -> Unit) {
+    Box(Modifier
+        .fillMaxSize()
+        .padding(4.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Failed to refresh token, re-authentication required",
+                color = Color.Red
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Please re-login to your Spotify account.",
+                style = MaterialTheme.typography.labelMedium
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onRetry) {
+                Row {
+                    Text("Re-Authenticate to Spotify")
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Image(
+                        painter = painterResource(R.drawable.primary_logo_green_rgb),
+                        contentDescription = null,
+                        modifier = Modifier.height(20.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun ErrorContent(errorMessage: String?, onRetry: () -> Unit) {
     Box(Modifier
         .fillMaxSize()
@@ -131,6 +168,12 @@ fun AuthenticationExpiredContentPreview() {
 @Composable
 fun NetworkErrorContentPreview() {
     NetworkErrorContent(onRetry = {})
+}
+
+@Preview
+@Composable
+fun ReAuthenticationRequiredContentPreview() {
+    ReAuthenticationRequiredContent(onRetry = {})
 }
 
 @Preview

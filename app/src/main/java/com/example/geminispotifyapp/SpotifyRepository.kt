@@ -5,6 +5,7 @@ import com.example.geminispotifyapp.data.RecentlyPlayedResponse
 import com.example.geminispotifyapp.data.SearchResponse
 import com.example.geminispotifyapp.data.TopArtistsResponse
 import com.example.geminispotifyapp.data.TopTracksResponse
+import com.example.geminispotifyapp.data.UserProfileResponse
 import retrofit2.Response
 
 interface SpotifyRepository {
@@ -53,4 +54,6 @@ interface SpotifyRepository {
         clientId: String,
         codeVerifier: String
     ): SpotifyTokenResponse
+
+    suspend fun getUserProfile(): UserProfileResponse
 }

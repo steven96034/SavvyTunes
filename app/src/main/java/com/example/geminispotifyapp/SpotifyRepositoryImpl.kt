@@ -6,6 +6,7 @@ import com.example.geminispotifyapp.data.RecentlyPlayedResponse
 import com.example.geminispotifyapp.data.SearchResponse
 import com.example.geminispotifyapp.data.TopArtistsResponse
 import com.example.geminispotifyapp.data.TopTracksResponse
+import com.example.geminispotifyapp.data.UserProfileResponse
 import com.example.geminispotifyapp.data.local.AppDatabase
 import com.example.geminispotifyapp.data.remote.SpotifyApiService
 import com.example.geminispotifyapp.data.remote.SpotifyUserApiService
@@ -264,6 +265,16 @@ class SpotifyRepositoryImpl @Inject constructor(
             clientId = clientId,
             codeVerifier = codeVerifier
         )
+    }
+
+    override suspend fun getUserProfile(): UserProfileResponse {
+        try {
+            val authHeader = getAuthorizationHeader()
+            return spotifyUserApiService.getUserProfile(authHeader)
+        } catch (e: Exception) {
+            Log.d("SpotifyData", "Failed to get user profile $e")
+            throw e
+        }
     }
 
     companion object {
