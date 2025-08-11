@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,12 +14,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -38,10 +44,13 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.geminispotifyapp.SearchUiState
 import com.example.geminispotifyapp.TracksAndArtists
 import com.example.geminispotifyapp.data.SpotifyArtist
@@ -146,33 +155,12 @@ fun HomePage(
                 )
             }
         }
-//        item {
-//            //val suggestedTracks by viewModel.suggestedTracks.collectAsState()
-//            var suggestedTracks: List<SpotifyTrack>? = null
-//            if (suggestedUiState is SearchUiState.Success)
-//                suggestedTracks = suggestedUiState.data.tracks
-//            if (suggestedTracks?.isNotEmpty() == true && trackInput.isNotBlank()) {
-//                LazyColumn (modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
-//                    items(suggestedTracks.size) { index ->
-//                        val track = suggestedTracks[index]
-//                        TrackSuggestionItem(track = track) { selectedTrack ->
-//                            onTrackInputChange(selectedTrack.name)
-//                            selectedSuggestedTrack = selectedTrack
-//                            // Optionally, you can also fill the artist name if available
-//                            // onArtistInputChange(selectedTrack.artists.firstOrNull()?.name ?: "")
-//                            // TODO: viewModel.clearSuggestions() // Clear suggestions after selection
-//                        }
-//                    }
-//                }
-//            }
-//        }
-        // val suggestedTracks by viewModel.suggestedTracks.collectAsState()
         var suggestedTracks: List<SpotifyTrack>? = null
         if (suggestedUiState is SearchUiState.Success) {
             suggestedTracks = suggestedUiState.data.tracks
         }
 
-// 檢查 suggestedTracks 是否有內容並且輸入框不是空的
+        // 檢查 suggestedTracks 是否有內容並且輸入框不是空的
         if (suggestedTracks?.isNotEmpty() == true && trackInput.isNotBlank() && !hasSelectedTrackAndInputDoesNotChange) {
             // 直接將 suggestedTracks 的項目添加到外部 LazyColumn
             items(
@@ -221,34 +209,26 @@ fun HomePage(
         item {
             selectedSuggestedTrack?.let { track ->
                 Spacer(Modifier.padding(8.dp))
-                Text("Selected Track Details:", style = MaterialTheme.typography.titleMedium)
-                TrackItem(index = 0, track = track) { onTrackClick(it) }// Assuming TrackItem can display a single track
+                Text("Selected Track", style = MaterialTheme.typography.headlineSmall)
+                TrackItem(index = 0, track = track) { onTrackClick(it) }
             }
         }
         //item {
         when (uiState) {
             is SearchUiState.Loading -> {
-                //Text("Loading")
                 item {
                     LoadingContent()
                 }
             }
 
             is SearchUiState.Success -> {
-//                item {
-//                    Text(
-//                        "Success",
-//                        fontSize = MaterialTheme.typography.headlineMedium.fontSize,
-//                        textAlign = TextAlign.Center
-//                    )
-//                }
                 val artists = uiState.data.artists
                 val tracks = uiState.data.tracks
                 item {
-                    Spacer(Modifier.padding(8.dp))
+                    Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
                     Text(
                         "Similar Tracks",
-                        fontSize = MaterialTheme.typography.headlineSmall.fontSize
+                        style = MaterialTheme.typography.headlineSmall
                     )
                 }
                 if (tracks != null) {
@@ -264,12 +244,11 @@ fun HomePage(
                 } else {
                     item { Text("No tracks found") }
                 }
-                //item { HorizontalDivider(modifier = Modifier.padding(8.dp)) }
                 item {
-                    Spacer(Modifier.padding(8.dp))
+                    Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
                     Text(
                         "Similar Artists",
-                        fontSize = MaterialTheme.typography.headlineSmall.fontSize,
+                        style = MaterialTheme.typography.headlineSmall,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -349,6 +328,11 @@ fun TrackSuggestionItem(
     onFlagSet: (Boolean) -> Unit,
     function: () -> Unit
 ) {
+    val thumbnailUrl =
+        if (track.album.images.size >= 2)
+            track.album.images[1].url
+        else
+            track.album.images.firstOrNull()?.url
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -362,12 +346,32 @@ fun TrackSuggestionItem(
             modifier = Modifier.padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // TODO:　Use lower quality image to improve performance
-            AsyncImage(
-                model = track.album.images.firstOrNull()?.url,
-                contentDescription = "Album Art",
-                modifier = Modifier.padding(end = 8.dp)
-            )
+            if (thumbnailUrl != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(thumbnailUrl) // Use thumbnail if available, otherwise fallback to larger image
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Album Image",
+                    modifier = Modifier.padding(end = 8.dp).size(108.dp),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            else {
+                Box(
+                    modifier = Modifier
+                        .size(108.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant), // Placeholder background
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.Album,
+                        contentDescription = "No album image available",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             Column {
                 Text(track.name, style = MaterialTheme.typography.bodyLarge)
                 Text(

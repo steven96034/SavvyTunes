@@ -118,17 +118,3 @@ enum class Period {
     MEDIUM_TERM,
     LONG_TERM
 }
-
-/**
- *  Set a modifier for onTap to hide keyboard and clear focus.
- */
-fun Modifier.autoCloseKeyboardClearFocus(): Modifier = composed {
-    val keyBoardController = LocalSoftwareKeyboardController.current
-    val focusManager = LocalFocusManager.current
-    pointerInput(this) {
-        detectTapGestures(onTap = {
-            keyBoardController?.hide()
-            focusManager.clearFocus()
-        })
-    }
-}

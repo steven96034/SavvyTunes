@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,7 +66,6 @@ import com.example.geminispotifyapp.data.PlayHistoryObject
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.features.home.HomeScreen
-import com.example.geminispotifyapp.features.userdatadetail.autoCloseKeyboardClearFocus
 import com.example.geminispotifyapp.features.userdatadetail.recentlyplayed.RecentlyPlayedScreen
 import com.example.geminispotifyapp.features.userdatadetail.recentlyplayed.TrackHistoryDetail
 import com.example.geminispotifyapp.features.userdatadetail.topartists.ArtistDetail
@@ -561,6 +561,20 @@ fun BottomNavigation(navController: NavController) {
 //        ) {
 //            Icon(Icons.Default.FavoriteBorder, "recentlyPlayed", tint = SpotifyGreen)
 //        }
+    }
+}
+
+/**
+ *  Set a modifier for onTap to hide keyboard and clear focus.
+ */
+fun Modifier.autoCloseKeyboardClearFocus(): Modifier = composed {
+    val keyBoardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    pointerInput(this) {
+        detectTapGestures(onTap = {
+            keyBoardController?.hide()
+            focusManager.clearFocus()
+        })
     }
 }
 

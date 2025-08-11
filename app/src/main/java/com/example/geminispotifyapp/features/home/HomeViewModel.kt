@@ -236,7 +236,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
     private lateinit var response: GenerateContentResponse
     private var searchJob: Job? = null
     fun searchSimilarTracksAndArtists(track: String, artist: String) {
-
+        val startTime = System.currentTimeMillis()
         // Check if the search is already in progress, if yes, then return and display initial.
         if (_searchSimilarUiState.value is SearchUiState.Loading) {
             searchJob?.cancel(CancellationException("Cancel search by user."))
@@ -254,16 +254,18 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
             try {
                 val numOfSearch = FIND_SIMILAR_NUM
                 withContext(Dispatchers.IO) {
+                    // Song name and album name for artists list is redundant for now, more precise for future.
                     response = GeminiApi().askGemini(
                         """Please list $numOfSearch music tracks of related genres of $track##$artist, where the format mentioned is: Song Name##Artists Name.
                                 List only one related music track in each row using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,                               
                                     if there is more than one artist, just separate them with comma, also do not use blank row to separate each track(only use one row for each track). 
                                 Also, list most related $numOfSearch music artists/band name of the song genre mentioned before, while followed by the famous song name and its album of the artists/band. 
-                                List only one related music artist name in each row using format: Artists Name##Song Name##Album Name, also do not use blank row to separate each artist(only use one row for each artist)
+                                List only one related music artist name in each row using format: Artists Name##Song Name##Album Name, responding the name of artists by English, also do not use blank row to separate each artist(only use one row for each artist)
                                 Other response rule: Do not use No., and do not respond any other statement, neither.
                                     Use one blank row to separate the response of related music tracks and the response of related music artists."""
                     )
                     Log.d("Gemini", "response: ${response.text}")
+                    Log.d("Gemini", "Gemini response takes time: ${(System.currentTimeMillis() - startTime)}ms")
                     response.text?.trimIndent()?.let { outputContent ->
                         Log.d("Gemini", "trimmed response: $outputContent")
                         relatedArtists.clear()
@@ -376,7 +378,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                     Log.d("Gemini", "Search was cancelled and UI state reset to Initial in finally.")
                 }
             }
-            Log.d("Gemini", "Search job finished.")
+            Log.d("Gemini", "Search job finished. Overall takes time: ${(System.currentTimeMillis() - startTime)}ms")
         }
     }
 
