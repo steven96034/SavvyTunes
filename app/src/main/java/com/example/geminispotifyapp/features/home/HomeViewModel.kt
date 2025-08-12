@@ -16,6 +16,7 @@ import com.google.ai.client.generativeai.type.GenerateContentResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,25 +53,40 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
     private var _artistInput = MutableStateFlow("")
     val artistInput: StateFlow<String> = _artistInput.asStateFlow()
 
-    private var searchInputJob: Job? = null
-    var searchCount = 0
+    private var _selectedSuggestedTrack: MutableStateFlow<SpotifyTrack?> = MutableStateFlow(null)
+    val selectedSuggestedTrack: StateFlow<SpotifyTrack?> = _selectedSuggestedTrack.asStateFlow()
 
-    fun searchTrack(trackName: String) {
+    private var _hasSelectedTrackAndInputDoesNotChange: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val hasSelectedTrackAndInputDoesNotChange: StateFlow<Boolean> = _hasSelectedTrackAndInputDoesNotChange.asStateFlow()
+
+    private var _selectedSuggestedArtist: MutableStateFlow<SpotifyArtist?> = MutableStateFlow(null)
+    val selectedSuggestedArtist: StateFlow<SpotifyArtist?> = _selectedSuggestedArtist.asStateFlow()
+
+    private var _hasSelectedArtistAndInputDoesNotChange: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val hasSelectedArtistAndInputDoesNotChange: StateFlow<Boolean> = _hasSelectedArtistAndInputDoesNotChange.asStateFlow()
+
+    private var searchInputJob: Job? = null
+    private var searchCount = 0
+    // Debounce time in milliseconds, to prevent multiple requests being sent too quickly
+    private val debouncePeriod: Long = 300L
+
+    fun searchTrack(searchName: String, byType: String = "track") {
+        if (searchName.isBlank()) return
 
         if (_searchDataUiState.value is SearchUiState.Loading) {
             searchInputJob?.cancel(CancellationException("New search by user."))
             Log.d("Gemini", "New search by user. Total searchCount so far: $searchCount")
-//            viewModelScope.launch {
-//                uiEventManager.showSnackbar(SnackbarMessage.TextMessage("Previous search has successfully cancelled."))
-//            }
-//            _searchDataUiState.value = SearchUiState.Initial
         }
 
         searchInputJob = viewModelScope.launch {
+            delay(debouncePeriod)
             ++searchCount
             _searchDataUiState.value = SearchUiState.Loading
             try {
-                val response = spotifyRepositoryImpl.searchData("track:$trackName", "track", 10)
+                var query = ""
+                if (byType == "track") query = "track:\"$searchName\""
+                else if (byType == "artist") query = "artist:\"$searchName\""
+                val response = spotifyRepositoryImpl.searchData(query, "track", 10)
                 if (response.tracks == null || response.tracks.items.isEmpty()) {
                     _searchDataUiState.value = SearchUiState.Error("No tracks found")
                     return@launch
@@ -79,7 +95,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                 _searchDataUiState.value = SearchUiState.Success((TracksAndArtists(tracks, null)))
             }
             catch (e: CancellationException) {
-                Log.d("Gemini", "Search for \"$trackName\" was cancelled: ${e.message}")
+                Log.d("Gemini", "Search for \"$searchName\" was cancelled: ${e.message}")
                 //_searchDataUiState.value = SearchUiState.Initial
             }
             catch (e: Exception) {
@@ -90,6 +106,8 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
     }
 
     fun searchArtist(artistName: String) {
+        if (artistName.isBlank()) return
+
         viewModelScope.launch {
             _searchDataUiState.value = SearchUiState.Loading
             try {
@@ -119,6 +137,20 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
 
     fun onArtistInputChange(newArtist: String) {
         _artistInput.value = newArtist
+    }
+
+    fun onSelectedSuggestedTrackChange(track: SpotifyTrack?) {
+        _selectedSuggestedTrack.value = track
+    }
+    fun onHasSelectedTrackAndInputDoesNotChangeSet(set: Boolean) {
+        _hasSelectedTrackAndInputDoesNotChange.value = set
+    }
+    fun onSelectedSuggestedArtistChange(artist: SpotifyArtist?) {
+        _selectedSuggestedArtist.value = artist
+    }
+
+    fun onHasSelectedArtistAndInputDoesNotChangeSet(set: Boolean) {
+        _hasSelectedArtistAndInputDoesNotChange.value = set
     }
 
 
@@ -305,7 +337,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                                 val trackName = parts[0].trim()
                                 val albumName = parts[1].trim()
                                 val artistName = parts[2].trim()
-                                Log.d("Gemini", "track: $trackName, album: $albumName, artist: $artistName")
+                                //Log.d("Gemini", "track: $trackName, album: $albumName, artist: $artistName")
                                 try {
                                     searchForSpecificTrack(trackName, albumName, artistName)
                                 } catch (e: Exception) {
@@ -326,7 +358,6 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                                 val albumName = parts[2].trim()
                                 Log.d("Gemini", "artist: $artistName, track: $trackName, album: $albumName")
                                 try {
-                                    // TODO: Next Test...
                                     searchForSpecificArtists(artistName)
                                 } catch (e: Exception) {
                                     Log.e("Gemini", "Error searching for specific track: $e")
@@ -378,22 +409,12 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                     Log.d("Gemini", "Search was cancelled and UI state reset to Initial in finally.")
                 }
             }
-            Log.d("Gemini", "Search job finished. Overall takes time: ${(System.currentTimeMillis() - startTime)}ms")
+            Log.d("Gemini", "Search job finished. Overall time: ${(System.currentTimeMillis() - startTime)}ms")
         }
     }
 
 
     // For further development.
-    /*
-                    val response = generativeModel.generateContent(
-                    content {
-                        text("""請推薦5個與 $artist 風格相似的音樂家或樂團。
-                            請只列出名字，每行一個，不要加入編號或其他說明。""")
-                    }
-                )
-                text("""Please list the music genres of $artist.
-                            List only one genre in each row, and do not use No. or other statement.""")
- */
 
     //    // For Spotify API
 
@@ -450,14 +471,3 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
 //        }
 //    }
 }
-
-//class HomePageViewModelFactory(private val spotifyRepository: SpotifyRepository) : ViewModelProvider.Factory {
-//    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-//        if (modelClass.isAssignableFrom(HomePageViewModel::class.java)) {
-//            @Suppress("Unchecked_cast")
-//            return HomePageViewModel(spotifyRepository) as T
-//        }
-//        throw IllegalArgumentException("Unknown ViewModel class")
-//
-//    }
-//}

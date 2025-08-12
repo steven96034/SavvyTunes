@@ -154,7 +154,7 @@ fun TopTrackContent(uiState: FetchResult<TopTrackData>, onTrackClick: (SpotifyTr
                 }
 
                 itemsIndexed(currentTopTracks) { index, track ->
-                    TrackItem(index + 1, track) { //onTrackSelected = it
+                    TrackItem(index + 1, track) {
                         onTrackClick(it)
                     }
                     if (index < currentTopTracks.size - 1) {

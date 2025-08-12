@@ -32,7 +32,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
@@ -40,12 +39,13 @@ import androidx.compose.ui.platform.LocalFocusManager
 import com.example.geminispotifyapp.R
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -61,14 +61,19 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(onArtistClick: (SpotifyArtist) -> Unit, onTrackClick: (SpotifyTrack) -> Unit, viewModel: HomeViewModel = hiltViewModel()) { // Use hiltViewModel() to inject the ViewModel...
-    val uiState by viewModel.searchSimilarUiState.collectAsState()
+    val similarUiState by viewModel.searchSimilarUiState.collectAsState()
     val trackInput by viewModel.trackInput.collectAsState()
     val artistInput by viewModel.artistInput.collectAsState()
+
     val suggestedUiState by viewModel.searchDataUiState.collectAsState()
+    val selectedSuggestedTrack by viewModel.selectedSuggestedTrack.collectAsState()
+    val selectedSuggestedArtist by viewModel.selectedSuggestedArtist.collectAsState()
+    val hasSelectedTrackAndInputDoesNotChange by viewModel.hasSelectedTrackAndInputDoesNotChange.collectAsState()
+    val hasSelectedArtistAndInputDoesNotChange by viewModel.hasSelectedArtistAndInputDoesNotChange.collectAsState()
 
 
     HomePage(
-        uiState,
+        similarUiState,
         suggestedUiState,
         trackInput,
         artistInput,
@@ -76,8 +81,18 @@ fun HomeScreen(onArtistClick: (SpotifyArtist) -> Unit, onTrackClick: (SpotifyTra
         onTrackClick,
         { newTrack ->
             viewModel.onTrackInputChange(newTrack)
-            viewModel.searchTrack(newTrack) },
-        { newArtist -> viewModel.onArtistInputChange(newArtist) },
+            viewModel.searchTrack(newTrack, "track") },
+        { newArtist ->
+            viewModel.onArtistInputChange(newArtist)
+            viewModel.searchTrack(newArtist, "artist") }, //TODO: more search for artist
+        selectedSuggestedTrack,
+        selectedSuggestedArtist,
+        { track -> viewModel.onSelectedSuggestedTrackChange(track) },
+        { artist -> viewModel.onSelectedSuggestedArtistChange(artist) },
+        hasSelectedTrackAndInputDoesNotChange,
+        { set -> viewModel.onHasSelectedTrackAndInputDoesNotChangeSet(set) },
+        hasSelectedArtistAndInputDoesNotChange,
+        { set -> viewModel.onHasSelectedArtistAndInputDoesNotChangeSet(set) },
         { track, artist -> viewModel.searchSimilarTracksAndArtists(track, artist) }
     )
 }
@@ -92,26 +107,26 @@ fun HomePage(
     onTrackClick: (SpotifyTrack) -> Unit,
     onTrackInputChange: (String) -> Unit,
     onArtistInputChange: (String) -> Unit,
+    selectedSuggestedTrack: SpotifyTrack?,
+    selectedSuggestedArtist: SpotifyArtist?,
+    onSelectedSuggestedTrackChange: (SpotifyTrack?) -> Unit,
+    onSelectedSuggestedArtistChange: (SpotifyArtist?) -> Unit,
+    hasSelectedTrackAndInputDoesNotChange: Boolean,
+    onHasSelectedTrackAndInputDoesNotChangeSet: (Boolean) -> Unit,
+    hasSelectedArtistAndInputDoesNotChange: Boolean,
+    onHasSelectedArtistAndInputDoesNotChangeSet: (Boolean) -> Unit,
     searchSimilarTracksAndArtists: (String, String) -> Unit
 ) {
-    //val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
-    // TODO: Move to viewmodel
-    var selectedSuggestedTrack by remember { mutableStateOf<SpotifyTrack?>(null) }
-    var hasSelectedTrackAndInputDoesNotChange by remember { mutableStateOf(false) }
 
     HomeNavigation()
 
-
-    //Row (horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth().padding(6.dp, 12.dp).padding(paddingValues).verticalScroll(scrollState)) {
     LazyColumn(
         verticalArrangement = Arrangement.Top,
         modifier = Modifier
             .fillMaxSize()
             .padding(6.dp, 0.dp, 6.dp, 12.dp)
-            //.padding(paddingValues)
-        //.verticalScroll(scrollState)
     ) {
         item {
             Image(
@@ -124,7 +139,7 @@ fun HomePage(
         }
         item {
             Text(
-                text = "This demo App takes usage of user data from Spotify, " +
+                text = "This demo App takes usage of user data from Spotify,\n" +
                         "there may be some places that haven't satisfied Spotify Design Guidelines or Spotify Developer Terms!",
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.padding(4.dp)
@@ -139,7 +154,7 @@ fun HomePage(
                     value = trackInput,
                     onValueChange = {
                         onTrackInputChange(it)
-                        hasSelectedTrackAndInputDoesNotChange = false },
+                        onHasSelectedTrackAndInputDoesNotChangeSet(false) },
                     label = { Text("Input Song Name") },
                     modifier = Modifier
                         .weight(1f)
@@ -147,8 +162,10 @@ fun HomePage(
                 )
                 OutlinedTextField(
                     value = artistInput,
-                    onValueChange = { onArtistInputChange(it) },
-                    label = { Text("Input Artist Name") }, //選擇樂團或歌手名稱
+                    onValueChange = {
+                        onArtistInputChange(it)
+                        onHasSelectedArtistAndInputDoesNotChangeSet(false)},
+                    label = { Text("Input Artist Name") },
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 4.dp)
@@ -160,30 +177,28 @@ fun HomePage(
             suggestedTracks = suggestedUiState.data.tracks
         }
 
-        // 檢查 suggestedTracks 是否有內容並且輸入框不是空的
-        if (suggestedTracks?.isNotEmpty() == true && trackInput.isNotBlank() && !hasSelectedTrackAndInputDoesNotChange) {
-            // 直接將 suggestedTracks 的項目添加到外部 LazyColumn
+        if (suggestedTracks?.isNotEmpty() == true &&
+            ((trackInput.isNotBlank() && !hasSelectedTrackAndInputDoesNotChange) ||
+                    (artistInput.isNotBlank() && !hasSelectedArtistAndInputDoesNotChange))
+        ) {
             items(
-                items = suggestedTracks, // 直接傳遞列表
-                key = { track -> track.id } // 可選，但建議為每個項目提供唯一的 key 以提高性能
-            )
-            { track -> // 每個 'track' 就是 suggestedTracks 中的一個元素
-                // TrackSuggestionItem 現在是外部 LazyColumn 的一個直接子項目
-                // 您可能需要調整 TrackSuggestionItem 的 Modifier，例如移除外部 padding，
-                // 因為它現在由外部 LazyColumn 的 item spacing 控制
+                items = suggestedTracks,
+                key = { track -> track.id }
+            ) { track ->
                 TrackSuggestionItem(
                     track = track,
-                    onTrackSelected = { selectedTrack -> onTrackInputChange(selectedTrack.name); selectedSuggestedTrack = selectedTrack
+                    onTrackSelected = { selectedTrack ->
+                        onTrackInputChange(selectedTrack.name)
+                        onSelectedSuggestedTrackChange(selectedTrack)
                         onArtistInputChange(selectedTrack.artists.firstOrNull()?.name ?: "")
-                    },
-                    onFlagSet = { hasSelectedTrackAndInputDoesNotChange = it }
-                ) {
-                    // Optionally, you can also fill the artist name if available
-                    //onArtistInputChange(selectedTrack.artists.firstOrNull()?.name ?: "")
-                    // TODO: viewModel.clearSuggestions() // Clear suggestions after selection
-                }
+                        onHasSelectedTrackAndInputDoesNotChangeSet(true)
+                        onHasSelectedArtistAndInputDoesNotChangeSet(true)
+                        focusManager.clearFocus()
+                    }
+                )
             }
         }
+
         item {
             Button(
                 onClick = {
@@ -213,7 +228,6 @@ fun HomePage(
                 TrackItem(index = 0, track = track) { onTrackClick(it) }
             }
         }
-        //item {
         when (uiState) {
             is SearchUiState.Loading -> {
                 item {
@@ -265,7 +279,6 @@ fun HomePage(
                 } else {
                     item { Text("No artists found") }
                 }
-                //}
             }
 
             is SearchUiState.Error -> {
@@ -324,9 +337,7 @@ fun HomePage(
 @Composable
 fun TrackSuggestionItem(
     track: SpotifyTrack,
-    onTrackSelected: (SpotifyTrack) -> Unit,
-    onFlagSet: (Boolean) -> Unit,
-    function: () -> Unit
+    onTrackSelected: (SpotifyTrack) -> Unit
 ) {
     val thumbnailUrl =
         if (track.album.images.size >= 2)
@@ -339,7 +350,6 @@ fun TrackSuggestionItem(
             .padding(vertical = 4.dp)
             .clickable {
                 onTrackSelected(track)
-                onFlagSet(true)
             }
     ) {
         Row(
@@ -372,11 +382,33 @@ fun TrackSuggestionItem(
                     )
                 }
             }
-            Column {
-                Text(track.name, style = MaterialTheme.typography.bodyLarge)
+//            Column {
+//                Text(track.name, style = MaterialTheme.typography.bodyLarge)
+//                Text(
+//                    track.artists.joinToString(separator = ", ") { it.name },
+//                    style = MaterialTheme.typography.bodyMedium
+//                )
+//            }
+
+            // Song Info
+            Column (
+                modifier = Modifier.padding(start = 4.dp)
+            ) {
                 Text(
-                    track.artists.joinToString(separator = ", ") { it.name },
-                    style = MaterialTheme.typography.bodyMedium
+                    text = track.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = track.artists.joinToString(", ") { it.name },
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = track.album.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.Gray
                 )
             }
         }
@@ -421,9 +453,5 @@ fun HomePagePreview() {
     val state = SearchUiState.Success(TracksAndArtists(listOf(), listOf()))
     val suggestedState = SearchUiState.Success(TracksAndArtists(listOf(), listOf()))
 
-    fun mockSearchSimilar() {
-        // TODO: mock data
-    }
-
-    HomePage(state, suggestedState, "", "", {}, {}, {}, {}, { _, _ -> mockSearchSimilar() })
+    HomePage(state, suggestedState, "", "", {}, {}, {}, {}, null, null, {}, {}, false, {}, false, {}, { _, _ -> /* Mock searchSimilarTracksAndArtists */})
 }

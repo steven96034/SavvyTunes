@@ -42,53 +42,52 @@ class SpotifyDataViewModel @Inject constructor(private val spotifyRepositoryImpl
             try {
                 Log.d("SpotifyDataScreen", "Fetching user profile...")
                 val userProfile = spotifyRepositoryImpl.getUserProfile()
-                Log.d("SpotifyDataScreen", "User Profile: $userProfile")
                 _downLoadState.value = DownLoadState.Success(userProfile)
             } catch (e: ApiError) {
                 Log.d("SpotifyDataScreen", "ABABA ApiError: $e")
                 when (e) {
                     is ApiError.BadRequest -> Log.d(
-                        "TopTracksViewModel",
+                        "SpotifyDataScreen",
                         "BadRequest: ${e.message}"
                     )
 
-                    is ApiError.Forbidden -> Log.d("TopTracksViewModel", "Forbidden: ${e.message}")
-                    is ApiError.HttpError -> Log.d("TopTracksViewModel", "HttpError: ${e.message}")
+                    is ApiError.Forbidden -> Log.d("SpotifyDataScreen", "Forbidden: ${e.message}")
+                    is ApiError.HttpError -> Log.d("SpotifyDataScreen", "HttpError: ${e.message}")
                     is ApiError.NetworkConnectionError -> Log.d(
-                        "TopTracksViewModel",
+                        "SpotifyDataScreen",
                         "NetworkConnectionError: ${e.message}"
                     )
 
-                    is ApiError.NotFound -> Log.d("TopTracksViewModel", "NotFound: ${e.message}")
+                    is ApiError.NotFound -> Log.d("SpotifyDataScreen", "NotFound: ${e.message}")
                     is ApiError.ServerError -> Log.d(
-                        "TopTracksViewModel",
+                        "SpotifyDataScreen",
                         "ServerError: ${e.message}"
                     )
                     is ApiError.TooManyRequests -> Log.d(
-                        "TopTracksViewModel",
+                        "SpotifyDataScreen",
                         "TooManyRequests: ${e.message}"
                     )
 
                     is ApiError.Unauthorized -> {
-                        Log.d("TopTracksViewModel", "Unauthorized: ${e.message}")
+                        Log.d("SpotifyDataScreen", "Unauthorized: ${e.message}")
                         spotifyRepositoryImpl.performLogOutAndCleanUp()
                         TODO() // Navigate to login screen.
                     }
 
-                    else -> Log.d("TopTracksViewModel", "UnknownError of ApiError: ${e.message}")
+                    else -> Log.d("SpotifyDataScreen", "UnknownError of ApiError: ${e.message}")
                 }
             } catch (e: Exception) {
                 Log.d("SpotifyDataScreen", "ABABAA ApiError: $e")
                 // 捕獲任何未被 ApiError 處理的、非預期的其他異常。
                 // 這通常是您程式碼中的 bug 或預料之外的運行時問題。
                 if (e is UserReAuthenticationRequiredException || e is TokenRefreshFailedException) {
-                    Log.d("TopTracksViewModel", "UserReAuthenticationRequiredException: ${e.message}")
+                    Log.d("SpotifyDataScreen", "UserReAuthenticationRequiredException: ${e.message}")
                     spotifyRepositoryImpl.performLogOutAndCleanUp()
                     _downLoadState.value = DownLoadState.Error("ReAuthenticationRequired")
                     //ReAuthenticationRequiredContent()
                     //TODO() // Navigate to login screen.
                 } else {
-                    Log.e("TopTracksViewModel", "發生未預期錯誤: ${e.message}", e)
+                    Log.e("SpotifyDataScreen", "發生未預期錯誤: ${e.message}", e)
                     _downLoadState.value =
                         DownLoadState.Error("發生非預期錯誤，請稍後再試。")
                 }

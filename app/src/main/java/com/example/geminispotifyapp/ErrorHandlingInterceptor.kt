@@ -64,6 +64,17 @@ class ErrorHandlingInterceptor @Inject constructor(
             originalResponse = chain.proceed(request)
         }
         catch (e: IOException) {
+            // Strategy 1: Check the type and message of the exception (not always reliable, but common)
+            if (e is java.net.SocketException && e.message?.contains("Socket closed", ignoreCase = true) == true ||
+                e.message?.contains("CANCEL", ignoreCase = true) == true || // OkHttp 有時會在訊息中包含 "CANCEL"
+                e.message?.contains("Socket operation on nonsocket", ignoreCase = true) == true // 有時在取消時出現
+            ) {
+                // These above mentioned usually indicate that the request was canceled by the user, but not the real problem of network connection
+                Log.i("ErrorHandlingInterceptor", "IOException likely due to request cancellation: ${e.message}")
+                // Under this scenario, we should rethrow the original IOException to let the ViewModel's coroutine catch the CancellationException
+                // Or, if we are sure that this is a cancellation, we should not throw the original IOException and not display the error message to the user
+                throw e
+            }
             // Catch network connection errors (e.g., no network, DNS resolution failed)
             val networkError = ApiError.NetworkConnectionError(e.message ?: "Network connection error")
             emitApiErrorEvent(networkError)

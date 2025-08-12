@@ -146,9 +146,12 @@ data class SearchResponse(
 
 data class UserProfileResponse(
     val country: String,
+    @SerializedName("display_name")
     val displayName: String,
     val email: String,
+    @SerializedName("explicit_content")
     val explicitContent: Map<String, Boolean>,
+    @SerializedName("external_urls")
     val externalUrls: Map<String, String>,
     val followers: Map<String, Int>,
     val id: String,
