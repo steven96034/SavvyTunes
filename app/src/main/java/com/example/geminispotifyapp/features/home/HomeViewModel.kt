@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.SearchUiState
 import com.example.geminispotifyapp.SpotifyRepositoryImpl
-import com.example.geminispotifyapp.TracksAndArtists
+import com.example.geminispotifyapp.SpotifyDataList
 import com.example.geminispotifyapp.data.SearchResponse
 import com.example.geminispotifyapp.data.SharedData.FIND_SIMILAR_NUM
 import com.example.geminispotifyapp.data.SpotifyArtist
@@ -53,6 +53,9 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
     private var _artistInput = MutableStateFlow("")
     val artistInput: StateFlow<String> = _artistInput.asStateFlow()
 
+    private var _dataInput = MutableStateFlow("")
+    val dataInput: StateFlow<String> = _dataInput.asStateFlow()
+
     private var _selectedSuggestedTrack: MutableStateFlow<SpotifyTrack?> = MutableStateFlow(null)
     val selectedSuggestedTrack: StateFlow<SpotifyTrack?> = _selectedSuggestedTrack.asStateFlow()
 
@@ -65,12 +68,46 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
     private var _hasSelectedArtistAndInputDoesNotChange: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val hasSelectedArtistAndInputDoesNotChange: StateFlow<Boolean> = _hasSelectedArtistAndInputDoesNotChange.asStateFlow()
 
+    private var _hasSelectedDataAndInputDoesNotChange: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val hasSelectedDataAndInputDoesNotChange: StateFlow<Boolean> = _hasSelectedDataAndInputDoesNotChange.asStateFlow()
+
     private var searchInputJob: Job? = null
     private var searchCount = 0
     // Debounce time in milliseconds, to prevent multiple requests being sent too quickly
     private val debouncePeriod: Long = 300L
 
-    fun searchTrack(searchName: String, byType: String = "track") {
+    enum class Type {
+        TRACK,
+        ARTIST,
+        ALBUM,
+        ALLMENTIONED
+    }
+    fun onTrackInputChange(newTrack: String) {
+        _trackInput.value = newTrack
+    }
+    fun onArtistInputChange(newArtist: String) {
+        _artistInput.value = newArtist
+    }
+    fun onDataInputChange(newData: String) {
+        _dataInput.value = newData
+    }
+    fun onSelectedSuggestedTrackChange(track: SpotifyTrack?) {
+        _selectedSuggestedTrack.value = track
+    }
+    fun onHasSelectedTrackAndInputDoesNotChangeSet(set: Boolean) {
+        _hasSelectedTrackAndInputDoesNotChange.value = set
+    }
+    fun onSelectedSuggestedArtistChange(artist: SpotifyArtist?) {
+        _selectedSuggestedArtist.value = artist
+    }
+    fun onHasSelectedArtistAndInputDoesNotChangeSet(set: Boolean) {
+        _hasSelectedArtistAndInputDoesNotChange.value = set
+    }
+    fun onHasSelectedDataAndInputDoesNotChangeSet(set: Boolean) {
+        _hasSelectedDataAndInputDoesNotChange.value = set
+    }
+
+    fun searchTrack(searchName: String, byType: Type = Type.TRACK, searchFor: Type = Type.TRACK) {
         if (searchName.isBlank()) return
 
         if (_searchDataUiState.value is SearchUiState.Loading) {
@@ -83,16 +120,59 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
             ++searchCount
             _searchDataUiState.value = SearchUiState.Loading
             try {
-                var query = ""
-                if (byType == "track") query = "track:\"$searchName\""
-                else if (byType == "artist") query = "artist:\"$searchName\""
-                val response = spotifyRepositoryImpl.searchData(query, "track", 10)
-                if (response.tracks == null || response.tracks.items.isEmpty()) {
-                    _searchDataUiState.value = SearchUiState.Error("No tracks found")
-                    return@launch
+                val query = when (byType) {
+                    Type.TRACK -> "track:\"$searchName\""
+                    Type.ARTIST -> "artist:\"$searchName\""
+                    Type.ALBUM -> "album:\"$searchName\"" // TBD
+                    Type.ALLMENTIONED -> searchName
                 }
-                val tracks = response.tracks.items
-                _searchDataUiState.value = SearchUiState.Success((TracksAndArtists(tracks, null)))
+                val type = when (searchFor) {
+                    Type.TRACK -> "track"
+                    Type.ARTIST -> "artist"
+                    Type.ALBUM -> "album" // TBD
+                    Type.ALLMENTIONED -> "track,artist,album" // TODO: ""
+                }
+
+                val response = spotifyRepositoryImpl.searchData(query, type, 10)
+
+                when (searchFor) {
+                    Type.TRACK -> {
+                        if (response.tracks == null || response.tracks.items.isEmpty()) {
+                            _searchDataUiState.value = SearchUiState.Error("No tracks found")
+                            return@launch
+                        }
+                        val tracks = response.tracks.items
+                        _searchDataUiState.value = SearchUiState.Success((SpotifyDataList(tracks, null, null)))
+                    }
+                    Type.ARTIST -> {
+                        if (response.artists == null || response.artists.items.isEmpty()) {
+                            _searchDataUiState.value = SearchUiState.Error("No artists found")
+                            return@launch
+                        }
+                        val artists = response.artists.items
+                        _searchDataUiState.value = SearchUiState.Success((SpotifyDataList(null, artists, null)))
+                    }
+                    Type.ALBUM -> {
+                        if (response.albums == null || response.albums.items.isEmpty()) {
+                            _searchDataUiState.value = SearchUiState.Error("No albums found")
+                            return@launch
+                        }
+                        val albums = response.albums.items
+                        _searchDataUiState.value = SearchUiState.Success((SpotifyDataList(null, null, albums)))
+                    }
+                    Type.ALLMENTIONED -> {
+                        if ((response.tracks == null || response.tracks.items.isEmpty()) &&
+                            (response.artists == null || response.artists.items.isEmpty()) &&
+                            (response.albums == null || response.albums.items.isEmpty())) {
+                            _searchDataUiState.value = SearchUiState.Error("No data found")
+                            return@launch
+                        }
+                        val tracks = response.tracks?.items
+                        val artists = response.artists?.items
+                        val albums = response.albums?.items
+                        _searchDataUiState.value = SearchUiState.Success((SpotifyDataList(tracks, artists, albums)))
+                    }
+                }
             }
             catch (e: CancellationException) {
                 Log.d("Gemini", "Search for \"$searchName\" was cancelled: ${e.message}")
@@ -123,7 +203,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
 //                    .map { it.name }
 //                    .distinct()//移除重複的名稱
                 val artists = response.artists.items
-                _searchDataUiState.value = SearchUiState.Success((TracksAndArtists(null, artists)))
+                _searchDataUiState.value = SearchUiState.Success((SpotifyDataList(null, artists, null)))
             } catch (e: Exception) {
                 uiEventManager.showSnackbar(SnackbarMessage.ExceptionMessage(e))
                 _searchDataUiState.value = SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
@@ -131,27 +211,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
         }
     }
 
-    fun onTrackInputChange(newTrack: String) {
-        _trackInput.value = newTrack
-    }
 
-    fun onArtistInputChange(newArtist: String) {
-        _artistInput.value = newArtist
-    }
-
-    fun onSelectedSuggestedTrackChange(track: SpotifyTrack?) {
-        _selectedSuggestedTrack.value = track
-    }
-    fun onHasSelectedTrackAndInputDoesNotChangeSet(set: Boolean) {
-        _hasSelectedTrackAndInputDoesNotChange.value = set
-    }
-    fun onSelectedSuggestedArtistChange(artist: SpotifyArtist?) {
-        _selectedSuggestedArtist.value = artist
-    }
-
-    fun onHasSelectedArtistAndInputDoesNotChangeSet(set: Boolean) {
-        _hasSelectedArtistAndInputDoesNotChange.value = set
-    }
 
 
     // (Pass from Gemini response)
@@ -374,8 +434,8 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                         Log.d("Gemini", "trackTempList: ${trackTempList.joinToString { it.name }}")
                         Log.d("Gemini", "artistTempList: ${artistTempList.joinToString { it.name }}")
 
-
-                        val data = TracksAndArtists(trackTempList.toList(), artistTempList.toList())
+                        // TODO: for albums data
+                        val data = SpotifyDataList(trackTempList.toList(), artistTempList.toList(), null)
                         _searchSimilarUiState.value = SearchUiState.Success(data)
                         uiEventManager.showSnackbar(SnackbarMessage.TextMessage("Search successfully completed."))
                         Log.d("Gemini", "Tracks and Artists Data: $data")

@@ -140,8 +140,8 @@ data class Artists(
 
 data class SearchResponse(
     val tracks: Tracks?,
-    val albums: Albums?,
-    val artists: Artists?
+    val artists: Artists?,
+    val albums: Albums?
 )
 
 data class UserProfileResponse(

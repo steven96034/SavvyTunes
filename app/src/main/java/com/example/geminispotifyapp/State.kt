@@ -1,6 +1,6 @@
 package com.example.geminispotifyapp
 
-import com.example.geminispotifyapp.data.PlayHistoryObject
+import com.example.geminispotifyapp.data.SpotifyAlbum
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.data.UserProfileResponse
@@ -27,11 +27,12 @@ data class UserData(
 sealed interface SearchUiState {
     data object Initial : SearchUiState
     data object Loading : SearchUiState
-    data class Success(val data: TracksAndArtists) : SearchUiState
+    data class Success(val data: SpotifyDataList) : SearchUiState
     data class Error(val message: String) : SearchUiState
 }
 
-data class TracksAndArtists(
+data class SpotifyDataList(
     val tracks: List<SpotifyTrack>?,
-    val artists: List<SpotifyArtist>?
+    val artists: List<SpotifyArtist>?,
+    val albums: List<SpotifyAlbum>?
 )

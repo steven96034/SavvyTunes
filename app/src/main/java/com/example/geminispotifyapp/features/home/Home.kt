@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -43,20 +44,27 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.geminispotifyapp.SearchUiState
-import com.example.geminispotifyapp.TracksAndArtists
+import com.example.geminispotifyapp.SpotifyDataList
+import com.example.geminispotifyapp.data.SpotifyAlbum
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.features.userdatadetail.topartists.ArtistItem
 import com.example.geminispotifyapp.features.userdatadetail.toptracks.TrackItem
+import com.example.geminispotifyapp.ui.theme.SpotifyGreen
+import com.example.geminispotifyapp.ui.theme.SpotifyWhite
 import kotlinx.coroutines.launch
 
 @Composable
@@ -64,12 +72,14 @@ fun HomeScreen(onArtistClick: (SpotifyArtist) -> Unit, onTrackClick: (SpotifyTra
     val similarUiState by viewModel.searchSimilarUiState.collectAsState()
     val trackInput by viewModel.trackInput.collectAsState()
     val artistInput by viewModel.artistInput.collectAsState()
+    val dataInput by viewModel.dataInput.collectAsState()
 
     val suggestedUiState by viewModel.searchDataUiState.collectAsState()
     val selectedSuggestedTrack by viewModel.selectedSuggestedTrack.collectAsState()
     val selectedSuggestedArtist by viewModel.selectedSuggestedArtist.collectAsState()
     val hasSelectedTrackAndInputDoesNotChange by viewModel.hasSelectedTrackAndInputDoesNotChange.collectAsState()
     val hasSelectedArtistAndInputDoesNotChange by viewModel.hasSelectedArtistAndInputDoesNotChange.collectAsState()
+    val hasSelectedDataAndInputDoesNotChange by viewModel.hasSelectedDataAndInputDoesNotChange.collectAsState()
 
 
     HomePage(
@@ -77,14 +87,18 @@ fun HomeScreen(onArtistClick: (SpotifyArtist) -> Unit, onTrackClick: (SpotifyTra
         suggestedUiState,
         trackInput,
         artistInput,
+        dataInput,
         onArtistClick,
         onTrackClick,
         { newTrack ->
             viewModel.onTrackInputChange(newTrack)
-            viewModel.searchTrack(newTrack, "track") },
+            viewModel.searchTrack(newTrack, HomeViewModel.Type.TRACK, HomeViewModel.Type.TRACK) },
         { newArtist ->
             viewModel.onArtistInputChange(newArtist)
-            viewModel.searchTrack(newArtist, "artist") }, //TODO: more search for artist
+            viewModel.searchTrack(newArtist, HomeViewModel.Type.ARTIST, HomeViewModel.Type.TRACK) }, //TODO: more search for artist
+        { newData ->
+            viewModel.onDataInputChange(newData)
+            viewModel.searchTrack(newData, HomeViewModel.Type.ALLMENTIONED, HomeViewModel.Type.ALLMENTIONED)},
         selectedSuggestedTrack,
         selectedSuggestedArtist,
         { track -> viewModel.onSelectedSuggestedTrackChange(track) },
@@ -93,6 +107,8 @@ fun HomeScreen(onArtistClick: (SpotifyArtist) -> Unit, onTrackClick: (SpotifyTra
         { set -> viewModel.onHasSelectedTrackAndInputDoesNotChangeSet(set) },
         hasSelectedArtistAndInputDoesNotChange,
         { set -> viewModel.onHasSelectedArtistAndInputDoesNotChangeSet(set) },
+        hasSelectedDataAndInputDoesNotChange,
+        { set -> viewModel.onHasSelectedDataAndInputDoesNotChangeSet(set) },
         { track, artist -> viewModel.searchSimilarTracksAndArtists(track, artist) }
     )
 }
@@ -103,10 +119,12 @@ fun HomePage(
     suggestedUiState: SearchUiState,
     trackInput: String,
     artistInput: String,
+    dataInput: String,
     onArtistClick: (SpotifyArtist) -> Unit,
     onTrackClick: (SpotifyTrack) -> Unit,
     onTrackInputChange: (String) -> Unit,
     onArtistInputChange: (String) -> Unit,
+    onDataInputChange: (String) -> Unit,
     selectedSuggestedTrack: SpotifyTrack?,
     selectedSuggestedArtist: SpotifyArtist?,
     onSelectedSuggestedTrackChange: (SpotifyTrack?) -> Unit,
@@ -115,12 +133,21 @@ fun HomePage(
     onHasSelectedTrackAndInputDoesNotChangeSet: (Boolean) -> Unit,
     hasSelectedArtistAndInputDoesNotChange: Boolean,
     onHasSelectedArtistAndInputDoesNotChangeSet: (Boolean) -> Unit,
+    hasSelectedDataAndInputDoesNotChange: Boolean,
+    onHasSelectedDataAndInputDoesNotChangeSet: (Boolean) -> Unit,
     searchSimilarTracksAndArtists: (String, String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
 
     HomeNavigation()
+
+    val textStyleWithShadow = MaterialTheme.typography.headlineSmall.copy(
+        shadow = Shadow(
+            color = Color.LightGray.copy(alpha = 0.5f),
+            blurRadius = 20f
+        )
+    )
 
     LazyColumn(
         verticalArrangement = Arrangement.Top,
@@ -149,22 +176,62 @@ fun HomePage(
             HorizontalDivider(modifier = Modifier.padding(8.dp))
         }
         item {
+            OutlinedTextField(
+                value = dataInput,
+                onValueChange = {
+                    onDataInputChange(it)
+                    onHasSelectedDataAndInputDoesNotChangeSet(false) },
+                trailingIcon = {
+                    if (dataInput.isNotEmpty()) {
+                        Icon(
+                            Icons.Filled.Clear,
+                            contentDescription = "Clear text",
+                            modifier = Modifier.clickable { onDataInputChange("") }
+                        )
+                    }
+                },
+                label = { Text("Input Any Name (of artist, album or track)") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
+            )
+        }
+        item {
             Row(horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
                     value = trackInput,
                     onValueChange = {
                         onTrackInputChange(it)
                         onHasSelectedTrackAndInputDoesNotChangeSet(false) },
+                    trailingIcon = {
+                                   if (trackInput.isNotEmpty()) {
+                                       Icon(
+                                           Icons.Filled.Clear,
+                                           contentDescription = "Clear text",
+                                           modifier = Modifier.clickable { onTrackInputChange("") }
+                                       )
+                                   }
+                    },
                     label = { Text("Input Song Name") },
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 4.dp)
                 )
+
                 OutlinedTextField(
                     value = artistInput,
                     onValueChange = {
                         onArtistInputChange(it)
                         onHasSelectedArtistAndInputDoesNotChangeSet(false)},
+                    trailingIcon = {
+                        if (artistInput.isNotEmpty()) {
+                            Icon(
+                                Icons.Filled.Clear,
+                                contentDescription = "Clear text",
+                                modifier = Modifier.clickable { onArtistInputChange("") }
+                            )
+                        }
+                    },
                     label = { Text("Input Artist Name") },
                     modifier = Modifier
                         .weight(1f)
@@ -172,15 +239,40 @@ fun HomePage(
                 )
             }
         }
+        var suggestedData: SpotifyDataList?
         var suggestedTracks: List<SpotifyTrack>? = null
+        var suggestedArtists: List<SpotifyArtist>? = null
+        var suggestedAlbums: List<SpotifyAlbum>? = null
         if (suggestedUiState is SearchUiState.Success) {
-            suggestedTracks = suggestedUiState.data.tracks
+            suggestedData = suggestedUiState.data
+            suggestedTracks = suggestedData.tracks
+            suggestedArtists = suggestedData.artists
+            suggestedAlbums = suggestedData.albums
         }
 
-        if (suggestedTracks?.isNotEmpty() == true &&
+        if (suggestedTracks != null &&
             ((trackInput.isNotBlank() && !hasSelectedTrackAndInputDoesNotChange) ||
-                    (artistInput.isNotBlank() && !hasSelectedArtistAndInputDoesNotChange))
+                    (artistInput.isNotBlank() && !hasSelectedArtistAndInputDoesNotChange) ||
+                    (dataInput.isNotBlank() && !hasSelectedDataAndInputDoesNotChange))
         ) {
+            if (dataInput.isNotBlank() && !hasSelectedDataAndInputDoesNotChange) {
+                item {
+                    Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ){
+                        Text(
+                            text = "Track Suggestions",
+                            style = textStyleWithShadow,
+                            fontFamily = FontFamily.Monospace,
+                            color = SpotifyGreen
+                        )
+                    }
+
+                }
+            }
             items(
                 items = suggestedTracks,
                 key = { track -> track.id }
@@ -193,11 +285,76 @@ fun HomePage(
                         onArtistInputChange(selectedTrack.artists.firstOrNull()?.name ?: "")
                         onHasSelectedTrackAndInputDoesNotChangeSet(true)
                         onHasSelectedArtistAndInputDoesNotChangeSet(true)
+                        onHasSelectedDataAndInputDoesNotChangeSet(true)
                         focusManager.clearFocus()
                     }
                 )
             }
         }
+        if (suggestedArtists != null && dataInput.isNotBlank() && !hasSelectedDataAndInputDoesNotChange) {
+            item {
+                Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
+                Row (
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ){
+                    Text(
+                        text = "Artist Suggestions",
+                        style = textStyleWithShadow,
+                        fontFamily = FontFamily.Monospace,
+                        color = SpotifyGreen
+                    )
+                }
+            }
+            items(
+                items = suggestedArtists,
+                key = { artist -> artist.id }
+            ) {
+                ArtistSuggestionItem(
+                    artist = it,
+                    onArtistSelected = { selectedArtist ->
+//                        //onArtistInputChange(selectedArtist.name)
+//                        onSelectedSuggestedArtistChange(selectedArtist)
+//                        //onTrackInputChange(selectedArtist.name)
+//                        onHasSelectedTrackAndInputDoesNotChangeSet(true)
+//                        onHasSelectedArtistAndInputDoesNotChangeSet(true)
+//                        onHasSelectedDataAndInputDoesNotChangeSet(true)
+                        focusManager.clearFocus()
+                    }
+                )
+            }
+        }
+        if (suggestedAlbums != null && dataInput.isNotBlank() && !hasSelectedDataAndInputDoesNotChange) {
+            item {
+                Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
+                Row (
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "Album Suggestions",
+                        style = textStyleWithShadow,
+                        fontFamily = FontFamily.Monospace,
+                        color = SpotifyGreen
+                    )
+                }
+            }
+            items(
+                items = suggestedAlbums,
+                key = { album -> album.id }
+            ) {
+                AlbumSuggestionItem(
+                    album = it,
+                    onAlbumSelected = {
+                        focusManager.clearFocus()
+                    }
+                )
+            }
+        }
+
+
 
         item {
             Button(
@@ -242,7 +399,8 @@ fun HomePage(
                     Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
                     Text(
                         "Similar Tracks",
-                        style = MaterialTheme.typography.headlineSmall
+                        style = MaterialTheme.typography.headlineSmall,
+                        textAlign = TextAlign.Center
                     )
                 }
                 if (tracks != null) {
@@ -363,13 +521,16 @@ fun TrackSuggestionItem(
                         .crossfade(true)
                         .build(),
                     contentDescription = "Album Image",
-                    modifier = Modifier.padding(end = 8.dp).size(108.dp),
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(108.dp),
                     contentScale = ContentScale.Crop
                 )
             }
             else {
                 Box(
                     modifier = Modifier
+                        .padding(end = 8.dp)
                         .size(108.dp)
                         .clip(RoundedCornerShape(2.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant), // Placeholder background
@@ -382,15 +543,6 @@ fun TrackSuggestionItem(
                     )
                 }
             }
-//            Column {
-//                Text(track.name, style = MaterialTheme.typography.bodyLarge)
-//                Text(
-//                    track.artists.joinToString(separator = ", ") { it.name },
-//                    style = MaterialTheme.typography.bodyMedium
-//                )
-//            }
-
-            // Song Info
             Column (
                 modifier = Modifier.padding(start = 4.dp)
             ) {
@@ -414,6 +566,161 @@ fun TrackSuggestionItem(
         }
     }
 }
+
+@Composable
+fun ArtistSuggestionItem(
+    artist: SpotifyArtist,
+    onArtistSelected: (SpotifyArtist) -> Unit
+) {
+    val thumbnailUrl =
+        artist.images?.size?.let {
+            if (it >= 2)
+                artist.images[1].url
+            else
+                artist.images.firstOrNull()?.url
+        }
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable {
+                onArtistSelected(artist)
+            }
+    ) {
+        Row(
+            modifier = Modifier.padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (thumbnailUrl != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(thumbnailUrl) // Use thumbnail if available, otherwise fallback to larger image
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Album Image",
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(108.dp),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            else {
+                Box(
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(108.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant), // Placeholder background
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.Album,
+                        contentDescription = "No album image available",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Column (
+                modifier = Modifier.padding(start = 4.dp)
+            ) {
+                Text(
+                    text = artist.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium
+                )
+                val followers = artist.followers["total"]
+                val formattedFollowers = followers.toString().reversed().chunked(3).joinToString(",").reversed()
+                Text(
+                    text = "Followers: $formattedFollowers",
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = artist.genres.joinToString (", "),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.Gray
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AlbumSuggestionItem(
+    album: SpotifyAlbum,
+    onAlbumSelected: (SpotifyAlbum) -> Unit
+) {
+    val thumbnailUrl =
+        if (album.images.size >= 2)
+            album.images[1].url
+        else
+            album.images.firstOrNull()?.url
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable {
+                onAlbumSelected(album)
+            }
+    ) {
+        Row(
+            modifier = Modifier.padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (thumbnailUrl != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(thumbnailUrl) // Use thumbnail if available, otherwise fallback to larger image
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Album Image",
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(108.dp),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            else {
+                Box(
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(108.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant), // Placeholder background
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.Album,
+                        contentDescription = "No album image available",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Column (
+                modifier = Modifier.padding(start = 4.dp)
+            ) {
+                Text(
+                    text = album.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = album.artists.joinToString(", ") { it.name },
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = album.releaseDate,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.Gray
+                )
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun HomeNavigation() {
@@ -450,8 +757,8 @@ fun LoadingContent() {
 @Preview
 @Composable
 fun HomePagePreview() {
-    val state = SearchUiState.Success(TracksAndArtists(listOf(), listOf()))
-    val suggestedState = SearchUiState.Success(TracksAndArtists(listOf(), listOf()))
+    val state = SearchUiState.Success(SpotifyDataList(listOf(), listOf(), listOf()))
+    val suggestedState = SearchUiState.Success(SpotifyDataList(listOf(), listOf(), listOf()))
 
-    HomePage(state, suggestedState, "", "", {}, {}, {}, {}, null, null, {}, {}, false, {}, false, {}, { _, _ -> /* Mock searchSimilarTracksAndArtists */})
+    //HomePage(state, suggestedState, "", "", {}, {}, {}, {}, null, null, {}, {}, false, {}, false, {}, { _, _ -> /* Mock searchSimilarTracksAndArtists */})
 }
