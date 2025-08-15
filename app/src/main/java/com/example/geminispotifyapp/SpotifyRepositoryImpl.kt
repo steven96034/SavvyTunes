@@ -2,10 +2,13 @@ package com.example.geminispotifyapp
 
 import android.util.Log
 import com.example.geminispotifyapp.auth.SpotifyTokenResponse
+import com.example.geminispotifyapp.data.SpotifyTrack // Required for the new getTrack method
+import com.example.geminispotifyapp.data.SimplifiedTracksResponse
 import com.example.geminispotifyapp.data.RecentlyPlayedResponse
 import com.example.geminispotifyapp.data.SearchResponse
 import com.example.geminispotifyapp.data.TopArtistsResponse
 import com.example.geminispotifyapp.data.TopTracksResponse
+import com.example.geminispotifyapp.data.TracksResponse
 import com.example.geminispotifyapp.data.UserProfileResponse
 import com.example.geminispotifyapp.data.local.AppDatabase
 import com.example.geminispotifyapp.data.remote.SpotifyApiService
@@ -276,6 +279,41 @@ class SpotifyRepositoryImpl @Inject constructor(
             throw e
         }
     }
+
+    override suspend fun getTopTracksOfArtist(artistId: String): TracksResponse {
+        try {
+            val authHeader = getAuthorizationHeader()
+            return spotifyUserApiService.getTopTracksByArtist(authHeader, artistId)
+        } catch (e: Exception) {
+            Log.d("SpotifyData", "Failed to get top tracks of artist $e")
+            throw e
+        }
+    }
+
+    override suspend fun getAlbumTracks(albumId: String): SimplifiedTracksResponse {
+        try {
+            val authHeader = getAuthorizationHeader()
+            return spotifyUserApiService.getAlbumTracks(authHeader, albumId)
+        } catch (e: Exception) {
+            Log.d("SpotifyData", "Failed to get album tracks $e")
+            throw e
+        }
+    }
+
+    override suspend fun getTrack(trackId: String, market: String?): SpotifyTrack {
+        try {
+            val authHeader = getAuthorizationHeader()
+            return spotifyUserApiService.getTrack(
+                authorization = authHeader,
+                trackId = trackId,
+                market = market
+            )
+        } catch (e: Exception) {
+            Log.e("SpotifyData", "Failed to get track details for ID: $trackId", e)
+            throw e
+        }
+    }
+
 
     companion object {
         // Check expiry as 1 minute before and refresh token

@@ -2,6 +2,25 @@ package com.example.geminispotifyapp.data
 
 import com.google.gson.annotations.SerializedName
 
+interface TrackInformation {
+    val artists: List<SimplifiedArtist>
+    val availableMarkets: List<String>
+    val discNumber: Int
+    val durationMs: Int
+    val explicit: Boolean
+    val externalUrls: Map<String, String>
+    val href: String
+    val id: String
+    val isPlayable: Boolean
+    val linkedFrom: Map<String, String>
+    val restrictions: Map<String, String>
+    val name: String
+    val trackNumber: Int
+    val type: String
+    val uri: String
+    val isLocal: Boolean
+}
+
 // Data class for API response
 data class SpotifyArtist(
     val id: String,
@@ -25,34 +44,35 @@ data class SimplifiedArtist(
 )
 
 data class SpotifyTrack(
-    val id: String,
-    val name: String,
-    val popularity: Int,
-    @SerializedName("external_urls")
-    val externalUrls: Map<String, String>,
-    val album: SpotifyAlbum,
-    val artists: List<SimplifiedArtist>,
-    @SerializedName("duration_ms")
-    val durationMs: Int,
-    val uri: String,
-    @SerializedName("preview_url")
-    val previewUrl: String?,
+    val album: SpotifyAlbum, // Not provide in SimplifiedTrackObject
+    override val artists: List<SimplifiedArtist>,
     @SerializedName("available_markets")
-    val availableMarkets: List<String>,
+    override val availableMarkets: List<String>,
     @SerializedName("disc_number")
-    val discNumber: Int,
-    val explicit: Boolean,
-    @SerializedName("track_number")
-    val trackNumber: Int,
-    @SerializedName("is_local")
-    val isLocal: Boolean,
+    override val discNumber: Int,
+    @SerializedName("duration_ms")
+    override val durationMs: Int,
+    override val explicit: Boolean,
     @SerializedName("external_ids")
-    val externalIds: Map<String, String>,
-    val restrictions: Map<String, String>,
+    val externalIds: Map<String, String>,// Not provide in SimplifiedTrackObject
+    @SerializedName("external_urls")
+    override val externalUrls: Map<String, String>,
+    override val href: String,
+    override val id: String,
     @SerializedName("is_playable")
-    val isPlayable: Boolean,
-
-    )
+    override val isPlayable: Boolean,
+    @SerializedName("linked_from")
+    override val linkedFrom: Map<String, String>,
+    override val restrictions: Map<String, String>,
+    override val name: String,
+    val popularity: Int,// Not provide in SimplifiedTrackObject
+    @SerializedName("track_number")
+    override val trackNumber: Int,
+    override val type: String,
+    override val uri: String,
+    @SerializedName("is_local")
+    override val isLocal: Boolean,
+): TrackInformation
 
 data class SpotifyAlbum(
     val id: String,
@@ -159,4 +179,51 @@ data class UserProfileResponse(
     val product: String,
     val type: String,
     val uri: String,
+)
+
+data class SimplifiedTrack(
+    override val artists: List<SimplifiedArtist>,
+    @SerializedName("available_markets")
+    override val availableMarkets: List<String>,
+    @SerializedName("disc_number")
+    override val discNumber: Int,
+    @SerializedName("duration_ms")
+    override val durationMs: Int,
+    override val explicit: Boolean,
+    @SerializedName("external_urls")
+    override val externalUrls: Map<String, String>,
+    override val href: String,
+    override val id: String,
+    @SerializedName("is_playable")
+    override val isPlayable: Boolean,
+    @SerializedName("linked_from")
+    override val linkedFrom: Map<String, String>,
+    override val restrictions: Map<String, String>,
+    override val name: String,
+    @SerializedName("track_number")
+    override val trackNumber: Int,
+    override val type: String,
+    override val uri: String,
+    @SerializedName("is_local")
+    override val isLocal: Boolean,
+//    // Below values are not provided in actual SimplifiedTrackObject (but some use this data class structure for easy display)
+//    val album: SpotifyAlbum?,
+//    val popularity: Int?,
+//    @SerializedName("external_ids")
+//    val externalIds: Map<String, String>?,
+): TrackInformation
+
+data class SimplifiedTracksResponse(
+    @SerializedName("items")
+    val tracks: List<SimplifiedTrack>,
+    val href: String,
+    val limit: Int,
+    val next: String?,
+    val offset: Int,
+    val previous: String?,
+    val total: Int
+)
+
+data class TracksResponse(
+    val tracks : List<SpotifyTrack>
 )

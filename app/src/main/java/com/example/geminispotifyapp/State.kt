@@ -3,6 +3,7 @@ package com.example.geminispotifyapp
 import com.example.geminispotifyapp.data.SpotifyAlbum
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
+import com.example.geminispotifyapp.data.TrackInformation
 import com.example.geminispotifyapp.data.UserProfileResponse
 
 // For downloading process in SpotifyData
@@ -34,5 +35,6 @@ sealed interface SearchUiState {
 data class SpotifyDataList(
     val tracks: List<SpotifyTrack>?,
     val artists: List<SpotifyArtist>?,
-    val albums: List<SpotifyAlbum>?
+    val albums: List<SpotifyAlbum>?,
+    val trackInformation: List<TrackInformation>?
 )

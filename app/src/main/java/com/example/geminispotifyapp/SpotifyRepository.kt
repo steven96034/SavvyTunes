@@ -1,10 +1,13 @@
 package com.example.geminispotifyapp
 
 import com.example.geminispotifyapp.auth.SpotifyTokenResponse
+import com.example.geminispotifyapp.data.SimplifiedTracksResponse
 import com.example.geminispotifyapp.data.RecentlyPlayedResponse
 import com.example.geminispotifyapp.data.SearchResponse
+import com.example.geminispotifyapp.data.SpotifyTrack // <-- Add this import
 import com.example.geminispotifyapp.data.TopArtistsResponse
 import com.example.geminispotifyapp.data.TopTracksResponse
+import com.example.geminispotifyapp.data.TracksResponse
 import com.example.geminispotifyapp.data.UserProfileResponse
 import retrofit2.Response
 
@@ -56,4 +59,10 @@ interface SpotifyRepository {
     ): SpotifyTokenResponse
 
     suspend fun getUserProfile(): UserProfileResponse
+
+    suspend fun getTopTracksOfArtist(artistId: String): TracksResponse
+
+    suspend fun getAlbumTracks(albumId: String): SimplifiedTracksResponse
+
+    suspend fun getTrack(trackId: String, market: String? = null): SpotifyTrack
 }
