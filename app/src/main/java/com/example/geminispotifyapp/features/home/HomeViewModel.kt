@@ -79,6 +79,14 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
     private var _selectedAlbum: MutableStateFlow<SpotifyAlbum?> = MutableStateFlow(null)
     val selectedAlbum: StateFlow<SpotifyAlbum?> = _selectedAlbum.asStateFlow()
 
+    private val _hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange = MutableStateFlow(false)
+    val hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange: StateFlow<Boolean> = _hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange.asStateFlow()
+
+    fun setHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange(newValue: Boolean) {
+        _hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange.value = newValue
+    }
+
+
     private var searchInputJob: Job? = null
     private var searchCount = 0
     // Debounce time in milliseconds, to prevent multiple requests being sent too quickly
@@ -204,6 +212,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                     _searchByIdUiState.value = SearchUiState.Error("No tracks found in this album")
                     return@launch
                 }
+                Log.d("Gemini", "response: $response")
                 _searchByIdUiState.value = SearchUiState.Success((SpotifyDataList(null, null, null, response.tracks)))
             } catch (e: Exception) {
                 uiEventManager.showSnackbar(SnackbarMessage.ExceptionMessage(e))
@@ -230,6 +239,10 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                     SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
             }
         }
+    }
+
+    fun onSetSelectedAlbum(album: SpotifyAlbum?) {
+        _selectedAlbum.value = album
     }
 
 //    fun getTrack(trackId: String) {

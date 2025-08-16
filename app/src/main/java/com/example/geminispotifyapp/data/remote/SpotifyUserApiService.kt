@@ -62,7 +62,7 @@ interface SpotifyUserApiService {
     suspend fun getTopTracksByArtist(
         @Header("Authorization") authorization: String,
         @Path("id") artistId: String,
-        @Query("market") market: String? = "TW",
+        @Query("market") market: String? = null,
     ): TracksResponse
 
     @GET("v1/albums/{id}/tracks")

@@ -68,7 +68,11 @@ import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 import kotlinx.coroutines.launch
 
 @Composable
-fun HomeScreen(onArtistClick: (SpotifyArtist) -> Unit, onTrackClick: (SpotifyTrack) -> Unit, viewModel: HomeViewModel = hiltViewModel()) { // Use hiltViewModel() to inject the ViewModel...
+fun HomeScreen(
+    onArtistClick: (SpotifyArtist) -> Unit, 
+    onTrackClick: (SpotifyTrack) -> Unit, 
+    viewModel: HomeViewModel = hiltViewModel()
+) { 
     val similarUiState by viewModel.searchSimilarUiState.collectAsState()
     val trackInput by viewModel.trackInput.collectAsState()
     val artistInput by viewModel.artistInput.collectAsState()
@@ -80,6 +84,7 @@ fun HomeScreen(onArtistClick: (SpotifyArtist) -> Unit, onTrackClick: (SpotifyTra
     val hasSelectedTrackAndInputDoesNotChange by viewModel.hasSelectedTrackAndInputDoesNotChange.collectAsState()
     val hasSelectedArtistAndInputDoesNotChange by viewModel.hasSelectedArtistAndInputDoesNotChange.collectAsState()
     val hasSelectedDataAndInputDoesNotChange by viewModel.hasSelectedDataAndInputDoesNotChange.collectAsState()
+    val hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange by viewModel.hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange.collectAsState()
 
     val searchByIdUiState by viewModel.searchByIdUiState.collectAsState()
     val selectedAlbum by viewModel.selectedAlbum.collectAsState()
@@ -112,9 +117,12 @@ fun HomeScreen(onArtistClick: (SpotifyArtist) -> Unit, onTrackClick: (SpotifyTra
         { set -> viewModel.onHasSelectedArtistAndInputDoesNotChangeSet(set) },
         hasSelectedDataAndInputDoesNotChange,
         { set -> viewModel.onHasSelectedDataAndInputDoesNotChangeSet(set) },
+        hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange,
+        { newValue -> viewModel.setHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange(newValue) },
         { track, artist -> viewModel.searchSimilarTracksAndArtists(track, artist) },
         { artistId -> viewModel.getTopTracksOfArtist(artistId) },
         selectedAlbum,
+        { album -> viewModel.onSetSelectedAlbum(album) },
         { albumId -> viewModel.getAlbumTracks(albumId) },
         { trackId -> viewModel.getTrackAndSelectedTrack(trackId) }
     )
@@ -143,9 +151,13 @@ fun HomePage(
     onHasSelectedArtistAndInputDoesNotChangeSet: (Boolean) -> Unit,
     hasSelectedDataAndInputDoesNotChange: Boolean,
     onHasSelectedDataAndInputDoesNotChangeSet: (Boolean) -> Unit,
+    // Add new parameters for the state from ViewModel
+    hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange: Boolean,
+    onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet: (Boolean) -> Unit,
     searchSimilarTracksAndArtists: (String, String) -> Unit,
     getTopTracksOfArtist: (String) -> Unit,
     selectedAlbum: SpotifyAlbum?,
+    onSetSelectedAlbum: (SpotifyAlbum?) -> Unit,
     getAlbumTracks: (String) -> Unit,
     getTrackAndSelectedTrack: (String) -> Unit
 ) {
@@ -192,7 +204,9 @@ fun HomePage(
                 value = dataInput,
                 onValueChange = {
                     onDataInputChange(it)
-                    onHasSelectedDataAndInputDoesNotChangeSet(false) },
+                    onHasSelectedDataAndInputDoesNotChangeSet(false)
+                    onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(false)
+                },
                 trailingIcon = {
                     if (dataInput.isNotEmpty()) {
                         Icon(
@@ -214,7 +228,9 @@ fun HomePage(
                     value = trackInput,
                     onValueChange = {
                         onTrackInputChange(it)
-                        onHasSelectedTrackAndInputDoesNotChangeSet(false) },
+                        onHasSelectedTrackAndInputDoesNotChangeSet(false)
+                        onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(false) // Use the new function
+                    },
                     trailingIcon = {
                                    if (trackInput.isNotEmpty()) {
                                        Icon(
@@ -234,7 +250,9 @@ fun HomePage(
                     value = artistInput,
                     onValueChange = {
                         onArtistInputChange(it)
-                        onHasSelectedArtistAndInputDoesNotChangeSet(false)},
+                        onHasSelectedArtistAndInputDoesNotChangeSet(false)
+                        onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(false) // Use the new function
+                    },
                     trailingIcon = {
                         if (artistInput.isNotEmpty()) {
                             Icon(
@@ -368,6 +386,10 @@ fun HomePage(
                     album = it,
                     onAlbumSelected = { selectedAlbum ->
                         onDataInputChange(selectedAlbum.name)
+                        onHasSelectedTrackAndInputDoesNotChangeSet(true)
+                        onHasSelectedArtistAndInputDoesNotChangeSet(true)
+                        onHasSelectedDataAndInputDoesNotChangeSet(true)
+                        onSetSelectedAlbum(selectedAlbum)
                         getAlbumTracks(selectedAlbum.id)
                         focusManager.clearFocus()
                     }
@@ -375,7 +397,7 @@ fun HomePage(
             }
         }
 
-        if (suggestedTrackById != null  &&
+        if (suggestedTrackById != null && !hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange &&
             (hasSelectedTrackAndInputDoesNotChange && hasSelectedArtistAndInputDoesNotChange && hasSelectedDataAndInputDoesNotChange)) {
             item {
                 Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
@@ -385,7 +407,7 @@ fun HomePage(
                     horizontalArrangement = Arrangement.Center
                 ){
                     Text(
-                        text = "Track Suggestions from chosen one",
+                        text = "Track Suggestions",
                         style = textStyleWithShadow,
                         fontFamily = FontFamily.Monospace,
                         color = SpotifyGreen
@@ -402,10 +424,11 @@ fun HomePage(
                         onTrackSelected = { selectedTrack ->
                             onTrackInputChange(selectedTrack.name)
                             onSelectedSuggestedTrackChange(selectedTrack)
-                            onArtistInputChange(selectedTrack.artists.firstOrNull()?.name ?: "")
-                            onHasSelectedTrackAndInputDoesNotChangeSet(true)
-                            onHasSelectedArtistAndInputDoesNotChangeSet(true)
-                            onHasSelectedDataAndInputDoesNotChangeSet(true)
+                            onArtistInputChange(selectedTrack.artists.joinToString(", ") { it.name })
+//                            onHasSelectedTrackAndInputDoesNotChangeSet(true)
+//                            onHasSelectedArtistAndInputDoesNotChangeSet(true)
+//                            onHasSelectedDataAndInputDoesNotChangeSet(true)
+                            onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(true) // Use the new function
                             suggestedTrackById = null
                             focusManager.clearFocus()
                         }
@@ -417,15 +440,14 @@ fun HomePage(
                         track = trackInfo,
                         onTrackSelected = { selectedSimplifiedTrack ->
                             onTrackInputChange(selectedSimplifiedTrack.name)
-                            //onSelectedSuggestedTrackChange(selectedTrack) // TODO: get SpotifyTrack data if it's SimplifiedTrack
                             getTrackAndSelectedTrack(selectedSimplifiedTrack.id)
 
-                            onArtistInputChange(selectedSimplifiedTrack.artists.firstOrNull()?.name ?: "")
-                            onHasSelectedTrackAndInputDoesNotChangeSet(true)
-                            onHasSelectedArtistAndInputDoesNotChangeSet(true)
-                            onHasSelectedDataAndInputDoesNotChangeSet(true)
+                            onArtistInputChange(selectedSimplifiedTrack.artists.joinToString(", ") { it.name })
+//                            onHasSelectedTrackAndInputDoesNotChangeSet(true)
+//                            onHasSelectedArtistAndInputDoesNotChangeSet(true)
+//                            onHasSelectedDataAndInputDoesNotChangeSet(true)
+                           onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(true)
                             suggestedTrackById = null
-
                             focusManager.clearFocus()
                         }
                     )

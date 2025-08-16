@@ -101,7 +101,7 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    val selectedTrackForDetail by viewModel.selectedItemForDetail.collectAsStateWithLifecycle()
+    val selectedItemForDetail by viewModel.selectedItemForDetail.collectAsStateWithLifecycle()
 
     // Use WindowSizeClass to determine more kinds of screen size (e.g. Compact, Medium, Expanded), here's only for phone's orientation
 //    val configuration = LocalConfiguration.current
@@ -419,7 +419,7 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
         }
         // This box is placed outside the Scaffold to cover the entire screen
         viewModel.DetailBox (
-            selectedValue = selectedTrackForDetail,
+            selectedValue = selectedItemForDetail,
             onDismiss = { viewModel.dismissItemDetail() }
         ) { item, onDismiss ->
             when (bottomNavItems[selectedScreen]) {
