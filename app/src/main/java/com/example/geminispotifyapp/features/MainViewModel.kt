@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
-import com.example.geminispotifyapp.ui.theme.SpotifyBlack
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -113,7 +113,7 @@ class MainViewModel @Inject constructor(uiEventManager: UiEventManager) : ViewMo
             val scrollState = rememberScrollState()
 
             Surface(
-                color = SpotifyBlack,
+                color = MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(16.dp),
                 modifier = modifier
                     .fillMaxWidth(0.8f)

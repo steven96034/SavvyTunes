@@ -3,25 +3,32 @@ package com.example.geminispotifyapp.features.home
 import android.app.Activity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -31,8 +38,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
@@ -42,8 +51,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
@@ -59,12 +71,13 @@ import com.example.geminispotifyapp.SpotifyDataList
 import com.example.geminispotifyapp.data.SimplifiedTrack
 import com.example.geminispotifyapp.data.SpotifyAlbum
 import com.example.geminispotifyapp.data.SpotifyArtist
-import com.example.geminispotifyapp.data.SpotifyImage
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.data.TrackInformation
 import com.example.geminispotifyapp.features.userdatadetail.topartists.ArtistItem
 import com.example.geminispotifyapp.features.userdatadetail.toptracks.TrackItem
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
+import com.example.geminispotifyapp.ui.theme.SpotifyWhite
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -88,6 +101,9 @@ fun HomeScreen(
 
     val searchByIdUiState by viewModel.searchByIdUiState.collectAsState()
     val selectedAlbum by viewModel.selectedAlbum.collectAsState()
+
+    val searchButtonAnimationTrigger by viewModel.searchButtonAnimationTrigger.collectAsState()
+
 
     HomePage(
         similarUiState,
@@ -124,7 +140,8 @@ fun HomeScreen(
         selectedAlbum,
         { album -> viewModel.onSetSelectedAlbum(album) },
         { albumId -> viewModel.getAlbumTracks(albumId) },
-        { trackId -> viewModel.getTrackAndSelectedTrack(trackId) }
+        { trackId -> viewModel.getTrackAndSelectedTrack(trackId) },
+        searchButtonAnimationTrigger
     )
 }
 
@@ -159,14 +176,47 @@ fun HomePage(
     selectedAlbum: SpotifyAlbum?,
     onSetSelectedAlbum: (SpotifyAlbum?) -> Unit,
     getAlbumTracks: (String) -> Unit,
-    getTrackAndSelectedTrack: (String) -> Unit
+    getTrackAndSelectedTrack: (String) -> Unit,
+    searchButtonAnimationTrigger: Int
 ) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
 
     HomeNavigation()
 
+    var isSearchButtonHighlighted by remember { mutableStateOf(false) }
+
+    LaunchedEffect(searchButtonAnimationTrigger) {
+        if (searchButtonAnimationTrigger > 0) { // 確保初始值不會觸發
+            isSearchButtonHighlighted = true
+            delay(1000L)
+            isSearchButtonHighlighted = false
+        }
+    }
+
+    val animatedButtonBackgroundColor by animateColorAsState(
+        targetValue = if (isSearchButtonHighlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+        animationSpec = tween(durationMillis = 300),
+        label = "Button Background Color Animation"
+    )
+    val animatedButtonScale by animateFloatAsState(
+        targetValue = if (isSearchButtonHighlighted) 1.05f else 1.0f,
+        animationSpec = tween(durationMillis = 300),
+        label = "Button Scale Animation"
+    )
+    val animatedButtonTextColor by animateColorAsState(
+        targetValue = if (isSearchButtonHighlighted) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.surfaceVariant,
+        animationSpec = tween(durationMillis = 300),
+        label = "Button Text Color Animation"
+    )
+
     val textStyleWithShadow = MaterialTheme.typography.headlineSmall.copy(
+        shadow = Shadow(
+            color = Color.LightGray.copy(alpha = 0.5f),
+            blurRadius = 20f
+        )
+    )
+    val textStyleWithShadowLabel = MaterialTheme.typography.labelLarge.copy(
         shadow = Shadow(
             color = Color.LightGray.copy(alpha = 0.5f),
             blurRadius = 20f
@@ -177,7 +227,8 @@ fun HomePage(
         verticalArrangement = Arrangement.Top,
         modifier = Modifier
             .fillMaxSize()
-            .padding(6.dp, 0.dp, 6.dp, 12.dp)
+            .padding(6.dp, 0.dp, 6.dp, 12.dp),
+        contentPadding = PaddingValues(bottom = 80.dp) // For the bottom navigation bar
     ) {
         item {
             Image(
@@ -305,7 +356,6 @@ fun HomePage(
                             color = SpotifyGreen
                         )
                     }
-
                 }
             }
             items(
@@ -406,12 +456,35 @@ fun HomePage(
                         .fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ){
-                    Text(
-                        text = "Track Suggestions",
-                        style = textStyleWithShadow,
-                        fontFamily = FontFamily.Monospace,
-                        color = SpotifyGreen
-                    )
+                    Column (horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Track Suggestions",
+                            style = textStyleWithShadow,
+                            fontFamily = FontFamily.Monospace,
+                            color = SpotifyGreen
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            if (suggestedTrackById!![0] is SpotifyTrack) {
+                                Text(
+                                    text = "Top Tracks of Artist",
+                                    style = textStyleWithShadowLabel,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = SpotifyWhite
+                                )
+                            }
+                            else if (suggestedTrackById!![0] is SimplifiedTrack) {
+                                Text(
+                                    text = "Tracks from Album",
+                                    style = textStyleWithShadowLabel,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = SpotifyWhite
+                                )
+                            }
+                        }
+                    }
                 }
             }
             items(
@@ -425,10 +498,7 @@ fun HomePage(
                             onTrackInputChange(selectedTrack.name)
                             onSelectedSuggestedTrackChange(selectedTrack)
                             onArtistInputChange(selectedTrack.artists.joinToString(", ") { it.name })
-//                            onHasSelectedTrackAndInputDoesNotChangeSet(true)
-//                            onHasSelectedArtistAndInputDoesNotChangeSet(true)
-//                            onHasSelectedDataAndInputDoesNotChangeSet(true)
-                            onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(true) // Use the new function
+                            onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(true)
                             suggestedTrackById = null
                             focusManager.clearFocus()
                         }
@@ -441,11 +511,7 @@ fun HomePage(
                         onTrackSelected = { selectedSimplifiedTrack ->
                             onTrackInputChange(selectedSimplifiedTrack.name)
                             getTrackAndSelectedTrack(selectedSimplifiedTrack.id)
-
                             onArtistInputChange(selectedSimplifiedTrack.artists.joinToString(", ") { it.name })
-//                            onHasSelectedTrackAndInputDoesNotChangeSet(true)
-//                            onHasSelectedArtistAndInputDoesNotChangeSet(true)
-//                            onHasSelectedDataAndInputDoesNotChangeSet(true)
                            onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(true)
                             suggestedTrackById = null
                             focusManager.clearFocus()
@@ -455,12 +521,9 @@ fun HomePage(
             }
         }
 
-
-
         item {
             Button(
                 onClick = {
-                    //selectedSuggestedTrack = null // Clear selected track when searching
                     scope.launch {
                         searchSimilarTracksAndArtists(
                             trackInput,
@@ -469,20 +532,56 @@ fun HomePage(
                     }
                     focusManager.clearFocus()
                 },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = animatedButtonBackgroundColor
+                ),
                 modifier = Modifier
-                    .padding(top = 8.dp)
+                    .padding(top = 16.dp, bottom = 8.dp)
                     .fillMaxWidth()
+                    .scale(animatedButtonScale)
+                    .shadow(
+                        elevation = if (isSearchButtonHighlighted) 8.dp else 4.dp,
+                        shape = RoundedCornerShape(50)
+                    )
             ) {
-                if (uiState != SearchUiState.Loading)
-                    Text("Search similar tracks and artists!")
-                else
-                    Text("Loading... (Tap to Cancel)")
+                if (uiState != SearchUiState.Loading) {
+                    Icon(
+                        Icons.Filled.Search,
+                        contentDescription = "Search Icon",
+                        modifier = Modifier.size(20.dp),
+                        tint = animatedButtonTextColor
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Search similar tracks and artists!",
+                        color = animatedButtonTextColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    Text(
+                        "Loading... (Tap to Cancel)",
+                        color = animatedButtonTextColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
         item {
             selectedSuggestedTrack?.let { track ->
                 Spacer(Modifier.padding(8.dp))
-                Text("Selected Track", style = MaterialTheme.typography.headlineSmall)
+                //Text("Selected Track", style = MaterialTheme.typography.headlineSmall)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ){
+                    Text(
+                        text = "Selected Track",
+                        style = textStyleWithShadow,
+                        fontFamily = FontFamily.Monospace,
+                        color = SpotifyGreen
+                    )
+                }
                 TrackItem(index = 0, track = track) { onTrackClick(it) }
             }
         }
@@ -497,12 +596,24 @@ fun HomePage(
                 val artists = uiState.data.artists
                 val tracks = uiState.data.tracks
                 item {
+//                    Text(
+//                        "Similar Tracks",
+//                        style = MaterialTheme.typography.headlineSmall,
+//                        textAlign = TextAlign.Center
+//                    )
                     Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
-                    Text(
-                        "Similar Tracks",
-                        style = MaterialTheme.typography.headlineSmall,
-                        textAlign = TextAlign.Center
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ){
+                        Text(
+                            text = "Similar Tracks",
+                            style = textStyleWithShadow,
+                            fontFamily = FontFamily.Monospace,
+                            color = SpotifyGreen
+                        )
+                    }
                 }
                 if (tracks != null) {
                     item {
@@ -518,12 +629,24 @@ fun HomePage(
                     item { Text("No tracks found") }
                 }
                 item {
+//                    Text(
+//                        "Similar Artists",
+//                        style = MaterialTheme.typography.headlineSmall,
+//                        textAlign = TextAlign.Center
+//                    )
                     Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
-                    Text(
-                        "Similar Artists",
-                        style = MaterialTheme.typography.headlineSmall,
-                        textAlign = TextAlign.Center
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ){
+                        Text(
+                            text = "Similar Artists",
+                            style = textStyleWithShadow,
+                            fontFamily = FontFamily.Monospace,
+                            color = SpotifyGreen
+                        )
+                    }
                 }
                 if (artists != null) {
                     item {
@@ -927,7 +1050,7 @@ private fun HomeNavigation() {
 fun LoadingContent() {
     Box(Modifier
         .fillMaxSize()
-        .padding(4.dp)
+        .padding(32.dp)
     ) {
         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
     }
@@ -936,8 +1059,40 @@ fun LoadingContent() {
 @Preview
 @Composable
 fun HomePagePreview() {
-//    val state = SearchUiState.Success(SpotifyDataList(listOf(), listOf(), listOf()))
-//    val suggestedState = SearchUiState.Success(SpotifyDataList(listOf(), listOf(), listOf()))
+    val mockUiState = SearchUiState.Success(SpotifyDataList(emptyList(), emptyList(), emptyList(), emptyList()))
+    val mockSuggestedUiState = SearchUiState.Success(SpotifyDataList(emptyList(), emptyList(), emptyList(), emptyList()))
+    val mockSearchByIdUiState = SearchUiState.Success(SpotifyDataList(emptyList(), emptyList(), emptyList(), emptyList()))
 
-    //HomePage(state, suggestedState, "", "", {}, {}, {}, {}, null, null, {}, {}, false, {}, false, {}, { _, _ -> /* Mock searchSimilarTracksAndArtists */})
+    HomePage(
+        uiState = mockUiState,
+        suggestedUiState = mockSuggestedUiState,
+        searchByIdUiState = mockSearchByIdUiState,
+        trackInput = "Bohemian Rhapsody",
+        artistInput = "Queen",
+        dataInput = "",
+        onArtistClick = {},
+        onTrackClick = {},
+        onTrackInputChange = {},
+        onArtistInputChange = {},
+        onDataInputChange = {},
+        selectedSuggestedTrack = null,
+        selectedSuggestedArtist = null,
+        onSelectedSuggestedTrackChange = {},
+        onSelectedSuggestedArtistChange = {},
+        hasSelectedTrackAndInputDoesNotChange = false,
+        onHasSelectedTrackAndInputDoesNotChangeSet = {},
+        hasSelectedArtistAndInputDoesNotChange = false,
+        onHasSelectedArtistAndInputDoesNotChangeSet = {},
+        hasSelectedDataAndInputDoesNotChange = false,
+        onHasSelectedDataAndInputDoesNotChangeSet = {},
+        hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange = false,
+        onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet = {},
+        searchSimilarTracksAndArtists = { _, _ -> },
+        getTopTracksOfArtist = {},
+        selectedAlbum = null,
+        onSetSelectedAlbum = {},
+        getAlbumTracks = {},
+        getTrackAndSelectedTrack = {},
+        searchButtonAnimationTrigger = 0
+    )
 }

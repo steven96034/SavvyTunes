@@ -10,9 +10,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -30,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -228,7 +232,13 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
     Box(modifier = Modifier.fillMaxSize()) {
     val selectedScreen = pagerState.currentPage % bottomNavItems.size
     Scaffold (
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).autoCloseKeyboardClearFocus(),
+        modifier = Modifier
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .autoCloseKeyboardClearFocus()
+            .windowInsetsPadding(
+                WindowInsets.navigationBars
+            ),
+        containerColor = Color.Transparent,
         topBar = {
             //TODO: Replace MyTopAppBar with SmallTopAppBar
             TopAppBar(title = {Text("Music Explorer by Gemini")})
@@ -238,30 +248,41 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
 //            val navBackStackEntry by navController.currentBackStackEntryAsState()
 //            val currentDestination = navBackStackEntry?.destination
             //val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-            NavigationBar {
-                bottomNavItems.forEachIndexed { index, screen ->
-                    // Use the modulo operator (%) to map the "infinite" page index back to the actual page index
-                    val selected = selectedScreen == index
 
-                    NavigationBarItem(
-                        label = { Text(screen.label) },
-                        icon = { Icon(screen.icon, contentDescription = screen.label) },
-                        selected = selected,
-                        onClick = {
-                            // When clicking on a navigation item, calculate the shortest distance to the target page and scroll
-                            scope.launch {
-                                val currentPosition = pagerState.currentPage
-                                val currentOffset = currentPosition % bottomNavItems.size
-                                val targetOffset = index
-                                val pageDifference = targetOffset - currentOffset
-                                // Roll to the nearest corresponding page
-                                pagerState.animateScrollToPage(currentPosition + pageDifference)
-                            }
-                        },
-                        alwaysShowLabel = false
-                    )
-                }
-            }
+//            NavigationBar (
+//                modifier = Modifier.fillMaxWidth(),
+//                containerColor = Color.Transparent
+//            ) {
+//                bottomNavItems.forEachIndexed { index, screen ->
+//                    // Use the modulo operator (%) to map the "infinite" page index back to the actual page index
+//                    val selected = selectedScreen == index
+//
+//                    NavigationBarItem(
+//                        label = { Text(screen.label) },
+//                        icon = { Icon(screen.icon, contentDescription = screen.label) },
+//                        selected = selected,
+//                        onClick = {
+//                            // When clicking on a navigation item, calculate the shortest distance to the target page and scroll
+//                            scope.launch {
+//                                val currentPosition = pagerState.currentPage
+//                                val currentOffset = currentPosition % bottomNavItems.size
+//                                val targetOffset = index
+//                                val pageDifference = targetOffset - currentOffset
+//                                // Roll to the nearest corresponding page
+//                                pagerState.animateScrollToPage(currentPosition + pageDifference)
+//                            }
+//                        },
+//                        alwaysShowLabel = false,
+//                        colors = NavigationBarItemDefaults.colors(
+//                            selectedIconColor = MaterialTheme.colorScheme.primary, // 您想要的選中圖示顏色
+//                            selectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,   // 您想要的選中文字顏色
+//                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant, // 您想要的未選中圖示顏色
+//                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant, // 您想要的未選中文字顏色
+//                            indicatorColor = MaterialTheme.colorScheme.surfaceVariant // (可選) 選中項的指示器背景色
+//                        )
+//                    )
+//                }
+//            }
 
 
             //if (currentRoute in bottomNavItems.map { it.route }) {
@@ -327,29 +348,76 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        HorizontalPager(
-            state = pagerState,
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-        ) { page ->
-            // According to the page index, determine which page to display
-            val screenIndex = page % bottomNavItems.size
-            when (bottomNavItems[screenIndex]) {
-                is Screen.Home -> HomeScreen(
-                    onArtistClick = { artist -> viewModel.showItemDetail(artist) },
-                    onTrackClick = { track -> viewModel.showItemDetail(track) }
-                )
-                is Screen.TopArtists -> TopArtistsScreen(
-                    onArtistClick = { artist -> viewModel.showItemDetail(artist) }
-                )
-                is Screen.TopTracks -> TopTracksScreen(
-                    onTrackClick = { track -> viewModel.showItemDetail(track) }
-                )
-                is Screen.RecentlyPlayed -> RecentlyPlayedScreen(
-                    onHistoryClick = { history -> viewModel.showItemDetail(history) }
-                )
-                is Screen.FindMusic -> TestFindMusicContent()
+                .padding(top = paddingValues.calculateTopPadding())
+        ) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    //.padding(paddingValues)
+            ) { page ->
+                // According to the page index, determine which page to display
+                val screenIndex = page % bottomNavItems.size
+                when (bottomNavItems[screenIndex]) {
+                    is Screen.Home -> HomeScreen(
+                        onArtistClick = { artist -> viewModel.showItemDetail(artist) },
+                        onTrackClick = { track -> viewModel.showItemDetail(track) }
+                    )
+
+                    is Screen.TopArtists -> TopArtistsScreen(
+                        onArtistClick = { artist -> viewModel.showItemDetail(artist) }
+                    )
+
+                    is Screen.TopTracks -> TopTracksScreen(
+                        onTrackClick = { track -> viewModel.showItemDetail(track) }
+                    )
+
+                    is Screen.RecentlyPlayed -> RecentlyPlayedScreen(
+                        onHistoryClick = { history -> viewModel.showItemDetail(history) }
+                    )
+
+                    is Screen.FindMusic -> TestFindMusicContent()
+                }
+            }
+            NavigationBar (
+                modifier = Modifier.align(Alignment.BottomCenter) // 對齊到底部中心
+                    .fillMaxWidth()
+                    // 為 NavigationBar 添加底部內邊距，以避開系統手勢導航條
+                    .windowInsetsPadding(WindowInsets.navigationBars), // 關鍵！
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+            ) {
+                bottomNavItems.forEachIndexed { index, screen ->
+                    // Use the modulo operator (%) to map the "infinite" page index back to the actual page index
+                    val selected = selectedScreen == index
+
+                    NavigationBarItem(
+                        label = { Text(screen.label) },
+                        icon = { Icon(screen.icon, contentDescription = screen.label) },
+                        selected = selected,
+                        onClick = {
+                            // When clicking on a navigation item, calculate the shortest distance to the target page and scroll
+                            scope.launch {
+                                val currentPosition = pagerState.currentPage
+                                val currentOffset = currentPosition % bottomNavItems.size
+                                val targetOffset = index
+                                val pageDifference = targetOffset - currentOffset
+                                // Roll to the nearest corresponding page
+                                pagerState.animateScrollToPage(currentPosition + pageDifference)
+                            }
+                        },
+                        alwaysShowLabel = false,
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary, // 您想要的選中圖示顏色
+                            selectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,   // 您想要的選中文字顏色
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant, // 您想要的未選中圖示顏色
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant, // 您想要的未選中文字顏色
+                            indicatorColor = MaterialTheme.colorScheme.surfaceVariant // (可選) 選中項的指示器背景色
+                        )
+                    )
+                }
             }
         }
 //        NavHost(

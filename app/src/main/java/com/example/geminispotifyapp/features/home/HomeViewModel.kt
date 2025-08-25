@@ -86,6 +86,9 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
         _hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange.value = newValue
     }
 
+    private val _searchButtonAnimationTrigger = MutableStateFlow(0)
+    val searchButtonAnimationTrigger: StateFlow<Int> = _searchButtonAnimationTrigger.asStateFlow()
+
 
     private var searchInputJob: Job? = null
     private var searchCount = 0
@@ -109,6 +112,9 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
     }
     fun onSelectedSuggestedTrackChange(track: SpotifyTrack?) {
         _selectedSuggestedTrack.value = track
+        _searchSimilarUiState.value = SearchUiState.Initial
+        _searchByIdUiState.value = SearchUiState.Initial
+        _searchButtonAnimationTrigger.value++
     }
     fun onHasSelectedTrackAndInputDoesNotChangeSet(set: Boolean) {
         _hasSelectedTrackAndInputDoesNotChange.value = set

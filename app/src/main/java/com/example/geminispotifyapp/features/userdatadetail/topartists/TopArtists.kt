@@ -49,16 +49,19 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import coil.compose.AsyncImage
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
 import com.example.geminispotifyapp.data.SpotifyArtist
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.geminispotifyapp.data.SpotifyImage
 import com.example.geminispotifyapp.features.userdatadetail.DropDownMenuTemplate
 import com.example.geminispotifyapp.features.userdatadetail.Period
 import com.example.geminispotifyapp.features.userdatadetail.formatEnumPeriodName
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
+import com.example.geminispotifyapp.ui.theme.GeminiSpotifyAppTheme
 
 
 @Composable
@@ -92,7 +95,8 @@ fun TopArtistContent(uiState: FetchResult<TopArtistsData>, onArtistClick: (Spoti
             modifier = Modifier
                 .fillMaxSize()
                 //.padding(paddingValues)
-                .padding(horizontal = 6.dp)
+                .padding(horizontal = 6.dp),
+            contentPadding = PaddingValues(bottom = 80.dp)
         ) {
             item {
                 Row(
@@ -244,6 +248,46 @@ fun ArtistItem(index: Int, artist: SpotifyArtist, onArtistSelected: (SpotifyArti
     }
 }
 
+@Preview(uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun TopArtistContentPreview() {
+    GeminiSpotifyAppTheme {
+        val sampleArtist = SpotifyArtist(
+            externalUrls = mapOf("spotify" to "https://open.spotify.com/artist/0TnOYISbd1XYRBk9myaseg"),
+            followers = mapOf("href" to null, "total" to 1000000),
+            genres = listOf("Pop", "Rock"),
+            href = "https://api.spotify.com/v1/artists/0TnOYISbd1XYRBk9myaseg",
+            id = "0TnOYISbd1XYRBk9myaseg",
+            images = listOf(
+                SpotifyImage(
+                    "https://picsum.photos/640",
+                    640,
+                    640
+                ),
+                SpotifyImage(
+                    "https://picsum.photos/320",
+                    320,
+                    320
+                ),
+                SpotifyImage(
+                    "https://picsum.photos/160",
+                    160,
+                    160
+                )
+            ),
+            name = "Imagine Dragons",
+            popularity = 85,
+            type = "artist",
+            uri = "spotify:artist:0TnOYISbd1XYRBk9myaseg"
+        )
+        val sampleData = TopArtistsData(
+            topArtistsShort = List(5) { sampleArtist.copy(name = "Artist Short ${it + 1}") },
+            topArtistsMedium = List(5) { sampleArtist.copy(name = "Artist Medium ${it + 1}") },
+            topArtistsLong = List(5) { sampleArtist.copy(name = "Artist Long ${it + 1}") }
+        )
+        TopArtistContent(uiState = FetchResult.Success(sampleData), onArtistClick = {})
+    }
+}
 
 @Composable
 fun ArtistDetail(
@@ -326,8 +370,9 @@ fun ArtistDetail(
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             if (intent.resolveActivity(context.packageManager) != null) {
                 context.startActivity(intent)
-            }
-        }) {
+            } },
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+        ) {
             Row {
                 Text(text = "Open in Spotify")
                 Spacer(modifier = Modifier.width(4.dp))
@@ -343,7 +388,8 @@ fun ArtistDetail(
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
         Button(
             onClick = { onDismiss() },
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
         ) {
             Text(text = "Close")
         }

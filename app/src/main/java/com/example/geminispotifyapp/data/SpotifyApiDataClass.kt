@@ -29,9 +29,11 @@ data class SpotifyArtist(
     val type: String,
     @SerializedName("external_urls")
     val externalUrls: Map<String, String>,
-    val followers: Map<String, Int>,
+    val followers: Map<String, Int?>,
     val genres: List<String>,
-    val images: List<SpotifyImage>?
+    val images: List<SpotifyImage>?,
+    val href: String,
+    val uri: String
 )
 
 data class SimplifiedArtist(

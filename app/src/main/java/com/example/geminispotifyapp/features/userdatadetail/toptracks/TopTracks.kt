@@ -108,7 +108,8 @@ fun TopTrackContent(uiState: FetchResult<TopTrackData>, onTrackClick: (SpotifyTr
                 modifier = Modifier
                     .fillMaxSize()
                     //.padding(paddingValues)
-                    .padding(horizontal = 6.dp)
+                    .padding(horizontal = 6.dp),
+                contentPadding = PaddingValues(bottom = 80.dp)
             ) {
                 item {
                     Row(
@@ -442,8 +443,9 @@ fun TrackDetail(
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             if (intent.resolveActivity(context.packageManager) != null) {
                 context.startActivity(intent)
-            }
-        }) {
+            } },
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+        ) {
             Row {
                 Text(text = "Open in Spotify")
                 Spacer(modifier = Modifier.width(4.dp))
@@ -490,7 +492,8 @@ fun TrackDetail(
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
         Button(
             onClick = { onDismiss() },
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
         ) {
             Text(text = "Close")
         }
