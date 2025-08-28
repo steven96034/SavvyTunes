@@ -2,7 +2,6 @@ package com.example.geminispotifyapp.features
 
 import android.content.res.Configuration
 import android.util.Log
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -16,8 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
@@ -26,14 +23,17 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FindInPage
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonPin
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -45,8 +45,10 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -60,22 +62,13 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navOptions
-import com.example.geminispotifyapp.data.PlayHistoryObject
-import com.example.geminispotifyapp.data.SpotifyArtist
-import com.example.geminispotifyapp.data.SpotifyTrack
-import com.example.geminispotifyapp.features.home.HomeScreen
-import com.example.geminispotifyapp.features.userdatadetail.recentlyplayed.RecentlyPlayedScreen
-import com.example.geminispotifyapp.features.userdatadetail.recentlyplayed.TrackHistoryDetail
-import com.example.geminispotifyapp.features.userdatadetail.topartists.ArtistDetail
-import com.example.geminispotifyapp.features.userdatadetail.topartists.TopArtistsScreen
-import com.example.geminispotifyapp.features.userdatadetail.toptracks.TopTracksScreen
-import com.example.geminispotifyapp.features.userdatadetail.toptracks.TrackDetail
+import com.example.geminispotifyapp.ui.AppNavHost
+import com.example.geminispotifyapp.ui.MAIN_GRAPH_ROUTE
 import com.example.geminispotifyapp.ui.theme.SpotifyBlack
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 import kotlinx.coroutines.launch
@@ -88,6 +81,11 @@ sealed class Screen(val route: String, val icon: ImageVector, val label: String)
     object FindMusic : Screen("findMusic", Icons.Default.FindInPage, "Find Music")
 }
 
+sealed class SettingsScreen(val route: String, val icon: ImageVector, val label: String) {
+    object Settings : SettingsScreen("settings", Icons.Default.Settings, "Settings")
+    object AboutThisApp : SettingsScreen("aboutThisApp", Icons.Default.Info, "About This App")
+}
+
 var bottomNavItems = listOf(
     Screen.Home,
     Screen.TopArtists,
@@ -96,22 +94,30 @@ var bottomNavItems = listOf(
     Screen.FindMusic
 )
 
+val settingsItems = listOf(
+    SettingsScreen.Settings,
+    SettingsScreen.AboutThisApp
+)
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
-    //val navController = rememberNavController()
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-
-    val selectedItemForDetail by viewModel.selectedItemForDetail.collectAsStateWithLifecycle()
 
     // Use WindowSizeClass to determine more kinds of screen size (e.g. Compact, Medium, Expanded), here's only for phone's orientation
 //    val configuration = LocalConfiguration.current
 //    val bottomBarHeight = if (configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 106.dp else 56.dp
 //    val items = remember { listOf(Screen.TopArtists, Screen.TopTracks, Screen.RecentlyPlayed) }
 
+    var showMenu by remember { mutableStateOf(false) }
     LaunchedEffect(snackbarHostState) {
         viewModel.snackbarEvent.collect { event ->
             scope.launch {
@@ -169,25 +175,6 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
         }
     }
 
-    // To fulfill the circle sliding, we set the total pages to Int.MAX_VALUE
-    // From a big number in the middle, then user can slide left or right for a long time
-    val startPage = Int.MAX_VALUE / 2
-    val initialPage = startPage - (startPage % bottomNavItems.size)
-    val pagerState = rememberPagerState(
-        initialPage = initialPage,
-        pageCount = { Int.MAX_VALUE }
-    )
-
-    // Back handler logic
-    val currentScreenIndex = pagerState.currentPage % bottomNavItems.size
-    // Only when the current page is not HomePage (index 0), enable the BackHandler
-    BackHandler(enabled = currentScreenIndex != 0) {
-        scope.launch {
-            // Calculate the pages to scroll to (HomePage)
-            pagerState.animateScrollToPage(pagerState.currentPage - currentScreenIndex)
-        }
-    }
-
 
 //    // 創建 PagerState 來管理底部導航頁面的狀態
 //    val pagerState = rememberPagerState(initialPage = 0) {
@@ -230,7 +217,6 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
 //            }
 //    }
     Box(modifier = Modifier.fillMaxSize()) {
-    val selectedScreen = pagerState.currentPage % bottomNavItems.size
     Scaffold (
         modifier = Modifier
             .nestedScroll(scrollBehavior.nestedScrollConnection)
@@ -241,8 +227,44 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
         containerColor = Color.Transparent,
         topBar = {
             //TODO: Replace MyTopAppBar with SmallTopAppBar
-            TopAppBar(title = {Text("Music Explorer by Gemini")})
-            //MyTopAppBar(navController, scrollBehavior)
+            TopAppBar(
+                title = { Text("Music Explorer by Gemini") },
+                navigationIcon = {
+                    if (currentDestination?.route == "settings" || currentDestination?.route == "aboutThisApp") {
+                        IconButton(onClick = { navController.navigate(MAIN_GRAPH_ROUTE) { popUpTo(MAIN_GRAPH_ROUTE) { inclusive = true } } }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "back")
+                        }
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showMenu = !showMenu }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        settingsItems.forEach { screen ->
+                            val isCurrentDestination = currentDestination?.route == screen.route
+                            DropdownMenuItem(
+                                text = { Text(screen.label) },
+                                leadingIcon = { Icon(screen.icon, contentDescription = screen.label) },
+                                onClick = {
+                                    if (!isCurrentDestination) {
+                                        navController.navigate(screen.route)
+                                    }
+                                    showMenu = false
+                                },
+                                colors = MenuDefaults.itemColors(
+                                    textColor = if (isCurrentDestination) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                    leadingIconColor = if (isCurrentDestination) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                modifier = if (isCurrentDestination) Modifier.background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)) else Modifier
+                            )
+                        }
+                    }
+                }
+            )
         },
         bottomBar = {
 //            val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -348,78 +370,26 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding())
-        ) {
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    //.padding(paddingValues)
-            ) { page ->
-                // According to the page index, determine which page to display
-                val screenIndex = page % bottomNavItems.size
-                when (bottomNavItems[screenIndex]) {
-                    is Screen.Home -> HomeScreen(
-                        onArtistClick = { artist -> viewModel.showItemDetail(artist) },
-                        onTrackClick = { track -> viewModel.showItemDetail(track) }
-                    )
+        AppNavHost(
+            navController = navController,
+            paddingValues = paddingValues
+        )
+//        NavHost(navController, startDestination = "main") {
+//            composable("main") {
+//                MainScreenWithPager(
+//                    paddingValues,
+//                    pagerState,
+//                    selectedScreen
+//                ) { item -> viewModel.showItemDetail(item) }
+//            }
+//            composable("settings") {
+//                UserSettingsScreen(paddingValues)
+//            }
+//            composable("aboutThisApp") {
+//                AboutThisAppScreen(paddingValues)
+//            }
+//        }
 
-                    is Screen.TopArtists -> TopArtistsScreen(
-                        onArtistClick = { artist -> viewModel.showItemDetail(artist) }
-                    )
-
-                    is Screen.TopTracks -> TopTracksScreen(
-                        onTrackClick = { track -> viewModel.showItemDetail(track) }
-                    )
-
-                    is Screen.RecentlyPlayed -> RecentlyPlayedScreen(
-                        onHistoryClick = { history -> viewModel.showItemDetail(history) }
-                    )
-
-                    is Screen.FindMusic -> TestFindMusicContent()
-                }
-            }
-            NavigationBar (
-                modifier = Modifier.align(Alignment.BottomCenter) // 對齊到底部中心
-                    .fillMaxWidth()
-                    // 為 NavigationBar 添加底部內邊距，以避開系統手勢導航條
-                    .windowInsetsPadding(WindowInsets.navigationBars), // 關鍵！
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-            ) {
-                bottomNavItems.forEachIndexed { index, screen ->
-                    // Use the modulo operator (%) to map the "infinite" page index back to the actual page index
-                    val selected = selectedScreen == index
-
-                    NavigationBarItem(
-                        label = { Text(screen.label) },
-                        icon = { Icon(screen.icon, contentDescription = screen.label) },
-                        selected = selected,
-                        onClick = {
-                            // When clicking on a navigation item, calculate the shortest distance to the target page and scroll
-                            scope.launch {
-                                val currentPosition = pagerState.currentPage
-                                val currentOffset = currentPosition % bottomNavItems.size
-                                val targetOffset = index
-                                val pageDifference = targetOffset - currentOffset
-                                // Roll to the nearest corresponding page
-                                pagerState.animateScrollToPage(currentPosition + pageDifference)
-                            }
-                        },
-                        alwaysShowLabel = false,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary, // 您想要的選中圖示顏色
-                            selectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,   // 您想要的選中文字顏色
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant, // 您想要的未選中圖示顏色
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant, // 您想要的未選中文字顏色
-                            indicatorColor = MaterialTheme.colorScheme.surfaceVariant // (可選) 選中項的指示器背景色
-                        )
-                    )
-                }
-            }
-        }
 //        NavHost(
 //            navController = navController,
 //            startDestination = Screen.Home.route
@@ -486,23 +456,25 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
 //        }
         }
         // This box is placed outside the Scaffold to cover the entire screen
-        viewModel.DetailBox (
-            selectedValue = selectedItemForDetail,
-            onDismiss = { viewModel.dismissItemDetail() }
-        ) { item, onDismiss ->
-            when (bottomNavItems[selectedScreen]) {
-                is Screen.TopArtists -> ArtistDetail(item as SpotifyArtist, onDismiss)
-                is Screen.TopTracks -> TrackDetail(item as SpotifyTrack, onDismiss)
-                is Screen.RecentlyPlayed -> TrackHistoryDetail(item as PlayHistoryObject, onDismiss)
-                is Screen.Home -> {
-                    if (item is SpotifyArtist) ArtistDetail(item, onDismiss)
-                    else if (item is SpotifyTrack) TrackDetail(item, onDismiss)
-                }
-                is Screen.FindMusic -> TODO()
-            }
-        }
+//        viewModel.DetailBox (
+//            selectedValue = selectedItemForDetail,
+//            onDismiss = { viewModel.dismissItemDetail() }
+//        ) { item, onDismiss ->
+//            when (bottomNavItems[selectedScreen]) {
+//                is Screen.TopArtists -> ArtistDetail(item as SpotifyArtist, onDismiss)
+//                is Screen.TopTracks -> TrackDetail(item as SpotifyTrack, onDismiss)
+//                is Screen.RecentlyPlayed -> TrackHistoryDetail(item as PlayHistoryObject, onDismiss)
+//                is Screen.Home -> {
+//                    if (item is SpotifyArtist) ArtistDetail(item, onDismiss)
+//                    else if (item is SpotifyTrack) TrackDetail(item, onDismiss)
+//                }
+//                is Screen.FindMusic ->
+//            }
+//        }
     }
 }
+
+
 
 @Composable
 fun TestFindMusicContent() {

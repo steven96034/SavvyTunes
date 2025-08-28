@@ -349,12 +349,24 @@ fun HomePage(
                             .fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
                     ){
-                        Text(
-                            text = "Track Suggestions",
-                            style = textStyleWithShadow,
-                            fontFamily = FontFamily.Monospace,
-                            color = SpotifyGreen
-                        )
+                        Column (
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Track Suggestions",
+                                style = textStyleWithShadow,
+                                fontFamily = FontFamily.Monospace,
+                                color = SpotifyGreen
+                            )
+                            if (suggestedTracks.isEmpty()) {
+                                Text(
+                                    text = "No suggested tracks found.",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -384,12 +396,24 @@ fun HomePage(
                         .fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ){
-                    Text(
-                        text = "Artist Suggestions",
-                        style = textStyleWithShadow,
-                        fontFamily = FontFamily.Monospace,
-                        color = SpotifyGreen
-                    )
+                    Column (
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Artist Suggestions",
+                            style = textStyleWithShadow,
+                            fontFamily = FontFamily.Monospace,
+                            color = SpotifyGreen
+                        )
+                        if (suggestedArtists.isEmpty()) {
+                            Text(
+                                text = "No suggested artists found.",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
             items(
@@ -400,8 +424,6 @@ fun HomePage(
                     artist = it,
                     onArtistSelected = { selectedArtist ->
                         onArtistInputChange(selectedArtist.name)
-//                        onSelectedSuggestedArtistChange(selectedArtist)
-//                        //onTrackInputChange(selectedArtist.name)
                         onHasSelectedTrackAndInputDoesNotChangeSet(true)
                         onHasSelectedArtistAndInputDoesNotChangeSet(true)
                         onHasSelectedDataAndInputDoesNotChangeSet(true)
@@ -420,12 +442,24 @@ fun HomePage(
                         .fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Text(
-                        text = "Album Suggestions",
-                        style = textStyleWithShadow,
-                        fontFamily = FontFamily.Monospace,
-                        color = SpotifyGreen
-                    )
+                    Column (
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Album Suggestions",
+                            style = textStyleWithShadow,
+                            fontFamily = FontFamily.Monospace,
+                            color = SpotifyGreen
+                        )
+                        if (suggestedAlbums.isEmpty()) {
+                            Text(
+                                text = "No suggested albums found.",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
             items(
