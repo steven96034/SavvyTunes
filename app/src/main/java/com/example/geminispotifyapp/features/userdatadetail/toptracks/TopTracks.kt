@@ -11,27 +11,32 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,7 +50,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -57,6 +61,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -68,6 +73,7 @@ import com.example.geminispotifyapp.features.userdatadetail.DropDownMenuTemplate
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import com.example.geminispotifyapp.features.userdatadetail.Period
 import com.example.geminispotifyapp.features.userdatadetail.formatEnumPeriodName
+import com.example.geminispotifyapp.ui.theme.GeminiSpotifyAppTheme
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 import java.util.Locale
 import kotlin.time.Duration.Companion.hours
@@ -266,6 +272,60 @@ fun TrackItem(index: Int, track: SpotifyTrack, onTrackSelected: (SpotifyTrack) -
     }
 }
 
+@Preview()
+@Composable
+fun TopTrackContentPreview() {
+    val mockTopTracks = List(5) { index ->
+        SpotifyTrack(
+            album = com.example.geminispotifyapp.data.SpotifyAlbum(
+                artists = listOf(com.example.geminispotifyapp.data.SimplifiedArtist("artist_id_$index", "Artist Name $index", emptyMap(), "", "")),
+                availableMarkets = listOf("US", "CA"),
+                externalUrls = emptyMap(),
+                id = "album_id_$index",
+                images = listOf(),
+                name = "Album Name $index",
+                releaseDate = "2023-01-01",
+                releaseDatePrecision = "day",
+                type = "album",
+                uri = "spotify:album:album_id_$index",
+                totalTracks = 10
+            ),
+            artists = listOf(com.example.geminispotifyapp.data.SimplifiedArtist("artist_id_$index", "Artist Name $index", emptyMap(), "", "")),
+            availableMarkets = listOf("US", "CA"),
+            discNumber = 1,
+            durationMs = 200000 + (index * 10000),
+            explicit = index % 2 == 0,
+            externalIds = mapOf("isrc" to "ISRC_$index"),
+            externalUrls = mapOf("spotify" to "https://open.spotify.com/track/track_id_$index"),
+            href = "https://api.spotify.com/v1/tracks/track_id_$index",
+            id = "track_id_$index",
+            isPlayable = true,
+            linkedFrom = emptyMap(),
+            restrictions = emptyMap(),
+            name = "Track Name $index",
+            popularity = 70 + index,
+            trackNumber = index + 1,
+            type = "track",
+            uri = "spotify:track:track_id_$index",
+            isLocal = false
+        )
+    }
+
+    val mockTopTrackData = TopTrackData(
+        topTracksShort = mockTopTracks,
+        topTracksMedium = mockTopTracks.shuffled(), // Slightly different data for medium term
+        topTracksLong = mockTopTracks.take(3) // Fewer items for long term
+    )
+
+    GeminiSpotifyAppTheme {
+        TopTrackContent(
+            uiState = FetchResult.Success(mockTopTrackData),
+            onTrackClick = {}
+        )
+    }
+}
+
+
 @SuppressLint("UnusedContentLambdaTargetStateParameter")
 @Composable
 fun TrackDetail(
@@ -290,11 +350,24 @@ fun TrackDetail(
 
         }
     } else {
-        Spacer(modifier = Modifier.height(12.dp))
-        Card(modifier = Modifier.padding(16.dp), shape = RectangleShape) {
-            Text(text = "No Image...", style = MaterialTheme.typography.headlineMedium)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .aspectRatio(1f) // Ensure the Box is a square
+                .clip(RoundedCornerShape(2.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)    // Placeholder background
+        ) {
+            Icon(
+                Icons.Filled.Album,
+                contentDescription = "No album image available",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .fillMaxSize(0.9f)
+                    .clip(RoundedCornerShape(2.dp))
+                    .align(Alignment.Center),
+            )
         }
-        Spacer(modifier = Modifier.height(60.dp))
+        Spacer(modifier = Modifier.height(12.dp))
     }
     Spacer(modifier = Modifier.height(2.dp))
 
@@ -525,3 +598,64 @@ fun TrackDetail(
 //            )
 //            Spacer(modifier = Modifier.height(4.dp))
 }
+
+@Preview(showBackground = true)
+@Composable
+fun TrackDetailPreview() {
+    Box (contentAlignment = Alignment.Center) {
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .fillMaxHeight(0.75f)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxSize()
+                    .wrapContentSize(Alignment.TopCenter)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                TrackDetail(
+                    track = SpotifyTrack(
+                        album = com.example.geminispotifyapp.data.SpotifyAlbum(
+                            artists = listOf(com.example.geminispotifyapp.data.SimplifiedArtist("06HL4z0CvFAxyc27GXpf02", "Taylor Swift", mapOf("spotify" to "https://open.spotify.com/album/1NAmidJlEaVgA3MpcPFYGq"), "https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02", "https://api.spotify.com/v1/artists/06HL4z0CvFAxyc27GXpf02")),
+                            availableMarkets = listOf("US", "CA", "GB"),
+                            externalUrls = mapOf("spotify" to "https://open.spotify.com/album/1NAmidJlEaVgA3MpcPFYGq"),
+                            id = "1NAmidJlEaVgA3MpcPFYGq",
+                            images = listOf(),
+                            name = "Lover",
+                            releaseDate = "2019-08-23",
+                            releaseDatePrecision = "day",
+                            type = "album",
+                            uri = "spotify:album:1NAmidJlEaVgA3MpcPFYGq",
+                            totalTracks = 13
+                        ),
+                        artists = listOf(com.example.geminispotifyapp.data.SimplifiedArtist("06HL4z0CvFAxyc27GXpf02", "Taylor Swift", mapOf("spotify" to "https://open.spotify.com/album/1NAmidJlEaVgA3MpcPFYGq"), "https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02", "https://api.spotify.com/v1/artists/06HL4z0CvFAxyc27GXpf02")),
+                        availableMarkets = listOf("US", "CA", "GB", "AU", "NZ", "DE", "FR", "ES", "IT", "JP"),
+                        discNumber = 1,
+                        durationMs = 200000,
+                        explicit = false,
+                        externalIds = mapOf("isrc" to "USUG11900001"),
+                        externalUrls = mapOf("spotify" to "https://open.spotify.com/track/1dGr1c8CrMLDpV6mPbImSI"),
+                        href = "https://api.spotify.com/v1/tracks/1dGr1c8CrMLDpV6mPbImSI",
+                        id = "1dGr1c8CrMLDpV6mPbImSI",
+                        isPlayable = true,
+                        linkedFrom = mapOf("a" to "b"),
+                        restrictions = mapOf("a" to "b"),
+                        name = "Lover",
+                        popularity = 85,
+                        trackNumber = 3,
+                        type = "track",
+                        uri = "spotify:track:1dGr1c8CrMLDpV6mPbImSI",
+                        isLocal = false
+                    ),
+                    onDismiss = {}
+                )
+            }
+        }
+    }
+}
+

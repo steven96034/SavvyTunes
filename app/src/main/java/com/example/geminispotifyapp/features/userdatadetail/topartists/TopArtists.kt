@@ -9,27 +9,32 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,7 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -56,7 +60,6 @@ import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
 import com.example.geminispotifyapp.data.SpotifyArtist
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.geminispotifyapp.data.SpotifyImage
 import com.example.geminispotifyapp.features.userdatadetail.DropDownMenuTemplate
 import com.example.geminispotifyapp.features.userdatadetail.Period
 import com.example.geminispotifyapp.features.userdatadetail.formatEnumPeriodName
@@ -248,6 +251,7 @@ fun ArtistItem(index: Int, artist: SpotifyArtist, onArtistSelected: (SpotifyArti
     }
 }
 
+
 @Preview(uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun TopArtistContentPreview() {
@@ -258,23 +262,7 @@ fun TopArtistContentPreview() {
             genres = listOf("Pop", "Rock"),
             href = "https://api.spotify.com/v1/artists/0TnOYISbd1XYRBk9myaseg",
             id = "0TnOYISbd1XYRBk9myaseg",
-            images = listOf(
-                SpotifyImage(
-                    "https://picsum.photos/640",
-                    640,
-                    640
-                ),
-                SpotifyImage(
-                    "https://picsum.photos/320",
-                    320,
-                    320
-                ),
-                SpotifyImage(
-                    "https://picsum.photos/160",
-                    160,
-                    160
-                )
-            ),
+            images = listOf(),
             name = "Imagine Dragons",
             popularity = 85,
             type = "artist",
@@ -296,10 +284,11 @@ fun ArtistDetail(
 ) {
     // Artist Image
     val images = artist.images
-    if (images != null) {
-        val pagerState = rememberPagerState(pageCount = { images.size })
+    val imagesSize = images?.size ?: 0
+    if (imagesSize != 0) {
+        val pagerState = rememberPagerState(pageCount = { imagesSize })
         HorizontalPager(state = pagerState) { page ->
-            val imageUrl = images[page].url
+            val imageUrl = images!![page].url
             AsyncImage(
                 model = imageUrl,
                 contentDescription = "Album image ${page + 1}",
@@ -309,14 +298,28 @@ fun ArtistDetail(
                     .clip(RoundedCornerShape(2.dp)),
                 contentScale = ContentScale.Fit // Or ContentScale.Crop depending on desired look
             )
-
         }
-    } else {
+    }
+    else {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .aspectRatio(1f) // Ensure the Box is a square
+                .clip(RoundedCornerShape(2.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant) // Placeholder background
+        ) {
+            Icon(
+                Icons.Filled.Person,
+                contentDescription = "No artists image available",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .fillMaxSize(0.9f)
+                    .clip(RoundedCornerShape(2.dp))
+                    .align(Alignment.Center),
+                )
+        }
         Spacer(modifier = Modifier.height(12.dp))
-        Card(modifier = Modifier.padding(16.dp), shape = RectangleShape) {
-            Text(text = "No Image...", style = MaterialTheme.typography.headlineMedium)
-        }
-        Spacer(modifier = Modifier.height(60.dp))
     }
     Spacer(modifier = Modifier.height(2.dp))
 
@@ -392,6 +395,43 @@ fun ArtistDetail(
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
         ) {
             Text(text = "Close")
+        }
+    }
+}
+
+@Preview(uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun ArtistDetailPreview() {
+    val sampleArtist = SpotifyArtist(
+        externalUrls = mapOf("spotify" to "https://open.spotify.com/artist/0TnOYISbd1XYRBk9myaseg"),
+        followers = mapOf("href" to null, "total" to 1000000),
+        genres = listOf("Pop", "Rock", "Alternative"),
+        href = "https://api.spotify.com/v1/artists/0TnOYISbd1XYRBk9myaseg",
+        id = "0TnOYISbd1XYRBk9myaseg",
+        images = listOf(),
+        name = "Imagine Dragons",
+        popularity = 85,
+        type = "artist",
+        uri = "spotify:artist:0TnOYISbd1XYRBk9myaseg"
+    )
+    Box (contentAlignment = Alignment.Center) {
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .fillMaxHeight(0.75f)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxSize()
+                    .wrapContentSize(Alignment.TopCenter)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                ArtistDetail(artist = sampleArtist, onDismiss = {})
+            }
         }
     }
 }

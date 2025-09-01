@@ -11,28 +11,33 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -47,7 +52,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -57,16 +61,23 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.geminispotifyapp.R
+import com.example.geminispotifyapp.data.PlayContext
 import com.example.geminispotifyapp.data.PlayHistoryObject
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
+import com.example.geminispotifyapp.data.SimplifiedArtist
+import com.example.geminispotifyapp.data.SpotifyAlbum
+import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.features.userdatadetail.FetchResultWithEtag
+import com.example.geminispotifyapp.ui.theme.GeminiSpotifyAppTheme
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.time.Duration.Companion.hours
@@ -284,7 +295,7 @@ private fun formatTimeAgo(dateString: String): String {
         val lastPlayed = sdf.parse(dateString) ?: return "Unknown Time"
 
         // Get the current date
-        val now = java.util.Date()
+        val now = Date()
 
         // Calculate the time difference in seconds（1 millisecond * 1000 == 1 second）
         val diff = (now.time - lastPlayed.time) / 1000
@@ -307,6 +318,61 @@ private fun formatTime(dateString: String): String {
     val date = sdf.parse(dateString) ?: return "Unknown Time"
     return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(date)
 }
+
+@Preview()
+@Composable
+fun RecentlyPlayedContentPreview() {
+    val sampleTracks = List(5) { index ->
+        PlayHistoryObject(
+            track = SpotifyTrack(
+                id = "track_id_${index + 1}",
+                name = "Song Title ${index + 1}",
+                artists = listOf(SimplifiedArtist(id = "artist_id_${index + 1}", name = "Artist ${index + 1}",uri = "", externalUrls = mapOf(), href = "")),
+                album = SpotifyAlbum(
+                    id = "album_id_${index + 1}",
+                    name = "Album ${index + 1}",
+                    images = listOf(),
+                    releaseDate = "2023-01-01",
+                    releaseDatePrecision = "day",
+                    type = "album",
+                    uri = "spotify:album:album_id_1",
+                    availableMarkets = listOf("US", "GB"),
+                    externalUrls = mapOf("spotify" to "https://open.spotify.com/album/album_id_1"),
+                    totalTracks = 10 + index,
+                    artists = listOf(SimplifiedArtist(id = "a1", name = "Artist 1",uri = "", externalUrls = mapOf(), href = ""))
+                ),
+                durationMs = 200000,
+                explicit = false,
+                popularity = 75,
+                trackNumber = 1,
+                availableMarkets = listOf("US", "GB"),
+                externalUrls = mapOf("spotify" to "https://open.spotify.com/track/123"),
+                externalIds = mapOf("isrc" to "US1234567890"),
+                href = "https://api.spotify.com/v1/tracks/123",
+                uri = "spotify:track:123",
+                isPlayable = true,
+                isLocal = false,
+                discNumber = 1,
+                linkedFrom = mapOf(),
+                restrictions = mapOf(),
+                type = ""
+            ),
+            playedAt = "2023-10-27T10:00:00.000Z",
+            context = PlayContext(type = "track", uri = "spotify:track:123", externalUrls = mapOf("spotify" to "https://open.spotify.com/track/123"))
+        )
+    }
+    GeminiSpotifyAppTheme {
+        RecentlyPlayedContent(
+            uiState = FetchResultWithEtag.Success(sampleTracks, null),
+            isRefreshing = false,
+            displayedRecentlyPlayed = sampleTracks,
+            onHistoryClick = {},
+            onRefresh = {}
+        )
+    }
+}
+
+
 
 
 @Composable
@@ -334,11 +400,24 @@ internal fun TrackHistoryDetail(
 
         }
     } else {
-        Spacer(modifier = Modifier.height(12.dp))
-        Card(modifier = Modifier.padding(16.dp), shape = RectangleShape) {
-            Text(text = "No Image...", style = MaterialTheme.typography.headlineMedium)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .aspectRatio(1f) // Ensure the Box is a square
+                .clip(RoundedCornerShape(2.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)    // Placeholder background
+        ) {
+            Icon(
+                Icons.Filled.Album,
+                contentDescription = "No album image available",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .fillMaxSize(0.9f)
+                    .clip(RoundedCornerShape(2.dp))
+                    .align(Alignment.Center),
+            )
         }
-        Spacer(modifier = Modifier.height(60.dp))
+        Spacer(modifier = Modifier.height(12.dp))
     }
     Spacer(modifier = Modifier.height(2.dp))
 
@@ -544,6 +623,72 @@ internal fun TrackHistoryDetail(
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
         ) {
             Text(text = "Close")
+        }
+    }
+}
+
+@Preview
+@Composable
+fun TrackHistoryDetailPreview() {
+    val sampleTrack = PlayHistoryObject(
+        track = SpotifyTrack(
+            id = "track_id_1",
+            name = "Sample Track",
+            artists = listOf(SimplifiedArtist(id = "artist_id_1", name = "Sample Artist", uri = "", externalUrls = mapOf(), href = "")),
+            album = SpotifyAlbum(
+                id = "album_id_1",
+                name = "Sample Album",
+                images = listOf(), // No images for simplicity in preview
+                releaseDate = "2023-01-01",
+                releaseDatePrecision = "day",
+                type = "album",
+                uri = "spotify:album:album_id_1",
+                availableMarkets = listOf("US", "GB", "CA", "DE", "FR", "JP", "AU"),
+                externalUrls = mapOf("spotify" to "https://open.spotify.com/album/album_id_1"),
+                totalTracks = 10,
+                artists = listOf(SimplifiedArtist(id = "a1", name = "Artist 1", uri = "", externalUrls = mapOf(), href = ""))
+            ),
+            durationMs = 200000, // 3 minutes 20 seconds
+            explicit = true,
+            popularity = 85,
+            trackNumber = 5,
+            availableMarkets = listOf("US", "GB", "CA", "DE", "FR", "JP", "AU", "NZ", "IE", "SE"),
+            externalUrls = mapOf("spotify" to "https://open.spotify.com/track/sample_track_id"),
+            externalIds = mapOf("isrc" to "USXYZ1234567", "ean" to "1234567890123", "upc" to "123456789012"),
+            href = "https://api.spotify.com/v1/tracks/sample_track_id",
+            uri = "spotify:track:sample_track_id",
+            isPlayable = true,
+            isLocal = false,
+            discNumber = 1,
+            linkedFrom = mapOf(),
+            restrictions = mapOf(),
+            type = "track"
+        ),
+        playedAt = "2023-10-27T10:30:45.123Z",
+        context = PlayContext(type = "album", uri = "spotify:album:sample_album_id", externalUrls = mapOf("spotify" to "https://open.spotify.com/album/sample_album_id"))
+    )
+
+    Box (contentAlignment = Alignment.Center) {
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .fillMaxHeight(0.75f)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxSize()
+                    .wrapContentSize(Alignment.TopCenter)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                TrackHistoryDetail(
+                    historyTrack = sampleTrack,
+                    onDismiss = {}
+                )
+            }
         }
     }
 }

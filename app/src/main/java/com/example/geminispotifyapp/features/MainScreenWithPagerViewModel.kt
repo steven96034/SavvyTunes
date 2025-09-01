@@ -48,16 +48,7 @@ class MainScreenWithPagerViewModel @Inject constructor() : ViewModel() {
         modifier: Modifier = Modifier,
         content: @Composable (T, () -> Unit) -> Unit // Content to be displayed
     ) {
-//    // 1. Custom NestedScrollConnection, intercept scroll events
-//    val nestedScrollConnection = remember {
-//        object : NestedScrollConnection {
-//            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-//                // 2. Intercept scroll events, don't pass them to outside
-//                return Offset(0f, available.y)
-//            }
-//        }
-//    }
-        Log.d("DetailBox", "DetailBox recomposing. selectedValue is null: ${selectedValue == null}") // 追蹤重組和 selectedValue
+        Log.d("DetailBox", "DetailBox recomposing. selectedValue is null: ${selectedValue == null}")
         if (selectedValue == null) {
             Log.d("DetailBox", "selectedValue is NULL, returning.")
             return
@@ -68,18 +59,7 @@ class MainScreenWithPagerViewModel @Inject constructor() : ViewModel() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f)) // Transparent background
-                //.nestedScroll(nestedScrollConnection)
-//            .pointerInput(Unit) {
-//                awaitPointerEventScope {
-//                    while (true) {
-//                        val event = awaitPointerEvent()
-//                        if (event.type == PointerEventType.Scroll) {
-//                           event.changes.forEach { it.consume() }
-//                        }
-//                    }
-//                }
-//            }
+                .background(Color.Black.copy(alpha = 0.5f))
                 .pointerInput(Unit) {
                     detectTapGestures { offset ->
                         val innerBoxWidth = size.width * 0.8f
@@ -115,15 +95,13 @@ class MainScreenWithPagerViewModel @Inject constructor() : ViewModel() {
                 modifier = modifier
                     .fillMaxWidth(0.8f)
                     .fillMaxHeight(0.75f)
-                //.border(2.dp, Color.Red) // <<--- For test
             ) {
                 Column(
                     modifier = Modifier
                         .padding(16.dp)
-                        .fillMaxSize() // Ensure Column fills the Surface
+                        .fillMaxSize()
                         .wrapContentSize(Alignment.TopCenter)
-                        .verticalScroll(scrollState)
-                    , // Align the content to top center,
+                        .verticalScroll(scrollState),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Log.d("DetailBox", "About to call content lambda.")
