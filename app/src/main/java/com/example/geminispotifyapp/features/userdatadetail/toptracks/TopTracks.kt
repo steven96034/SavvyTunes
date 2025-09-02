@@ -66,6 +66,7 @@ import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.geminispotifyapp.ApiError
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
@@ -87,11 +88,11 @@ fun TopTracksScreen(onTrackClick: (SpotifyTrack) -> Unit, viewModel: TopTracksVi
     LaunchedEffect(Unit) {
         viewModel.fetchTopTracks()
     }
-    TopTrackContent(uiState, onTrackClick)
+    TopTrackContent(uiState, onTrackClick, { viewModel.reFetchTopTrack() })
 }
 
 @Composable
-fun TopTrackContent(uiState: FetchResult<TopTrackData>, onTrackClick: (SpotifyTrack) -> Unit) {
+fun TopTrackContent(uiState: FetchResult<TopTrackData>, onTrackClick: (SpotifyTrack) -> Unit, onRetry: () -> Unit) {
 
     var expandedMenuTrack by remember { mutableStateOf(false) }
     var trackPeriodSelection by remember { mutableStateOf(Period.SHORT_TERM) }
@@ -101,13 +102,30 @@ fun TopTrackContent(uiState: FetchResult<TopTrackData>, onTrackClick: (SpotifyTr
 
     when (uiState) {
         FetchResult.Initial ->
-            CircularProgressIndicator()
-        //TODO() // For first time loading state.
+            Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
 
         FetchResult.Loading ->
-            CircularProgressIndicator()
+            Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
 
-        is FetchResult.Error -> TODO() // Just display the error message with snackbar.
+        is FetchResult.Error -> {
+            if (uiState.errorData is ApiError.NetworkConnectionError) {
+                Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "Network connection error.")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = onRetry) {
+                            Text(text = "Retry")
+                        }
+                    }
+                }
+            }
+        }
 
         is FetchResult.Success ->
             LazyColumn(
@@ -320,7 +338,8 @@ fun TopTrackContentPreview() {
     GeminiSpotifyAppTheme {
         TopTrackContent(
             uiState = FetchResult.Success(mockTopTrackData),
-            onTrackClick = {}
+            onTrackClick = {},
+            onRetry = {}
         )
     }
 }

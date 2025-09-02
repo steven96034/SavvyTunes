@@ -38,6 +38,12 @@ class TopTracksViewModel @Inject constructor(
 //    }
     private var hasFetchedOnce = false
 
+    fun reFetchTopTrack() {
+        hasFetchedOnce = false
+        _downLoadState.value = FetchResult.Initial
+        fetchTopTracks()
+    }
+
     // Define a function to fetch data
     fun fetchTopTracks() {
         if (hasFetchedOnce || _downLoadState.value is FetchResult.Loading) {
@@ -105,10 +111,14 @@ class TopTracksViewModel @Inject constructor(
 
                     is ApiError.Forbidden -> Log.d("TopTracksViewModel", "Forbidden: ${e.message}")
                     is ApiError.HttpError -> Log.d("TopTracksViewModel", "HttpError: ${e.message}")
-                    is ApiError.NetworkConnectionError -> Log.d(
-                        "TopTracksViewModel",
-                        "NetworkConnectionError: ${e.message}"
-                    )
+                    is ApiError.NetworkConnectionError -> {
+                        Log.d(
+                            "TopTracksViewModel",
+                            "NetworkConnectionError: ${e.message}"
+                        )
+                        _downLoadState.value =
+                            FetchResult.Error(ApiError.NetworkConnectionError("Network connection error."))
+                    }
 
                     is ApiError.NotFound -> Log.d("TopTracksViewModel", "NotFound: ${e.message}")
                     is ApiError.ServerError -> Log.d(

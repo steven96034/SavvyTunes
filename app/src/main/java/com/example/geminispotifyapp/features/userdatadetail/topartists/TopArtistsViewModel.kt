@@ -40,6 +40,12 @@ class TopArtistsViewModel @Inject constructor(
 //    }
     private var hasFetchedOnce = false
 
+    fun reFetchTopArtist() {
+        hasFetchedOnce = false
+        _downLoadState.value = FetchResult.Initial
+        fetchTopArtists()
+    }
+
 
     fun fetchTopArtists() {
         if (hasFetchedOnce || _downLoadState.value is FetchResult.Loading) {
@@ -107,10 +113,14 @@ class TopArtistsViewModel @Inject constructor(
 
                     is ApiError.Forbidden -> Log.d("TopArtistsViewModel", "Forbidden: ${e.message}")
                     is ApiError.HttpError -> Log.d("TopArtistsViewModel", "HttpError: ${e.message}")
-                    is ApiError.NetworkConnectionError -> Log.d(
-                        "TopArtistsViewModel",
-                        "NetworkConnectionError: ${e.message}"
-                    )
+                    is ApiError.NetworkConnectionError -> {
+                        Log.d(
+                            "TopArtistsViewModel",
+                            "NetworkConnectionError: ${e.message}"
+                        )
+                        _downLoadState.value =
+                            FetchResult.Error(ApiError.NetworkConnectionError("Network connection error."))
+                    }
 
                     is ApiError.NotFound -> Log.d("TopArtistsViewModel", "NotFound: ${e.message}")
                     is ApiError.ServerError -> Log.d(

@@ -10,7 +10,6 @@ import com.example.geminispotifyapp.data.SearchResponse
 import com.example.geminispotifyapp.data.SharedData.FIND_SIMILAR_NUM
 import com.example.geminispotifyapp.data.SpotifyAlbum
 import com.example.geminispotifyapp.data.SpotifyArtist
-import com.example.geminispotifyapp.data.SpotifyImage
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.features.SnackbarMessage
 import com.example.geminispotifyapp.features.UiEventManager
@@ -127,6 +126,11 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
     }
     fun onHasSelectedDataAndInputDoesNotChangeSet(set: Boolean) {
         _hasSelectedDataAndInputDoesNotChange.value = set
+    }
+
+    // For Search Button Animation, set to 0 after clicking search button.
+    fun setSearchButtonAnimationTriggerToInitial() {
+        _searchButtonAnimationTrigger.value = 0
     }
 
     fun searchTrack(searchName: String, byType: Type = Type.TRACK, searchFor: Type = Type.TRACK) {
@@ -536,7 +540,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                         uiEventManager.showSnackbar(SnackbarMessage.TextMessage("Search successfully completed."))
                         Log.d("Gemini", "Tracks and Artists Data: $data")
                     }
-                } ?: if(isActive) { // 如果 response.text 是 null
+                } ?: if(isActive) { // If response.text is null
                     _searchSimilarUiState.value =
                         SearchUiState.Error("Failed to get a valid response from Gemini.")
                 } else {
@@ -584,22 +588,6 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
 //    fun createAndAddTrackToPlaylist(artist: String) {
 //        createPrivatePlaylist(artist)
 //        addTracksToPlaylist(topTracks.value)
-//    }
-//
-//    private fun fetchTopTracks(artists: List<String>) {
-//        viewModelScope.launch {
-//            val tracks = mutableListOf<Track>()
-//            spotifyApi?.let { api ->
-//                artists.forEach { artist ->
-//                    val artistResult = api.search.searchArtist(artist).firstOrNull()
-//                    artistResult?.id?.let { artistId ->
-//                        val topTracks = api.artists.getArtistTopTracks(artistId)
-//                        tracks.addAll(topTracks.take(3)) // 取前 3 首熱門歌曲
-//                    }
-//                }
-//            }
-//            _topTracks.value = tracks
-//        }
 //    }
 //
 //    private fun createPrivatePlaylist(artist: String) {

@@ -60,6 +60,7 @@ import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
 import com.example.geminispotifyapp.data.SpotifyArtist
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.geminispotifyapp.ApiError
 import com.example.geminispotifyapp.features.userdatadetail.DropDownMenuTemplate
 import com.example.geminispotifyapp.features.userdatadetail.Period
 import com.example.geminispotifyapp.features.userdatadetail.formatEnumPeriodName
@@ -73,26 +74,43 @@ fun TopArtistsScreen(onArtistClick: (SpotifyArtist) -> Unit, viewModel: TopArtis
     LaunchedEffect(Unit) {
         viewModel.fetchTopArtists()
     }
-    TopArtistContent(uiState, onArtistClick)
+    TopArtistContent(uiState, onArtistClick, { viewModel.reFetchTopArtist() })
 }
 
 @Composable
-fun TopArtistContent(uiState: FetchResult<TopArtistsData>, onArtistClick: (SpotifyArtist) -> Unit) { //topArtistsShort: List<SpotifyArtist>, topArtistsMedium: List<SpotifyArtist>, topArtistsLong: List<SpotifyArtist>, navController: NavController, paddingValues: PaddingValues
+fun TopArtistContent(uiState: FetchResult<TopArtistsData>, onArtistClick: (SpotifyArtist) -> Unit, onRetry: () -> Unit) { //topArtistsShort: List<SpotifyArtist>, topArtistsMedium: List<SpotifyArtist>, topArtistsLong: List<SpotifyArtist>, navController: NavController, paddingValues: PaddingValues
     var expandedMenuArtist by remember { mutableStateOf(false) }
     var artistPeriodSelection by remember { mutableStateOf(Period.SHORT_TERM) }
-    //var onArtistSelected by remember { mutableStateOf<SpotifyArtist?>(null)}
 
     //HandleBackToHome(navController)
 
     when (uiState) {
         FetchResult.Initial ->
-            CircularProgressIndicator()
-         //TODO() // For first time loading state.
+            Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
 
         FetchResult.Loading ->
-            CircularProgressIndicator()
+            Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
 
-        is FetchResult.Error -> TODO() // Just display the error message with snackbar.
+
+        is FetchResult.Error -> {
+            if (uiState.errorData is ApiError.NetworkConnectionError) {
+                Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "Network connection error.")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = onRetry) {
+                            Text(text = "Retry")
+                        }
+                    }
+                }
+            }
+        }
 
         is FetchResult.Success -> LazyColumn(
             modifier = Modifier
@@ -273,7 +291,7 @@ fun TopArtistContentPreview() {
             topArtistsMedium = List(5) { sampleArtist.copy(name = "Artist Medium ${it + 1}") },
             topArtistsLong = List(5) { sampleArtist.copy(name = "Artist Long ${it + 1}") }
         )
-        TopArtistContent(uiState = FetchResult.Success(sampleData), onArtistClick = {})
+        TopArtistContent(uiState = FetchResult.Success(sampleData), onArtistClick = {}, onRetry = {})
     }
 }
 

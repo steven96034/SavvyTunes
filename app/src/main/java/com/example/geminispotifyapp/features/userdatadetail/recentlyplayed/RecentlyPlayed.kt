@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.example.geminispotifyapp.ApiError
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.PlayContext
 import com.example.geminispotifyapp.data.PlayHistoryObject
@@ -95,7 +96,7 @@ fun RecentlyPlayedScreen(onHistoryClick: (PlayHistoryObject) -> Unit, viewModel:
         viewModel.fetchRecentlyPlayedIfNeeded()
     }
 
-    RecentlyPlayedContent(uiState, isRefreshing, displayedRecentlyPlayed, onHistoryClick, { viewModel.refreshRecentlyPlayed() })
+    RecentlyPlayedContent(uiState, isRefreshing, displayedRecentlyPlayed, onHistoryClick, { viewModel.refreshRecentlyPlayed() }, { viewModel.reFetchRecentlyPlayedIfNeeded() })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,7 +106,8 @@ fun RecentlyPlayedContent(
     isRefreshing: Boolean,
     displayedRecentlyPlayed: List<PlayHistoryObject>,
     onHistoryClick: (PlayHistoryObject) -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onRetry: () -> Unit
 ) {
     //var onHistorySelected by remember { mutableStateOf<PlayHistoryObject?>(null) }
     Log.d("RecentlyPlayedContent", "Using Basic Box. isRefreshing=$isRefreshing")
@@ -118,22 +120,32 @@ fun RecentlyPlayedContent(
         modifier = Modifier.fillMaxSize()
     ) {
         when (uiState) {
+            is FetchResultWithEtag.Initial ->
+                Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
 
+            FetchResultWithEtag.Loading ->
+                Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
 
-            is FetchResultWithEtag.Error ->  TODO() //Just display the error message with snackbar.
-
-            is FetchResultWithEtag.Initial -> {
-                CircularProgressIndicator()
-                Log.d("RecentlyPlayedScreen", "Initial state")
-                //TODO() // For first time loading state.
+            is FetchResultWithEtag.Error -> {
+                Log.d("RecentlyPlayedContent", "in FetchResultWithEtag.Error")
+                if (uiState.errorData is ApiError.NetworkConnectionError) {
+                    Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(text = "Network connection error.")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = onRetry) {
+                                Text(text = "Retry")
+                            }
+                        }
+                    }
+                }
             }
-
-            FetchResultWithEtag.Loading -> {
-                CircularProgressIndicator()
-                Log.d("RecentlyPlayedScreen", "Loading state")
-            }
-
-            //FetchResultWithEtag.NotModified -> TODO()
 
             is FetchResultWithEtag.Success, is FetchResultWithEtag.NotModified ->
                 LazyColumn(
@@ -367,7 +379,8 @@ fun RecentlyPlayedContentPreview() {
             isRefreshing = false,
             displayedRecentlyPlayed = sampleTracks,
             onHistoryClick = {},
-            onRefresh = {}
+            onRefresh = {},
+            onRetry = {}
         )
     }
 }

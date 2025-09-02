@@ -65,10 +65,14 @@ class RecentlyPlayedViewModel @Inject constructor(
 
                     is ApiError.Forbidden -> Log.d("RecentlyPlayedViewModel", "Forbidden: ${e.message}")
                     is ApiError.HttpError -> Log.d("RecentlyPlayedViewModel", "HttpError: ${e.message}")
-                    is ApiError.NetworkConnectionError -> Log.d(
-                        "RecentlyPlayedViewModel",
-                        "NetworkConnectionError: ${e.message}"
-                    )
+                    is ApiError.NetworkConnectionError -> {
+                        Log.d(
+                            "RecentlyPlayedViewModel",
+                            "NetworkConnectionError: ${e.message}"
+                        )
+                        _downLoadState.value =
+                            FetchResultWithEtag.Error(ApiError.NetworkConnectionError("Network connection error."))
+                    }
 
                     is ApiError.NotFound -> Log.d("RecentlyPlayedViewModel", "NotFound: ${e.message}")
                     is ApiError.ServerError -> Log.d(
@@ -99,6 +103,12 @@ class RecentlyPlayedViewModel @Inject constructor(
                 // globalUiEventPublisher.publishMessage("發生非預期錯誤。")
             }
         }
+    }
+
+    fun reFetchRecentlyPlayedIfNeeded() {
+        hasFetchedOnce = false
+        _downLoadState.value = FetchResultWithEtag.Initial
+        fetchRecentlyPlayedIfNeeded()
     }
 
     // Only display snackbar message when refresh or load data failed (handled in ApiExecutionHelper).
@@ -141,10 +151,9 @@ class RecentlyPlayedViewModel @Inject constructor(
                     is ApiError.Forbidden -> Log.d("RecentlyPlayedViewModel", "Forbidden: ${e.message}")
                     is ApiError.HttpError -> Log.d("RecentlyPlayedViewModel", "HttpError: ${e.message}")
                     is ApiError.NetworkConnectionError -> Log.d(
-                        "RecentlyPlayedViewModel",
-                        "NetworkConnectionError: ${e.message}"
-                    )
-
+                            "RecentlyPlayedViewModel",
+                            "NetworkConnectionError: ${e.message}"
+                        )
                     is ApiError.NotFound -> Log.d("RecentlyPlayedViewModel", "NotFound: ${e.message}")
                     is ApiError.ServerError -> Log.d(
                         "RecentlyPlayedViewModel",

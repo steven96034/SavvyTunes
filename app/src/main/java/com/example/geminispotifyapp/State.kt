@@ -14,16 +14,6 @@ sealed interface DownLoadState {
     data class Error(val message: String) : DownLoadState
 }
 
-data class UserData(
-    val userProfile: UserProfileResponse,
-)
-
-//data class ErrorData(
-//    val httpStatusCode: Int? = null,
-//    val errorMessage: String? = null,
-//    val errorCause: Throwable? = null
-//)
-
 // For searching method in HomePage
 sealed interface SearchUiState {
     data object Initial : SearchUiState

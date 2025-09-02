@@ -141,7 +141,8 @@ fun HomeScreen(
         { album -> viewModel.onSetSelectedAlbum(album) },
         { albumId -> viewModel.getAlbumTracks(albumId) },
         { trackId -> viewModel.getTrackAndSelectedTrack(trackId) },
-        searchButtonAnimationTrigger
+        searchButtonAnimationTrigger,
+        { viewModel.setSearchButtonAnimationTriggerToInitial() }
     )
 }
 
@@ -177,7 +178,8 @@ fun HomePage(
     onSetSelectedAlbum: (SpotifyAlbum?) -> Unit,
     getAlbumTracks: (String) -> Unit,
     getTrackAndSelectedTrack: (String) -> Unit,
-    searchButtonAnimationTrigger: Int
+    searchButtonAnimationTrigger: Int,
+    setSearchButtonAnimationTriggerToInitial: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
@@ -558,6 +560,7 @@ fun HomePage(
         item {
             Button(
                 onClick = {
+                    setSearchButtonAnimationTriggerToInitial()
                     scope.launch {
                         searchSimilarTracksAndArtists(
                             trackInput,
@@ -603,7 +606,6 @@ fun HomePage(
         item {
             selectedSuggestedTrack?.let { track ->
                 Spacer(Modifier.padding(8.dp))
-                //Text("Selected Track", style = MaterialTheme.typography.headlineSmall)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth(),
@@ -630,11 +632,6 @@ fun HomePage(
                 val artists = uiState.data.artists
                 val tracks = uiState.data.tracks
                 item {
-//                    Text(
-//                        "Similar Tracks",
-//                        style = MaterialTheme.typography.headlineSmall,
-//                        textAlign = TextAlign.Center
-//                    )
                     Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
                     Row(
                         modifier = Modifier
@@ -663,11 +660,6 @@ fun HomePage(
                     item { Text("No tracks found") }
                 }
                 item {
-//                    Text(
-//                        "Similar Artists",
-//                        style = MaterialTheme.typography.headlineSmall,
-//                        textAlign = TextAlign.Center
-//                    )
                     Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
                     Row(
                         modifier = Modifier
@@ -711,43 +703,7 @@ fun HomePage(
                 //Text("Initial")
             }
         }
-
-//            Spacer(modifier = Modifier.height(16.dp))
-//
-//            Button(
-//                onClick = { viewModel.createAndAddTrackToPlaylist(artistInput) },
-//                modifier = Modifier.padding(top = 8.dp)
-//            ) {
-//                Text("在Spotify中訂閱以下播放清單")
-//            }
-//
-//            Spacer(modifier = Modifier.height(16.dp))
-//
-//            Text("相似藝人:", style = MaterialTheme.typography.headlineSmall)
-//            similarArtists.forEach { artist ->
-//                Text(artist)
-//            }
-//
-//            Spacer(modifier = Modifier.height(16.dp))
-//
-//            Text("熱門歌曲:", style = MaterialTheme.typography.headlineSmall)
-//            LazyColumn {
-//                items(topTracks) { track ->
-//                    TrackItem(track)
-//                }
-//            }
     }
-    //}
-    //item {
-//    DetailBox(
-//        selectedValue = onTrackSelected,
-//        onDismiss = { onTrackSelected = null }) { track, onDetailDismiss ->
-//        TrackDetail(
-//            track = track,
-//            onDismiss = onDetailDismiss
-//        )
-//    }
-    //}
 }
 
 @Composable
@@ -1127,6 +1083,7 @@ fun HomePagePreview() {
         onSetSelectedAlbum = {},
         getAlbumTracks = {},
         getTrackAndSelectedTrack = {},
-        searchButtonAnimationTrigger = 0
+        searchButtonAnimationTrigger = 0,
+        setSearchButtonAnimationTriggerToInitial = {},
     )
 }
