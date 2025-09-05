@@ -16,6 +16,7 @@ import com.example.geminispotifyapp.data.remote.SpotifyUserApiService
 import com.example.geminispotifyapp.di.ApplicationScope
 import com.example.geminispotifyapp.domain.TokenRefreshFailedException
 import com.example.geminispotifyapp.domain.UserReAuthenticationRequiredException
+import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -144,18 +145,24 @@ class SpotifyRepositoryImpl @Inject constructor(
         timeRange: String,
         limit: Int,
         offset: Int
-    ): TopArtistsResponse {
+    ): FetchResult<TopArtistsResponse> {
         try {
             val authHeader = getAuthorizationHeader()
-            return spotifyUserApiService.getTopArtists(
+            val result = spotifyUserApiService.getTopArtists(
                 authorization = authHeader,
                 timeRange = timeRange,
                 limit = limit,
                 offset = offset
             )
-        } catch (e: Exception) {
+            return FetchResult.Success(result)
+        }
+        catch (e: ApiError) {
             Log.e("SpotifyData", "Failed to get top artists", e)
-            throw e
+            return FetchResult.Error(e)
+        }
+        catch (e: Exception) {
+            Log.e("SpotifyData", "Failed to get top artists", e)
+            return FetchResult.Error(ApiError.UnknownError("An unknown error occurred"))
         }
     }
 

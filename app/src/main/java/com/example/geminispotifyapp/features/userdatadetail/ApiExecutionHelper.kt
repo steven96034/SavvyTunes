@@ -44,18 +44,18 @@ class ApiExecutionHelper @Inject constructor() {
             val results = supervisorScope {
                 val deferredTasks = operations()
                 deferredTasks.map {
-                    try {
-                        it.await() // Wait for each async operation
-                    } catch (e: Exception) {
-                        Log.d("MainViewModel", "Single operation failed: $e")
-                        throw e
-                    }
+                    it.await() // Wait for each async operation
                 }
+            }
+            val firstError = results.firstOrNull { it is FetchResult.Error }
+            if (firstError != null) {
+                return firstError as FetchResult.Error // If any operation fails, return first error
             }
             val successData = transformSuccess(results)
             Log.d("MainViewModel", "All operations succeeded")
             FetchResult.Success(successData)
         } catch (e: Exception) {
+            // Other exceptions caused from this fetch.
             throw e
         }
     }

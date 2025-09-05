@@ -133,19 +133,6 @@ class ErrorHandlingInterceptor @Inject constructor(
         }
     }
 
-    // Helper function to parse error message from Spotify API error response
-//    private fun parseSpotifyErrorMessage(errorBody: String): String? {
-//        return try {
-//            // Just use the injected Gson instance to deserialize
-//            val errorResponse = gson.fromJson(errorBody, SpotifyErrorResponse::class.java)
-//            errorResponse?.error?.message ?: "An unknown error occurred." // Default message
-//        } catch (e: Exception) {
-//            // If JSON parsing fails, it might be because the API returned non-JSON format error
-//            Log.e("ErrorHandlingInterceptor", "Failed to parse error body: $errorBody", e)
-//            // Just return the original body or a generic error message
-//            "Failed to parse error message. Raw response: $errorBody"
-//        }
-//    }
     private fun parseSpotifyErrorMessage(errorBody: String): String {
         // Attempt 1: Try to parse as an OAuth error (e.g., invalid_grant)
         Log.d("ErrorHandlingInterceptor", "Attempting to parse as OAuth error: $errorBody")
