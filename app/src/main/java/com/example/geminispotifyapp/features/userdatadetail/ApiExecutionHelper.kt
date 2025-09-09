@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.supervisorScope
 import retrofit2.Response
+import retrofit2.HttpException
 import javax.inject.Inject
 
 class ApiExecutionHelper @Inject constructor() {
@@ -54,6 +55,12 @@ class ApiExecutionHelper @Inject constructor() {
             val successData = transformSuccess(results)
             Log.d("MainViewModel", "All operations succeeded")
             FetchResult.Success(successData)
+        } catch (e: HttpException) {
+            if (e.code() == 401) {
+                FetchResult.Error(ApiError.Unauthorized("Authentication failed"))
+            } else {
+                FetchResult.Error(ApiError.HttpError(e.code(), e.message()))
+            }
         } catch (e: Exception) {
             // Other exceptions caused from this fetch.
             throw e

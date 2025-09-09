@@ -74,7 +74,7 @@ fun TopArtistsScreen(onArtistClick: (SpotifyArtist) -> Unit, viewModel: TopArtis
     LaunchedEffect(Unit) {
         viewModel.fetchTopArtists()
     }
-    TopArtistContent(uiState, onArtistClick, { viewModel.reFetchTopArtist() })
+    TopArtistContent(uiState, onArtistClick) { viewModel.reFetchTopArtist() }
 }
 
 @Composable
@@ -103,6 +103,19 @@ fun TopArtistContent(uiState: FetchResult<TopArtistsData>, onArtistClick: (Spoti
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(text = "Network connection error.")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = onRetry) {
+                            Text(text = "Retry")
+                        }
+                    }
+                }
+            }
+            else {
+                Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "Unknown error.")
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(onClick = onRetry) {
                             Text(text = "Retry")

@@ -6,7 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.ApiError
 import com.example.geminispotifyapp.SpotifyRepository
 import com.example.geminispotifyapp.data.SpotifyArtist
+import com.example.geminispotifyapp.features.UiEvent
+import com.example.geminispotifyapp.features.UiEventManager
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
+import com.example.geminispotifyapp.utils.GlobalErrorHandler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,13 +22,12 @@ data class TopArtistsData(
     val topArtistsMedium: List<SpotifyArtist> = emptyList(),
     val topArtistsLong: List<SpotifyArtist> = emptyList()
 )
-// TODO: Could update top artists data by button.
 @HiltViewModel
 class TopArtistsViewModel @Inject constructor(
     private val spotifyRepository: SpotifyRepository,
-    //private val apiExecutionHelper: ApiExecutionHelper,
-    private val getTopArtistsUseCase: GetTopArtistsUseCase
-    //private val uiEventManager: UiEventManager
+    private val getTopArtistsUseCase: GetTopArtistsUseCase,
+    private val globalErrorHandler: GlobalErrorHandler,
+    private val uiEventManager: UiEventManager
 ): ViewModel() {
     private val _downLoadState = MutableStateFlow<FetchResult<TopArtistsData>>(FetchResult.Initial)
     val downLoadState: StateFlow<FetchResult<TopArtistsData>> = _downLoadState.asStateFlow()
@@ -36,6 +38,7 @@ class TopArtistsViewModel @Inject constructor(
 //        fetchTopArtists()
 //    }
     private var hasFetchedOnce = false
+    private val tag = "TopArtistsViewModel"
 
     fun reFetchTopArtist() {
         hasFetchedOnce = false
@@ -48,7 +51,7 @@ class TopArtistsViewModel @Inject constructor(
         if (hasFetchedOnce || _downLoadState.value is FetchResult.Loading) {
             return
         }
-        Log.d("TopArtistsViewModel", "Fetching top artists data...")
+        Log.d(tag, "Fetching top artists data...")
 
         hasFetchedOnce = true
         _downLoadState.value = FetchResult.Loading
@@ -63,45 +66,33 @@ class TopArtistsViewModel @Inject constructor(
         }
     }
 
-    private suspend fun handleApiError(error: ApiError) {
-        when (error) {
-            is ApiError.BadRequest -> Log.d(
-                "TopArtistsViewModel",
-                "BadRequest: ${error.message}"
-            )
+    fun testSnackbar() {
+        viewModelScope.launch {
+            Log.d(tag, "testSnackbar() called, emitting event...")
+            uiEventManager.sendEvent(UiEvent.ShowSnackbar("這是一則測試訊息"))
+            Log.d(tag, "testSnackbar() event emitted.")
+        }
+    }
 
-            is ApiError.Forbidden -> Log.d("TopArtistsViewModel", "Forbidden: ${error.message}")
-            is ApiError.HttpError -> Log.d("TopArtistsViewModel", "HttpError: ${error.message}")
-            is ApiError.NetworkConnectionError -> {
-                Log.d(
-                    "TopArtistsViewModel",
-                    "NetworkConnectionError: ${error.message}"
-                )
-                _downLoadState.value =
-                    FetchResult.Error(ApiError.NetworkConnectionError("Network connection error."))
-            }
+    private fun handleApiError(error: ApiError) {
+        viewModelScope.launch {
+            val uiEvent = globalErrorHandler.processError(error, tag)
 
-            is ApiError.NotFound -> Log.d("TopArtistsViewModel", "NotFound: ${error.message}")
-            is ApiError.ServerError -> Log.d(
-                "TopArtistsViewModel",
-                "ServerError: ${error.message}"
-            )
-
-            is ApiError.TooManyRequests -> Log.d(
-                "TopArtistsViewModel",
-                "TooManyRequests: ${error.message}"
-            )
-
-            is ApiError.Unauthorized -> {
-                Log.d("TopArtistsViewModel", "Unauthorized: ${error.message}")
-                spotifyRepository.performLogOutAndCleanUp()
-                TODO() // Navigate to login screen.
-            }
-
-            else -> {
-                Log.d("TopArtistsViewModel", "UnknownError of ApiError: ${error.message}")
-                _downLoadState.value =
-                    FetchResult.Error(ApiError.UnknownError("UnknownError, please try again later."))
+            // According to the returned UiAction, use the sendEvent function of the inherited sendEvent function to send events
+            when (uiEvent) {
+                is UiEvent.ShowSnackbar -> {
+                    uiEventManager.sendEvent(UiEvent.ShowSnackbar(uiEvent.message))
+                }
+                is UiEvent.ShowSnackbarDetail -> {
+                    uiEventManager.sendEvent(UiEvent.ShowSnackbarDetail(uiEvent.message, uiEvent.detail))
+                }
+                is UiEvent.Navigate -> {
+                    uiEventManager.sendEvent(UiEvent.Navigate(uiEvent.route))
+                }
+                is UiEvent.Unauthorized -> {
+                    uiEventManager.sendEvent(UiEvent.ShowSnackbar(uiEvent.message))
+                    uiEventManager.sendEvent(UiEvent.Navigate(uiEvent.navigationRoute))
+                }
             }
         }
     }

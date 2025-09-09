@@ -11,6 +11,7 @@ import com.example.geminispotifyapp.features.Screen
 import com.example.geminispotifyapp.features.bottomNavItems
 import com.example.geminispotifyapp.features.settings.AboutThisAppScreen
 import com.example.geminispotifyapp.features.settings.UserSettingsScreen
+import com.example.geminispotifyapp.init.LoginPage
 
 const val MAIN_GRAPH_ROUTE = "main_graph"
 @Composable
@@ -47,6 +48,9 @@ fun AppNavHost(navController: NavHostController, paddingValues: PaddingValues) {
         }
         composable("aboutThisApp") {
             AboutThisAppScreen(paddingValues)
+        }
+        composable("login") {
+            LoginPage(paddingValues)
         }
     }
 }

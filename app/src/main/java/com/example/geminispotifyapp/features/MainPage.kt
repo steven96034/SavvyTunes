@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonPin
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -35,6 +36,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -42,12 +45,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,7 +59,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.tooling.preview.Preview
@@ -71,7 +73,6 @@ import com.example.geminispotifyapp.ui.AppNavHost
 import com.example.geminispotifyapp.ui.MAIN_GRAPH_ROUTE
 import com.example.geminispotifyapp.ui.theme.SpotifyBlack
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
-import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String, val icon: ImageVector, val label: String) {
     object Home : Screen("home", Icons.Default.Home, "Home")
@@ -84,6 +85,10 @@ sealed class Screen(val route: String, val icon: ImageVector, val label: String)
 sealed class SettingsScreen(val route: String, val icon: ImageVector, val label: String) {
     object Settings : SettingsScreen("settings", Icons.Default.Settings, "Settings")
     object AboutThisApp : SettingsScreen("aboutThisApp", Icons.Default.Info, "About This App")
+}
+
+sealed class MoreScreen(val route: String, val icon: ImageVector, val label: String) {
+    object LoginPage : MoreScreen("login", Icons.Default.AccountCircle, "Login")
 }
 
 var bottomNavItems = listOf(
@@ -109,8 +114,6 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     // Use WindowSizeClass to determine more kinds of screen size (e.g. Compact, Medium, Expanded), here's only for phone's orientation
 //    val configuration = LocalConfiguration.current
@@ -118,62 +121,66 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
 //    val items = remember { listOf(Screen.TopArtists, Screen.TopTracks, Screen.RecentlyPlayed) }
 
     var showMenu by remember { mutableStateOf(false) }
-    LaunchedEffect(snackbarHostState) {
-        viewModel.snackbarEvent.collect { event ->
-            scope.launch {
-                //val messageText: String
-                val result: SnackbarResult
-                when (event) {
-                    is SnackbarMessage.TextMessage -> {
-                        //snackbarHostState.showSnackbar(event.message)
-                        result = snackbarHostState.showSnackbar(
-                            message = event.message,
-                            withDismissAction = true,
-                            duration = event.duration
-                        )
-                        //messageText = event.message
-                    }
-                    // TODO: Make more user friendly error message...
-                    is SnackbarMessage.ExceptionMessage -> {
-                        //snackbarHostState.showSnackbar(event.exception.localizedMessage ?: "Some Error Happened...")
-                        result = snackbarHostState.showSnackbar(
-                            message = event.exception.localizedMessage ?: "Some Error Happened...",
-                            withDismissAction = true,
-                            duration = event.duration
-                        )
-                        //event.exception.localizedMessage ?: "Some Error Happened..."
-                    }
-                    is SnackbarMessage.ApiErrorMessage -> {
-                        result = snackbarHostState.showSnackbar(
-                            message = event.message,
-                            withDismissAction = true,
-                            duration = event.duration
-                        )
-                    }
+    var showDialog by remember { mutableStateOf(false) }
 
-                    is SnackbarMessage.ActionMessage -> {
-                        result = snackbarHostState.showSnackbar(
-                            message = event.message,
-                            actionLabel = event.actionLabel,
-                            withDismissAction = true,
-                            duration = event.duration
-                        )
-                        //event.message
-                    }
-                    is SnackbarMessage.ResourceMessage -> {
-                        result = snackbarHostState.showSnackbar(
-                            message = context.getString(event.resourceId),
-                            withDismissAction = true,
-                            duration = event.duration
-                        )
-                        //context.getString(event.resourceId)
+    val tag = "UiEvent"
+    var dialogMessage by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        Log.d("MainPager_Collector", "LAUNCHED EFFECT STARTED.")
+        viewModel.uiEventManager.eventFlow.collect { event ->
+            Log.d("MainPager_Collector", ">>>>>> EVENT RECEIVED: $event")
+            when (event) {
+                is UiEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(message = event.message, withDismissAction = true, duration = SnackbarDuration.Short)
+                    Log.d(tag, "MainPager_Collector: ${event.message}")
+                }
+                is UiEvent.Navigate -> {
+                    navController.navigate(event.route)
+                    Log.d(tag, "MainPager_Collector: ${event.route}")
+                }
+                is UiEvent.ShowSnackbarDetail -> {
+                    val snackbarActionResult = snackbarHostState.showSnackbar(event.message, "Details", true, SnackbarDuration.Short)
+                    Log.d(tag, "MainPager_Collector: ${event.message}")
+                    when (snackbarActionResult) {
+                        SnackbarResult.ActionPerformed -> {
+                            // User clicked the "Details" button
+                            dialogMessage = event.detail
+                            showDialog = true
+                            Log.d(tag, "MainPager_Collector: 'Details' action performed for: ${event.message}")
+
+                        }
+                        SnackbarResult.Dismissed -> {
+                            Log.d(tag, "MainPager_Collector: Snackbar dismissed for: ${event.message}")
+                        }
                     }
                 }
-                Log.d("Snackbar", "$event")
-                if (result == SnackbarResult.ActionPerformed && event is SnackbarMessage.ActionMessage) event.onAction.invoke()
+                is UiEvent.Unauthorized -> {
+                    navController.navigate(event.navigationRoute)
+                    snackbarHostState.showSnackbar(event.message)
+                    Log.d(tag, "MainPager_Collector: ${event.message}")
+                }
             }
         }
     }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Details") },
+            text = {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(dialogMessage)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) { Text("OK") }
+            }
+        )
+    }
+
 
 
 //    // 創建 PagerState 來管理底部導航頁面的狀態
@@ -368,7 +375,21 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
 //                }
 //            }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                snackbar = { snackbarData ->
+                    Snackbar(
+                        snackbarData = snackbarData,
+                        modifier = Modifier.padding(16.dp),
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = Color.White,
+                        actionColor = SpotifyGreen,
+                        dismissActionContentColor = Color.LightGray
+                    )
+                }
+            )
+        }
     ) { paddingValues ->
         AppNavHost(
             navController = navController,

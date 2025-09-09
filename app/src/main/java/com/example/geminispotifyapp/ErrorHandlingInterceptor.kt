@@ -1,8 +1,6 @@
 package com.example.geminispotifyapp
 
 import android.util.Log
-import com.example.geminispotifyapp.features.SnackbarMessage.ApiErrorMessage
-import com.example.geminispotifyapp.features.UiEventManager
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import okhttp3.Interceptor
@@ -15,7 +13,7 @@ import javax.inject.Singleton
 sealed class ApiError(val code: Int, override val message: String?) : IOException(message) {
     // 400 Bad Request: Request format error
     class BadRequest(message: String?) : ApiError(400, message)
-    // 401 Unauthorized: Authenticate failed or token expired (handled by Authenticator)
+    // 401 Unauthorized: Authenticate failed or token expired (handled by ApiExecutionHelper)
     class Unauthorized(message: String?) : ApiError(401, message)
     // 403 Forbidden: Insufficient permission
     class Forbidden(message: String?) : ApiError(403, message)
@@ -52,7 +50,6 @@ data class SpotifyOAuthError(
 // Custom Interceptor to handle HTTP responses and throw corresponding ApiError
 @Singleton
 class ErrorHandlingInterceptor @Inject constructor(
-    private val uiEventManager: UiEventManager,
     private val gson: Gson
 ) : Interceptor {
 
@@ -77,7 +74,6 @@ class ErrorHandlingInterceptor @Inject constructor(
             }
             // Catch network connection errors (e.g., no network, DNS resolution failed)
             val networkError = ApiError.NetworkConnectionError(e.message ?: "Network connection error")
-            emitApiErrorEvent(networkError)
             throw networkError
         }
 
@@ -92,34 +88,29 @@ class ErrorHandlingInterceptor @Inject constructor(
                 val errorBody = originalResponse.peekBody(Long.MAX_VALUE).string()
                 val errorMessage = parseSpotifyErrorMessage(errorBody)
                 val error = ApiError.BadRequest(errorMessage)
-                emitApiErrorEvent(error)
                 throw error
             }
             originalResponse.code == 403 -> {
                 val errorBody = originalResponse.peekBody(Long.MAX_VALUE).string()
                 val errorMessage = parseSpotifyErrorMessage(errorBody)
                 val error = ApiError.Forbidden(errorMessage)
-                emitApiErrorEvent(error)
                 throw error
             }
             originalResponse.code == 404 -> {
                 val errorBody = originalResponse.peekBody(Long.MAX_VALUE).string()
                 val errorMessage = parseSpotifyErrorMessage(errorBody)
                 val error = ApiError.NotFound(errorMessage)
-                emitApiErrorEvent(error)
                 throw error
             }
             originalResponse.code == 429 -> {
                 val retryAfter = originalResponse.header("Retry-After")?.toIntOrNull()
                 val error = ApiError.TooManyRequests("Too many requests", retryAfter)
-                emitApiErrorEvent(error)
                 throw error
             }
             originalResponse.code in 500..599 -> {
                 val errorBody = originalResponse.peekBody(Long.MAX_VALUE).string()
                 val errorMessage = parseSpotifyErrorMessage(errorBody)
                 val error = ApiError.ServerError(errorMessage)
-                emitApiErrorEvent(error)
                 throw error
             }
             else -> {
@@ -127,7 +118,6 @@ class ErrorHandlingInterceptor @Inject constructor(
                 val errorBody = originalResponse.peekBody(Long.MAX_VALUE).string()
                 val errorMessage = parseSpotifyErrorMessage(errorBody)
                 val error = ApiError.HttpError(originalResponse.code, errorMessage)
-                emitApiErrorEvent(error)
                 throw error
             }
         }
@@ -166,22 +156,5 @@ class ErrorHandlingInterceptor @Inject constructor(
         // It's often most useful to return the raw body if specific parsing fails,
         // so the developer/logs show exactly what the server sent.
         return "Server error. Raw response: $errorBody"
-    }
-
-    private fun emitApiErrorEvent(error: ApiError) {
-        // Transform ApiError to a message that can be displayed in UI, then sent through publisher
-        val displayMessage = when (error) {
-            is ApiError.NetworkConnectionError -> "網路連線失敗，請檢查您的網路。"
-            //is ApiError.Unauthorized -> "登入資訊已過期，請重新登入。" // Handled by AppAuthenticator
-            is ApiError.Forbidden -> "您沒有足夠權限執行此操作，嘗試檢查是否為Premium帳戶。"
-            is ApiError.NotFound -> "找不到請求的資源。"
-            is ApiError.TooManyRequests -> "請求過於頻繁，請等待 ${error.retryAfter ?: 5} 秒後重試。"
-            is ApiError.ServerError -> "伺服器暫時不可用，請稍後再試。"
-            is ApiError.BadRequest -> "請求發生錯誤，請檢查輸入。"
-            else -> "發生未知錯誤: ${error.message}"
-        }
-        // Emit event
-        Log.d("ErrorHandlingInterceptor", "EmitApiErrorEvent in SnackBar: $displayMessage")
-        uiEventManager.showSnackbar(ApiErrorMessage(displayMessage))
     }
 }

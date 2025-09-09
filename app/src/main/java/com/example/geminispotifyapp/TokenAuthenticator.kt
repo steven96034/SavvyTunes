@@ -1,7 +1,5 @@
 package com.example.geminispotifyapp
 
-import com.example.geminispotifyapp.features.SnackbarMessage
-import com.example.geminispotifyapp.features.UiEventManager
 import kotlinx.coroutines.runBlocking
 import okhttp3.Authenticator
 import okhttp3.Request
@@ -14,7 +12,6 @@ import javax.inject.Singleton
 // Only handle under circumstances: HTTP 401 Unauthorized(Main) or 407 Proxy Authentication Required. (Authentication Failed)
 @Singleton
 class TokenAuthenticator @Inject constructor(
-    private val uiEventManager: UiEventManager,
     private val spotifyRepositoryImplProvider: Provider<SpotifyRepositoryImpl> // Use Provider to prevent dependency cycle
 ) : Authenticator {
     override fun authenticate(route: Route?, response: Response): Request? {
@@ -49,7 +46,6 @@ class TokenAuthenticator @Inject constructor(
         }
 
         // If can't get new Access Token (e.g. Refresh Token is also invalid), return null to fail the original request
-        uiEventManager.showSnackbar(SnackbarMessage.ApiErrorMessage("Authentication required. Please log in again"))
         return null
     }
 }

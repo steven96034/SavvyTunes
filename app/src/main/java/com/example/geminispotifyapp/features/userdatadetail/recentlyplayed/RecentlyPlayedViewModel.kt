@@ -8,7 +8,7 @@ import com.example.geminispotifyapp.SpotifyRepositoryImpl
 import com.example.geminispotifyapp.data.PlayHistoryObject
 import com.example.geminispotifyapp.data.RecentlyPlayedResponse
 import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
-import com.example.geminispotifyapp.features.SnackbarMessage
+import com.example.geminispotifyapp.features.UiEvent
 import com.example.geminispotifyapp.features.UiEventManager
 import com.example.geminispotifyapp.features.userdatadetail.ApiExecutionHelper
 import com.example.geminispotifyapp.features.userdatadetail.FetchResultWithEtag
@@ -128,13 +128,13 @@ class RecentlyPlayedViewModel @Inject constructor(
                     _displayedRecentlyPlayed.value = result.data
                     Log.d("RecentlyPlayedViewModel", "Recently played data refreshed successfully.")
                     Log.d("RecentlyPlayedViewModel", "eTag: $eTag")
-                    uiEventManager.showSnackbar(SnackbarMessage.TextMessage("Refresh successfully completed."))
+                    uiEventManager.sendEvent(UiEvent.ShowSnackbar("Refresh successfully completed."))
                 }
                 else if (result is FetchResultWithEtag.NotModified) {
                     Log.d("RecentlyPlayedViewModel", "Recently played data is not modified.")
                     Log.d("RecentlyPlayedViewModel", "eTag: $eTag")
                     eTag = result.eTag
-                    uiEventManager.showSnackbar(SnackbarMessage.TextMessage("Data is not modified.")) // For TEST
+                    uiEventManager.sendEvent(UiEvent.ShowSnackbar("Data is not modified.")) // For TEST
                 }
                 else if (result is FetchResultWithEtag.Error) {
                     Log.e("RecentlyPlayedViewModel", "Failed to refresh recently played data.")
@@ -174,13 +174,9 @@ class RecentlyPlayedViewModel @Inject constructor(
                     else -> Log.d("RecentlyPlayedViewModel", "UnknownError of ApiError: ${e.message}")
                 }
             } catch (e: Exception) {
-                // 捕獲任何未被 ApiError 處理的、非預期的其他異常。
-                // 這通常是您程式碼中的 bug 或預料之外的運行時問題。
                 Log.e("RecentlyPlayedViewModel", "發生未預期錯誤: ${e.message}", e)
                 _downLoadState.value =
                     FetchResultWithEtag.Error(ApiError.UnknownError("發生非預期錯誤，請稍後再試。"))
-                // 同樣可以發送一個 SnackBar 提示，如果 GlobalUiEventPublisher 沒有處理這種通用異常的話
-                // globalUiEventPublisher.publishMessage("發生非預期錯誤。")
             } finally {
                 _isRefreshing.value = false
             }

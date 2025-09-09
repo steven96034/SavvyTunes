@@ -11,7 +11,7 @@ import com.example.geminispotifyapp.data.SharedData.FIND_SIMILAR_NUM
 import com.example.geminispotifyapp.data.SpotifyAlbum
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
-import com.example.geminispotifyapp.features.SnackbarMessage
+import com.example.geminispotifyapp.features.UiEvent
 import com.example.geminispotifyapp.features.UiEventManager
 import com.google.ai.client.generativeai.type.GenerateContentResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -205,7 +205,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                 //_searchDataUiState.value = SearchUiState.Initial
             }
             catch (e: Exception) {
-                uiEventManager.showSnackbar(SnackbarMessage.ExceptionMessage(e))
+                uiEventManager.sendEvent(UiEvent.ShowSnackbar(e.localizedMessage ?: "Some Error Happened..."))
                 _searchDataUiState.value = SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
             }
         }
@@ -225,7 +225,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                 Log.d("Gemini", "response: $response")
                 _searchByIdUiState.value = SearchUiState.Success((SpotifyDataList(null, null, null, response.tracks)))
             } catch (e: Exception) {
-                uiEventManager.showSnackbar(SnackbarMessage.ExceptionMessage(e))
+                uiEventManager.sendEvent(UiEvent.ShowSnackbar(e.localizedMessage ?: "Some Error Happened..."))
                 _searchByIdUiState.value = SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
             }
         }
@@ -244,7 +244,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                 _searchByIdUiState.value =
                     SearchUiState.Success((SpotifyDataList(null, null, null, response.tracks)))
             } catch (e: Exception) {
-                uiEventManager.showSnackbar(SnackbarMessage.ExceptionMessage(e))
+                uiEventManager.sendEvent(UiEvent.ShowSnackbar(e.localizedMessage ?: "Some Error Happened..."))
                 _searchByIdUiState.value =
                     SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
             }
@@ -280,7 +280,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                 val response = spotifyRepositoryImpl.getTrack(trackId)
                 onSelectedSuggestedTrackChange(response)
             } catch (e: Exception) {
-                uiEventManager.showSnackbar(SnackbarMessage.ExceptionMessage(e))
+                uiEventManager.sendEvent(UiEvent.ShowSnackbar(e.localizedMessage ?: "Some Error Happened..."))
             }
         }
     }
@@ -305,7 +305,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                 val artists = response.artists.items
                 _searchDataUiState.value = SearchUiState.Success((SpotifyDataList(null, artists, null, null)))
             } catch (e: Exception) {
-                uiEventManager.showSnackbar(SnackbarMessage.ExceptionMessage(e))
+                uiEventManager.sendEvent(UiEvent.ShowSnackbar(e.localizedMessage ?: "Some Error Happened..."))
                 _searchDataUiState.value = SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
             }
         }
@@ -433,7 +433,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
         if (_searchSimilarUiState.value is SearchUiState.Loading) {
             searchJob?.cancel(CancellationException("Cancel search by user."))
             viewModelScope.launch {
-                uiEventManager.showSnackbar(SnackbarMessage.TextMessage("Previous search has successfully cancelled."))
+                uiEventManager.sendEvent(UiEvent.ShowSnackbar("Previous search has successfully cancelled."))
             }
             _searchSimilarUiState.value = SearchUiState.Initial
             return
@@ -537,7 +537,8 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                         // TODO: for albums data
                         val data = SpotifyDataList(trackTempList.toList(), artistTempList.toList(), null, null)
                         _searchSimilarUiState.value = SearchUiState.Success(data)
-                        uiEventManager.showSnackbar(SnackbarMessage.TextMessage("Search successfully completed."))
+                        uiEventManager.sendEvent(UiEvent.ShowSnackbar("Search successfully completed."))
+
                         Log.d("Gemini", "Tracks and Artists Data: $data")
                     }
                 } ?: if(isActive) { // If response.text is null
@@ -556,7 +557,7 @@ class HomeViewModel @Inject constructor(private val spotifyRepositoryImpl: Spoti
                 if (isActive) {
                     _searchSimilarUiState.value =
                         SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
-                    uiEventManager.showSnackbar(SnackbarMessage.ExceptionMessage(e))
+                    uiEventManager.sendEvent(UiEvent.ShowSnackbar(e.localizedMessage ?: "Some Error Happened..."))
                     Log.d("Gemini", "Error: $e")
                     e.printStackTrace()
                 }

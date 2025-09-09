@@ -48,13 +48,9 @@ class MainScreenWithPagerViewModel @Inject constructor() : ViewModel() {
         modifier: Modifier = Modifier,
         content: @Composable (T, () -> Unit) -> Unit // Content to be displayed
     ) {
-        Log.d("DetailBox", "DetailBox recomposing. selectedValue is null: ${selectedValue == null}")
         if (selectedValue == null) {
-            Log.d("DetailBox", "selectedValue is NULL, returning.")
             return
         }
-
-        Log.d("DetailBox", "selectedValue is NOT NULL, proceeding to show Box. Value: $selectedValue")
 
         Box(
             modifier = Modifier
@@ -86,7 +82,6 @@ class MainScreenWithPagerViewModel @Inject constructor() : ViewModel() {
                 },
             contentAlignment = Alignment.Center
         ){
-            Log.d("DetailBox", "Inside outer Box, about to show Surface.")
             val scrollState = rememberScrollState()
 
             Surface(
@@ -104,9 +99,7 @@ class MainScreenWithPagerViewModel @Inject constructor() : ViewModel() {
                         .verticalScroll(scrollState),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Log.d("DetailBox", "About to call content lambda.")
                     content(selectedValue, onDismiss)
-                    Log.d("DetailBox", "Finished calling content lambda.")
                 }
             }
         }
