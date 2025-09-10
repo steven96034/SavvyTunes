@@ -124,6 +124,18 @@ fun TopTrackContent(uiState: FetchResult<TopTrackData>, onTrackClick: (SpotifyTr
                         }
                     }
                 }
+            } else {
+                Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = "Unknown error.")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = onRetry) {
+                            Text(text = "Retry")
+                        }
+                    }
+                }
             }
         }
 

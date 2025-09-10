@@ -74,7 +74,7 @@ import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
 import com.example.geminispotifyapp.data.SimplifiedArtist
 import com.example.geminispotifyapp.data.SpotifyAlbum
 import com.example.geminispotifyapp.data.SpotifyTrack
-import com.example.geminispotifyapp.features.userdatadetail.FetchResultWithEtag
+import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import com.example.geminispotifyapp.ui.theme.GeminiSpotifyAppTheme
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 import java.text.SimpleDateFormat
@@ -102,7 +102,7 @@ fun RecentlyPlayedScreen(onHistoryClick: (PlayHistoryObject) -> Unit, viewModel:
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecentlyPlayedContent(
-    uiState: FetchResultWithEtag<List<PlayHistoryObject>>,
+    uiState: FetchResult<List<PlayHistoryObject>>,
     isRefreshing: Boolean,
     displayedRecentlyPlayed: List<PlayHistoryObject>,
     onHistoryClick: (PlayHistoryObject) -> Unit,
@@ -120,18 +120,18 @@ fun RecentlyPlayedContent(
         modifier = Modifier.fillMaxSize()
     ) {
         when (uiState) {
-            is FetchResultWithEtag.Initial ->
+            FetchResult.Initial ->
                 Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
 
-            FetchResultWithEtag.Loading ->
+            FetchResult.Loading ->
                 Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
 
-            is FetchResultWithEtag.Error -> {
-                Log.d("RecentlyPlayedContent", "in FetchResultWithEtag.Error")
+            is FetchResult.Error -> {
+                Log.d("RecentlyPlayedContent", "in FetchResult.Error")
                 if (uiState.errorData is ApiError.NetworkConnectionError) {
                     Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(
@@ -144,10 +144,22 @@ fun RecentlyPlayedContent(
                             }
                         }
                     }
+                } else {
+                    Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(text = "Unknown error.")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = onRetry) {
+                                Text(text = "Retry")
+                            }
+                        }
+                    }
                 }
             }
 
-            is FetchResultWithEtag.Success, is FetchResultWithEtag.NotModified ->
+            is FetchResult.Success ->
                 LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -375,7 +387,7 @@ fun RecentlyPlayedContentPreview() {
     }
     GeminiSpotifyAppTheme {
         RecentlyPlayedContent(
-            uiState = FetchResultWithEtag.Success(sampleTracks, null),
+            uiState = FetchResult.Success(sampleTracks),
             isRefreshing = false,
             displayedRecentlyPlayed = sampleTracks,
             onHistoryClick = {},

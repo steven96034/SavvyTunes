@@ -25,10 +25,9 @@ interface SpotifyRepository {
 
     suspend fun getRecentlyPlayedTracks(
         limit: Int = 20,
-        eTag: String?,
         before: Long? = null,
         after: Long? = null
-    ): Response<RecentlyPlayedResponse>
+    ): FetchResult<RecentlyPlayedResponse>
 
     suspend fun searchData(
         query: String,
@@ -49,7 +48,7 @@ interface SpotifyRepository {
         timeRange: String = "medium_term",
         limit: Int = 20,
         offset: Int = 0
-    ): TopTracksResponse
+    ): FetchResult<TopTracksResponse>
 
     suspend fun getAccessTokenThruAuth(
         grantType: String = "authorization_code",

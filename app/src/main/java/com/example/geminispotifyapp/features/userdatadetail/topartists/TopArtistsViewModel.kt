@@ -66,14 +66,6 @@ class TopArtistsViewModel @Inject constructor(
         }
     }
 
-    fun testSnackbar() {
-        viewModelScope.launch {
-            Log.d(tag, "testSnackbar() called, emitting event...")
-            uiEventManager.sendEvent(UiEvent.ShowSnackbar("這是一則測試訊息"))
-            Log.d(tag, "testSnackbar() event emitted.")
-        }
-    }
-
     private fun handleApiError(error: ApiError) {
         viewModelScope.launch {
             val uiEvent = globalErrorHandler.processError(error, tag)

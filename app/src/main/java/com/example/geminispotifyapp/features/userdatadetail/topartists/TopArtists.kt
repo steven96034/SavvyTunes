@@ -109,8 +109,7 @@ fun TopArtistContent(uiState: FetchResult<TopArtistsData>, onArtistClick: (Spoti
                         }
                     }
                 }
-            }
-            else {
+            } else {
                 Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally

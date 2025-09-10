@@ -35,11 +35,10 @@ interface SpotifyUserApiService {
     @GET("v1/me/player/recently-played")
     suspend fun getRecentlyPlayed(
         @Header("Authorization") authorization: String,
-        @Header("If-None-Match") etag: String? = null,
         @Query("limit") limit: Int = 20,
         @Query("before") before: Long? = null,
         @Query("after") after: Long? = null
-    ): Response<RecentlyPlayedResponse>
+    ): RecentlyPlayedResponse
 
     @GET("v1/search")
     suspend fun searchTracks(
