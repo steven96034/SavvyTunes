@@ -27,7 +27,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
-import com.example.geminispotifyapp.data.PlayHistoryObject
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.features.home.HomeScreen
@@ -35,6 +34,7 @@ import com.example.geminispotifyapp.features.home.HomeViewModel
 import com.example.geminispotifyapp.features.userdatadetail.recentlyplayed.RecentlyPlayedScreen
 import com.example.geminispotifyapp.features.userdatadetail.recentlyplayed.RecentlyPlayedViewModel
 import com.example.geminispotifyapp.features.userdatadetail.recentlyplayed.TrackHistoryDetail
+import com.example.geminispotifyapp.features.userdatadetail.recentlyplayed.UiPlayHistoryObject
 import com.example.geminispotifyapp.features.userdatadetail.topartists.ArtistDetail
 import com.example.geminispotifyapp.features.userdatadetail.topartists.TopArtistsScreen
 import com.example.geminispotifyapp.features.userdatadetail.topartists.TopArtistsViewModel
@@ -191,7 +191,7 @@ fun MainScreenWithPager(
         when (bottomNavItems[selectedScreen]) {
             is Screen.TopArtists -> ArtistDetail(item as SpotifyArtist, onDismiss)
             is Screen.TopTracks -> TrackDetail(item as SpotifyTrack, onDismiss)
-            is Screen.RecentlyPlayed -> TrackHistoryDetail(item as PlayHistoryObject, onDismiss)
+            is Screen.RecentlyPlayed -> TrackHistoryDetail(item as UiPlayHistoryObject, onDismiss)
             is Screen.Home -> {
                 if (item is SpotifyArtist) ArtistDetail(item, onDismiss)
                 else if (item is SpotifyTrack) TrackDetail(item, onDismiss)

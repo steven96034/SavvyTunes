@@ -36,6 +36,7 @@ class ApiExecutionHelper @Inject constructor() {
      *                   that is not caught internally, it will be rethrown and caught by the
      *                   outer try-catch block, resulting in a [FetchResult.Error].
      */
+    val tag = "ApiExecutionHelper"
     suspend fun <ResultType, SuccessDataType> executeApiOperations(
         operations: suspend CoroutineScope.() -> List<Deferred<ResultType>>,
         transformSuccess: (List<ResultType>) -> SuccessDataType// Transform List<ResultType> into final SuccessDataType
@@ -53,7 +54,7 @@ class ApiExecutionHelper @Inject constructor() {
                 return firstError as FetchResult.Error // If any operation fails, return first error
             }
             val successData = transformSuccess(results)
-            Log.d("MainViewModel", "All operations succeeded")
+            Log.d(tag, "All operations succeeded")
             FetchResult.Success(successData)
         } catch (e: HttpException) {
             if (e.code() == 401) {
@@ -106,25 +107,26 @@ class ApiExecutionHelper @Inject constructor() {
                     val result = response.body()
                     if (result != null) {
                         val successData = transformSuccess(result)
-                        Log.d("MainViewModel", "All operations succeeded")
-                        Log.d("MainViewModel", "${response.headers()}")
-                        Log.d("MainViewModel", "ETag: ${response.headers()["ETag"]}")
+                        Log.d(tag, "This operation succeeded")
+                        Log.d(tag, "${response.headers()}")
+                        Log.d(tag, "ETag: ${response.headers()["ETag"]}")
                         FetchResultWithEtag.Success(successData, response.headers()["ETag"])
                     } else {
-                        Log.d("MainViewModel", "Response body is null")
+                        Log.d(tag, "Response body is null")
                         FetchResultWithEtag.Error(ApiError.UnknownError("Response body is null"))
                     }
                 }
                 304 -> {
-                    Log.d("MainViewModel", "Not Modified")
+                    Log.d(tag, "Not Modified")
                     FetchResultWithEtag.NotModified(response.headers()["ETag"])
                 }
                 else -> {
-                    Log.d("MainViewModel", "Response code is not 200 or 304")
+                    Log.d(tag, "Response code is not 200 or 304")
                     FetchResultWithEtag.Error(ApiError.UnknownError("Response code is not 200 or 304"))
                 }
             }
         } catch (e: Exception) {
+            Log.d(tag, "Exception thrown: $e")
             throw e
         }
     }

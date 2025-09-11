@@ -73,7 +73,7 @@ import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
 import com.example.geminispotifyapp.features.userdatadetail.DropDownMenuTemplate
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import com.example.geminispotifyapp.features.userdatadetail.Period
-import com.example.geminispotifyapp.features.userdatadetail.formatEnumPeriodName
+import com.example.geminispotifyapp.features.userdatadetail.Period.Companion.formatEnumPeriodName
 import com.example.geminispotifyapp.ui.theme.GeminiSpotifyAppTheme
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 import java.util.Locale
@@ -112,28 +112,26 @@ fun TopTrackContent(uiState: FetchResult<TopTrackData>, onTrackClick: (SpotifyTr
             }
 
         is FetchResult.Error -> {
-            if (uiState.errorData is ApiError.NetworkConnectionError) {
-                Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = "Network connection error.")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = onRetry) {
-                            Text(text = "Retry")
-                        }
-                    }
-                }
-            } else {
-                Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = "Unknown error.")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = onRetry) {
-                            Text(text = "Retry")
-                        }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    if (uiState.errorData is ApiError.NetworkConnectionError)
+                        Text(text = "Network connection error.", textAlign = TextAlign.Center)
+                    else
+                        Text(text = "Error.", textAlign = TextAlign.Center)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = onRetry) {
+                        Text(text = "Retry")
                     }
                 }
             }

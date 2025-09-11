@@ -1,7 +1,6 @@
 package com.example.geminispotifyapp.features.userdatadetail.recentlyplayed
 
 import android.content.Intent
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -59,6 +58,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
@@ -77,10 +77,6 @@ import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import com.example.geminispotifyapp.ui.theme.GeminiSpotifyAppTheme
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -96,26 +92,28 @@ fun RecentlyPlayedScreen(onHistoryClick: (PlayHistoryObject) -> Unit, viewModel:
         viewModel.fetchRecentlyPlayedIfNeeded()
     }
 
-    RecentlyPlayedContent(uiState, isRefreshing, displayedRecentlyPlayed, onHistoryClick, { viewModel.refreshRecentlyPlayed() }, { viewModel.reFetchRecentlyPlayedIfNeeded() })
+    RecentlyPlayedContent(
+        uiState = uiState,
+        isRefreshing = isRefreshing,
+        displayedRecentlyPlayed = displayedRecentlyPlayed,
+        onHistoryClick = onHistoryClick,
+        onRefresh = { viewModel.refreshRecentlyPlayed() },
+        onRetry = { viewModel.reFetchRecentlyPlayedIfNeeded() }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecentlyPlayedContent(
-    uiState: FetchResult<List<PlayHistoryObject>>,
+    uiState: FetchResult<List<UiPlayHistoryObject>>,
     isRefreshing: Boolean,
-    displayedRecentlyPlayed: List<PlayHistoryObject>,
+    displayedRecentlyPlayed: List<UiPlayHistoryObject>,
     onHistoryClick: (PlayHistoryObject) -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit
 ) {
-    //var onHistorySelected by remember { mutableStateOf<PlayHistoryObject?>(null) }
-    Log.d("RecentlyPlayedContent", "Using Basic Box. isRefreshing=$isRefreshing")
-
-    //HandleBackToHome(navController)
-
     PullToRefreshBox (
-        isRefreshing = isRefreshing, // Control the visibility of refreshing indicator
+        isRefreshing = isRefreshing,
         onRefresh = onRefresh,
         modifier = Modifier.fillMaxSize()
     ) {
@@ -131,29 +129,26 @@ fun RecentlyPlayedContent(
                 }
 
             is FetchResult.Error -> {
-                Log.d("RecentlyPlayedContent", "in FetchResult.Error")
-                if (uiState.errorData is ApiError.NetworkConnectionError) {
-                    Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(text = "Network connection error.")
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(onClick = onRetry) {
-                                Text(text = "Retry")
-                            }
-                        }
-                    }
-                } else {
-                    Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(text = "Unknown error.")
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(onClick = onRetry) {
-                                Text(text = "Retry")
-                            }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        if (uiState.errorData is ApiError.NetworkConnectionError)
+                            Text(text = "Network connection error.", textAlign = TextAlign.Center)
+                        else
+                            Text(text = "Error.", textAlign = TextAlign.Center)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = onRetry) {
+                            Text(text = "Retry")
                         }
                     }
                 }
@@ -163,7 +158,6 @@ fun RecentlyPlayedContent(
                 LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    //.padding(paddingValues)
                     .padding(horizontal = 6.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
@@ -194,11 +188,8 @@ fun RecentlyPlayedContent(
                     }
                     Spacer(modifier = Modifier.height(14.dp))
                 }
-                //val recentlyPlayed = uiState.data
-                itemsIndexed(displayedRecentlyPlayed) { index, playHistory ->
-                    RecentTrackItem(index + 1, playHistory) { //onHistorySelected = it
-                        onHistoryClick(it)
-                    }
+                itemsIndexed(displayedRecentlyPlayed) { index, uiPlayHistory ->
+                    RecentTrackItem(index + 1, uiPlayHistory, onHistoryClick) 
                     if (index < displayedRecentlyPlayed.size - 1) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     } else Spacer(modifier = Modifier.height(12.dp))
@@ -220,17 +211,11 @@ fun RecentlyPlayedContent(
             }
         }
     }
-//    DetailBox(selectedValue = onHistorySelected, onDismiss = { onHistorySelected = null }) { track, onDetailDismiss ->
-//        TrackHistoryDetail(
-//            historyTrack = track,
-//            onDismiss = onDetailDismiss,
-//        )
-//    }
 }
 
 @Composable
-private fun RecentTrackItem(index: Int, playHistory: PlayHistoryObject, onHistorySelected: (PlayHistoryObject) -> Unit) {
-    val track = playHistory.track
+private fun RecentTrackItem(index: Int, uiPlayHistory: UiPlayHistoryObject, onHistorySelected: (PlayHistoryObject) -> Unit) {
+    val track = uiPlayHistory.originalPlayHistory.track
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -243,7 +228,7 @@ private fun RecentTrackItem(index: Int, playHistory: PlayHistoryObject, onHistor
             modifier = Modifier.width(30.dp)
         )
         Button(
-            onClick = { onHistorySelected(playHistory) },
+            onClick = { onHistorySelected(uiPlayHistory.originalPlayHistory) },
             shape = RoundedCornerShape(0.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background),
             contentPadding = PaddingValues(0.dp)
@@ -298,49 +283,14 @@ private fun RecentTrackItem(index: Int, playHistory: PlayHistoryObject, onHistor
                 )
 
                 // Played Time
-                val timeAgo = formatTimeAgo(playHistory.playedAt)
                 Text(
-                    text = timeAgo,
+                    text = uiPlayHistory.formattedPlayedAtTimeAgo,
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.Gray
                 )
             }
         }
     }
-}
-
-private fun formatTimeAgo(dateString: String): String {
-    try {
-        // Use ISO 8601 date format to analyze the date string
-        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-        sdf.timeZone = TimeZone.getTimeZone("UTC") // 確保解析的時區為 UTC
-
-        // Parsing the date string
-        val lastPlayed = sdf.parse(dateString) ?: return "Unknown Time"
-
-        // Get the current date
-        val now = Date()
-
-        // Calculate the time difference in seconds（1 millisecond * 1000 == 1 second）
-        val diff = (now.time - lastPlayed.time) / 1000
-
-        return when {
-            diff < 60 -> "Just Now"
-            diff < 60 * 60 -> "${diff / (60)} minutes ago"
-            diff < 24 * 60 * 60 -> "${diff / (60 * 60)} hours ago"
-            else -> "${diff / (24 * 60 * 60)} days ago"
-        }
-    } catch (e: Exception) {
-        Log.e("TimeFormat", "Fail to parse date：$dateString", e)
-        return "Unknown Time"
-    }
-}
-
-private fun formatTime(dateString: String): String {
-    val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-    sdf.timeZone = TimeZone.getTimeZone("UTC")
-    val date = sdf.parse(dateString) ?: return "Unknown Time"
-    return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(date)
 }
 
 @Preview()
@@ -385,11 +335,18 @@ fun RecentlyPlayedContentPreview() {
             context = PlayContext(type = "track", uri = "spotify:track:123", externalUrls = mapOf("spotify" to "https://open.spotify.com/track/123"))
         )
     }
+    val uiSampleTracks = sampleTracks.map { history ->
+        UiPlayHistoryObject(
+            originalPlayHistory = history,
+            formattedPlayedAtTimeAgo = "Just Now", // Dummy data for preview
+            formattedPlayedAtDateTime = "2023-10-27 10:00:00" // Dummy data for preview
+        )
+    }
     GeminiSpotifyAppTheme {
         RecentlyPlayedContent(
-            uiState = FetchResult.Success(sampleTracks),
+            uiState = FetchResult.Success(uiSampleTracks),
             isRefreshing = false,
-            displayedRecentlyPlayed = sampleTracks,
+            displayedRecentlyPlayed = uiSampleTracks,
             onHistoryClick = {},
             onRefresh = {},
             onRetry = {}
@@ -402,10 +359,10 @@ fun RecentlyPlayedContentPreview() {
 
 @Composable
 internal fun TrackHistoryDetail(
-    historyTrack: PlayHistoryObject,
+    historyTrack: UiPlayHistoryObject,
     onDismiss: () -> Unit,
 ) {
-    val track = historyTrack.track
+    val track = historyTrack.originalPlayHistory.track
 
     // Image
     val images = track.album.images
@@ -466,7 +423,7 @@ internal fun TrackHistoryDetail(
 
     // Last Played At
     Text(
-        text = "Last Played At: ${formatTime(historyTrack.playedAt)}",
+        text = "Last Played At: ${historyTrack.formattedPlayedAtDateTime}",
         style = MaterialTheme.typography.bodyMedium
     )
     Spacer(modifier = Modifier.height(4.dp))
@@ -504,17 +461,17 @@ internal fun TrackHistoryDetail(
     val formattedDuration: String = when {
         duration < 1.minutes -> { // Less than 1 minute
             val seconds = duration.toInt(DurationUnit.SECONDS)
-            String.format(Locale.getDefault(), "%02d", seconds)
+            String.format(java.util.Locale.getDefault(), "%02d", seconds)
         }
 
         duration < 1.hours -> { // Less than 1 hour
             val minutes = duration.toInt(DurationUnit.MINUTES)
             val seconds = (duration - minutes.minutes).toInt(DurationUnit.SECONDS)
-            String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+            String.format(java.util.Locale.getDefault(), "%02d:%02d", minutes, seconds)
         }
 
         else -> {
-            val simpleDateFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+            val simpleDateFormat = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
             simpleDateFormat.format(duration)
         }
     }
@@ -693,6 +650,12 @@ fun TrackHistoryDetailPreview() {
         context = PlayContext(type = "album", uri = "spotify:album:sample_album_id", externalUrls = mapOf("spotify" to "https://open.spotify.com/album/sample_album_id"))
     )
 
+    val uiSampleTrack = UiPlayHistoryObject(
+        originalPlayHistory = sampleTrack,
+        formattedPlayedAtTimeAgo = "Just Now", // Dummy data for preview
+        formattedPlayedAtDateTime = "2023-10-27 10:30:45" // Dummy data for preview
+    )
+
     Box (contentAlignment = Alignment.Center) {
         Surface(
             color = MaterialTheme.colorScheme.surface,
@@ -710,7 +673,7 @@ fun TrackHistoryDetailPreview() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 TrackHistoryDetail(
-                    historyTrack = sampleTrack,
+                    historyTrack = uiSampleTrack,
                     onDismiss = {}
                 )
             }

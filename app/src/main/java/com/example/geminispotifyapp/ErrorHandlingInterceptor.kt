@@ -83,6 +83,10 @@ class ErrorHandlingInterceptor @Inject constructor(
                 // 2xx successful response, just return
                 return originalResponse
             }
+            originalResponse.code == 304 -> {
+                Log.d("ErrorHandlingInterceptor", "HTTP 304 Not Modified received. Proceeding normally.")
+                return originalResponse
+            }
             // -- Don't handle 401 here, it is handled by AppAuthenticator -- //
             originalResponse.code == 400 -> {
                 val errorBody = originalResponse.peekBody(Long.MAX_VALUE).string()
@@ -115,6 +119,7 @@ class ErrorHandlingInterceptor @Inject constructor(
             }
             else -> {
                 // Handle other unexpected HTTP error codes
+                Log.d("ErrorHandlingInterceptor", "Unexpected HTTP error code: ${originalResponse.code}")
                 val errorBody = originalResponse.peekBody(Long.MAX_VALUE).string()
                 val errorMessage = parseSpotifyErrorMessage(errorBody)
                 val error = ApiError.HttpError(originalResponse.code, errorMessage)
@@ -126,6 +131,9 @@ class ErrorHandlingInterceptor @Inject constructor(
     private fun parseSpotifyErrorMessage(errorBody: String): String {
         // Attempt 1: Try to parse as an OAuth error (e.g., invalid_grant)
         Log.d("ErrorHandlingInterceptor", "Attempting to parse as OAuth error: $errorBody")
+//        if (errorBody.isNullOrBlank()) {
+//            return "Empty error body"
+//        }
         try {
             val oauthError = gson.fromJson(errorBody, SpotifyOAuthError::class.java)
             if (!oauthError.errorKey.isNullOrBlank() && !oauthError.errorDescription.isNullOrBlank()) {

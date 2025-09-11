@@ -16,7 +16,9 @@ import com.example.geminispotifyapp.data.remote.SpotifyUserApiService
 import com.example.geminispotifyapp.di.ApplicationScope
 import com.example.geminispotifyapp.domain.TokenRefreshFailedException
 import com.example.geminispotifyapp.domain.UserReAuthenticationRequiredException
+import com.example.geminispotifyapp.features.userdatadetail.ApiExecutionHelper // Import ApiExecutionHelper
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
+import com.example.geminispotifyapp.features.userdatadetail.FetchResultWithEtag // Import FetchResultWithEtag
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +34,7 @@ class SpotifyRepositoryImpl @Inject constructor(
     private val appDatabase: AppDatabase,
     private val spotifyUserApiService: SpotifyUserApiService,
     private val spotifyApiService: SpotifyApiService,
+    private val apiExecutionHelper: ApiExecutionHelper, // Inject ApiExecutionHelper
     @ApplicationScope private val applicationScope: CoroutineScope
 ) : SpotifyRepository {
     private val tag = "SpotifyRepository"
@@ -94,7 +97,7 @@ class SpotifyRepositoryImpl @Inject constructor(
                         // Because the request that refresh access token has received HTTP 401 Unauthorized, that usually means refresh_token is invalid or revoked.
                         Log.e(tag, "HTTP 401 on refreshing token. Refresh token might be invalid.", e)
 
-                        // Clear all session tokens to try to resign in.
+                        // Clear all session tokens to try to resign in. -
                         applicationScope.launch {
                             appDatabase.logout()
                             _currentAccessTokenFlow.value = null
@@ -144,25 +147,29 @@ class SpotifyRepositoryImpl @Inject constructor(
     override suspend fun getUserTopArtists(
         timeRange: String,
         limit: Int,
-        offset: Int
-    ): FetchResult<TopArtistsResponse> {
+        offset: Int,
+        ifNoneMatch: String?
+    ): FetchResultWithEtag<TopArtistsResponse> {
         try {
             val authHeader = getAuthorizationHeader()
-            val result = spotifyUserApiService.getTopArtists(
-                authorization = authHeader,
-                timeRange = timeRange,
-                limit = limit,
-                offset = offset
+            return apiExecutionHelper.executeEtaggedOperation(
+                operation = {
+                    spotifyUserApiService.getTopArtists(
+                        authorization = authHeader,
+                        ifNoneMatch = ifNoneMatch,
+                        timeRange = timeRange,
+                        limit = limit,
+                        offset = offset
+                    )
+                },
+                transformSuccess = { it }
             )
-            return FetchResult.Success(result)
-        }
-        catch (e: ApiError) {
-            Log.e(tag, "Failed to get top artists", e)
-            return FetchResult.Error(e)
-        }
-        catch (e: Exception) {
-            Log.e(tag, "Failed to get top artists", e)
-            return FetchResult.Error(ApiError.UnknownError("An unknown error occurred"))
+        } catch (e: ApiError) {
+            Log.e(tag, "Failed to get top artists: ${e.message}", e)
+            return FetchResultWithEtag.Error(e)
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to get top artists: ${e.message}", e)
+            return FetchResultWithEtag.Error(ApiError.UnknownError("An unknown error occurred: ${e.message}"))
         }
     }
 

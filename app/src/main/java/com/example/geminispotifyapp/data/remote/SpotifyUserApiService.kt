@@ -19,10 +19,11 @@ interface SpotifyUserApiService {
     @GET("v1/me/top/artists")
     suspend fun getTopArtists(
         @Header("Authorization") authorization: String,
+        @Header("If-None-Match") ifNoneMatch: String? = null, // Add If-None-Match header for ETag
         @Query("time_range") timeRange: String = "medium_term", // short_term, medium_term, long_term
         @Query("limit") limit: Int = 20,
         @Query("offset") offset: Int = 0
-    ): TopArtistsResponse
+    ): Response<TopArtistsResponse> // Change return type to Response to get ETag
 
     @GET("v1/me/top/tracks")
     suspend fun getTopTracks(

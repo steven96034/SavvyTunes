@@ -10,7 +10,7 @@ import com.example.geminispotifyapp.data.TopTracksResponse
 import com.example.geminispotifyapp.data.TracksResponse
 import com.example.geminispotifyapp.data.UserProfileResponse
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
-import retrofit2.Response
+import com.example.geminispotifyapp.features.userdatadetail.FetchResultWithEtag
 
 interface SpotifyRepository {
     suspend fun getAccessToken(): String
@@ -41,8 +41,9 @@ interface SpotifyRepository {
     suspend fun getUserTopArtists(
         timeRange: String = "medium_term",
         limit: Int = 20,
-        offset: Int = 0
-    ): FetchResult<TopArtistsResponse>
+        offset: Int = 0,
+        ifNoneMatch: String? = null
+    ): FetchResultWithEtag<TopArtistsResponse>
 
     suspend fun getUserTopTracks(
         timeRange: String = "medium_term",

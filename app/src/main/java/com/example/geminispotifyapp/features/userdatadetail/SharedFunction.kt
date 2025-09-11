@@ -107,14 +107,21 @@ fun DropDownMenuTemplate(
 
 
 
-fun formatEnumPeriodName(period: Period): String {
-    return period.name.replace("_", " ").split(" ").joinToString(" ") { word ->
-        word.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+
+
+enum class Period(val apiValue: String) {
+    SHORT_TERM("short_term"),
+    MEDIUM_TERM("medium_term"),
+    LONG_TERM("long_term");
+    companion object {
+        fun fromString(value: String): Period? {
+            return entries.firstOrNull { it.name.lowercase() == value.lowercase() }
+        }
+        fun formatEnumPeriodName(period: Period): String {
+            return period.name.replace("_", " ").split(" ").joinToString(" ") { word ->
+                word.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+            }
+        }
     }
 }
 
-enum class Period {
-    SHORT_TERM,
-    MEDIUM_TERM,
-    LONG_TERM
-}

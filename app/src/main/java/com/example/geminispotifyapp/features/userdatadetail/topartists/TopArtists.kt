@@ -31,11 +31,13 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -63,134 +65,141 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.geminispotifyapp.ApiError
 import com.example.geminispotifyapp.features.userdatadetail.DropDownMenuTemplate
 import com.example.geminispotifyapp.features.userdatadetail.Period
-import com.example.geminispotifyapp.features.userdatadetail.formatEnumPeriodName
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
+import com.example.geminispotifyapp.features.userdatadetail.Period.Companion.formatEnumPeriodName
 import com.example.geminispotifyapp.ui.theme.GeminiSpotifyAppTheme
 
 
 @Composable
 fun TopArtistsScreen(onArtistClick: (SpotifyArtist) -> Unit, viewModel: TopArtistsViewModel = hiltViewModel()) {
     val uiState by viewModel.downLoadState.collectAsState()
+    val refreshing by viewModel.isRefreshing.collectAsState()
     LaunchedEffect(Unit) {
-        viewModel.fetchTopArtists()
+        viewModel.fetchTopArtistsIfNeeded()
     }
-    TopArtistContent(uiState, onArtistClick) { viewModel.reFetchTopArtist() }
+    TopArtistContent(uiState, onArtistClick, refreshing, { viewModel.reFetchTopArtist() }, { viewModel.refreshTopArtists() })
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopArtistContent(uiState: FetchResult<TopArtistsData>, onArtistClick: (SpotifyArtist) -> Unit, onRetry: () -> Unit) { //topArtistsShort: List<SpotifyArtist>, topArtistsMedium: List<SpotifyArtist>, topArtistsLong: List<SpotifyArtist>, navController: NavController, paddingValues: PaddingValues
+fun TopArtistContent(uiState: FetchResult<TopArtistsData>, onArtistClick: (SpotifyArtist) -> Unit, isRefreshing: Boolean, onRetry: () -> Unit, onRefresh: () -> Unit) {
     var expandedMenuArtist by remember { mutableStateOf(false) }
     var artistPeriodSelection by remember { mutableStateOf(Period.SHORT_TERM) }
 
     //HandleBackToHome(navController)
-
-    when (uiState) {
-        FetchResult.Initial ->
-            Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-
-        FetchResult.Loading ->
-            Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-
-
-        is FetchResult.Error -> {
-            if (uiState.errorData is ApiError.NetworkConnectionError) {
-                Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = "Network connection error.")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = onRetry) {
-                            Text(text = "Retry")
-                        }
-                    }
+    PullToRefreshBox (
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        when (uiState) {
+            FetchResult.Initial ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
-            } else {
-                Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = "Unknown error.")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = onRetry) {
-                            Text(text = "Retry")
-                        }
-                    }
-                }
-            }
-        }
 
-        is FetchResult.Success -> LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                //.padding(paddingValues)
-                .padding(horizontal = 6.dp),
-            contentPadding = PaddingValues(bottom = 80.dp)
-        ) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            FetchResult.Loading ->
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+
+
+            is FetchResult.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Image(
-                                painter = painterResource(R.drawable.primary_logo_green_rgb),
-                                contentDescription = "Spotify Logo",
-                                modifier = Modifier.height(28.dp)
-                            )
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = "Your Top Artists",
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold
-                            )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        if (uiState.errorData is ApiError.NetworkConnectionError)
+                            Text(text = "Network connection error.", textAlign = TextAlign.Center)
+                        else
+                            Text(text = "Error.", textAlign = TextAlign.Center)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = onRetry) {
+                            Text(text = "Retry")
                         }
                     }
-                    DropDownMenuTemplate(
-                        expanded = expandedMenuArtist,
-                        onExpandChange = { expandedMenuArtist = it },
-                        selectedValue = artistPeriodSelection.ordinal,
-                        onValueChange = { index -> artistPeriodSelection = Period.entries[index] },
-                        options = Period.entries.map { formatEnumPeriodName(it) }
-                    )
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
             }
 
-            val currentTopArtists = when (artistPeriodSelection) {
-                Period.SHORT_TERM -> uiState.data.topArtistsShort
-                Period.MEDIUM_TERM -> uiState.data.topArtistsMedium
-                Period.LONG_TERM -> uiState.data.topArtistsLong
-            }
-
-            itemsIndexed(currentTopArtists) { index, artist ->
-                ArtistItem(index + 1, artist) { //onArtistSelected = it
-                    onArtistClick(it)
-                }
-                if (index < currentTopArtists.size - 1) {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                } else Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            if (currentTopArtists.size < GET_ITEM_NUM) {
+            is FetchResult.Success -> LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    //.padding(paddingValues)
+                    .padding(horizontal = 6.dp),
+                contentPadding = PaddingValues(bottom = 80.dp)
+            ) {
                 item {
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Info, contentDescription = "Info Icon")
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("You data is not enough to show more artists. (Max = $GET_ITEM_NUM)")
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Image(
+                                    painter = painterResource(R.drawable.primary_logo_green_rgb),
+                                    contentDescription = "Spotify Logo",
+                                    modifier = Modifier.height(28.dp)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = "Your Top Artists",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        DropDownMenuTemplate(
+                            expanded = expandedMenuArtist,
+                            onExpandChange = { expandedMenuArtist = it },
+                            selectedValue = artistPeriodSelection.ordinal,
+                            onValueChange = { index ->
+                                artistPeriodSelection = Period.entries[index]
+                            },
+                            options = Period.entries.map { formatEnumPeriodName(it) }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                val currentTopArtists = when (artistPeriodSelection) {
+                    Period.SHORT_TERM -> uiState.data.topArtistsShort
+                    Period.MEDIUM_TERM -> uiState.data.topArtistsMedium
+                    Period.LONG_TERM -> uiState.data.topArtistsLong
+                }
+
+                itemsIndexed(currentTopArtists) { index, artist ->
+                    ArtistItem(index + 1, artist) { //onArtistSelected = it
+                        onArtistClick(it)
+                    }
+                    if (index < currentTopArtists.size - 1) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    } else Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                if (currentTopArtists.size < GET_ITEM_NUM) {
+                    item {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Info, contentDescription = "Info Icon")
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("You data is not enough to show more artists. (Max = $GET_ITEM_NUM)")
+                        }
                     }
                 }
             }
@@ -303,7 +312,7 @@ fun TopArtistContentPreview() {
             topArtistsMedium = List(5) { sampleArtist.copy(name = "Artist Medium ${it + 1}") },
             topArtistsLong = List(5) { sampleArtist.copy(name = "Artist Long ${it + 1}") }
         )
-        TopArtistContent(uiState = FetchResult.Success(sampleData), onArtistClick = {}, onRetry = {})
+        TopArtistContent(uiState = FetchResult.Success(sampleData), onArtistClick = {}, isRefreshing = false, onRetry = {}, onRefresh = {})
     }
 }
 
