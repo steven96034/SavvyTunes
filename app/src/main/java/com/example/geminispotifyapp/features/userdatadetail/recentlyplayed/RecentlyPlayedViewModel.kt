@@ -4,7 +4,6 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.ApiError
-import com.example.geminispotifyapp.SpotifyRepository
 import com.example.geminispotifyapp.data.PlayHistoryObject
 import com.example.geminispotifyapp.features.UiEvent
 import com.example.geminispotifyapp.features.UiEventManager

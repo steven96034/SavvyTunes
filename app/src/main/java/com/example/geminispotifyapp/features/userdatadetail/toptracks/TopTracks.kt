@@ -33,11 +33,13 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -85,132 +87,139 @@ import kotlin.time.DurationUnit
 @Composable
 fun TopTracksScreen(onTrackClick: (SpotifyTrack) -> Unit, viewModel: TopTracksViewModel = hiltViewModel()) {
     val uiState by viewModel.downLoadState.collectAsState()
+    val refreshing by viewModel.isRefreshing.collectAsState()
     LaunchedEffect(Unit) {
-        viewModel.fetchTopTracks()
+        viewModel.fetchTopTracksIfNeeded()
     }
-    TopTrackContent(uiState, onTrackClick, { viewModel.reFetchTopTrack() })
+    TopTrackContent(uiState, onTrackClick, refreshing, { viewModel.reFetchTopTrack() }, { viewModel.refreshTopTracks() })
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopTrackContent(uiState: FetchResult<TopTrackData>, onTrackClick: (SpotifyTrack) -> Unit, onRetry: () -> Unit) {
+fun TopTrackContent(uiState: FetchResult<TopTrackData>, onTrackClick: (SpotifyTrack) -> Unit, isRefreshing: Boolean, onRetry: () -> Unit, onRefresh: () -> Unit) {
 
     var expandedMenuTrack by remember { mutableStateOf(false) }
     var trackPeriodSelection by remember { mutableStateOf(Period.SHORT_TERM) }
     //var onTrackSelected by remember { mutableStateOf<SpotifyTrack?>(null) }
 
     //HandleBackToHome(navController)
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        when (uiState) {
+            FetchResult.Initial ->
+                Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
 
-    when (uiState) {
-        FetchResult.Initial ->
-            Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            FetchResult.Loading ->
+                Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
 
-        FetchResult.Loading ->
-            Box (modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-
-        is FetchResult.Error -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
+            is FetchResult.Error -> {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center
                 ) {
-                    if (uiState.errorData is ApiError.NetworkConnectionError)
-                        Text(text = "Network connection error.", textAlign = TextAlign.Center)
-                    else
-                        Text(text = "Error.", textAlign = TextAlign.Center)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(onClick = onRetry) {
-                        Text(text = "Retry")
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        if (uiState.errorData is ApiError.NetworkConnectionError)
+                            Text(text = "Network connection error.", textAlign = TextAlign.Center)
+                        else
+                            Text(text = "Error.", textAlign = TextAlign.Center)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = onRetry) {
+                            Text(text = "Retry")
+                        }
                     }
                 }
             }
-        }
 
-        is FetchResult.Success ->
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    //.padding(paddingValues)
-                    .padding(horizontal = 6.dp),
-                contentPadding = PaddingValues(bottom = 80.dp)
-            ) {
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
+            is FetchResult.Success ->
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        //.padding(paddingValues)
+                        .padding(horizontal = 6.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Image(
+                                        painter = painterResource(R.drawable.primary_logo_green_rgb),
+                                        contentDescription = null,
+                                        modifier = Modifier.height(28.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Text(
+                                        text = "Your Top Songs",
+                                        style = MaterialTheme.typography.headlineMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                            DropDownMenuTemplate(
+                                expanded = expandedMenuTrack,
+                                onExpandChange = { expandedMenuTrack = it },
+                                selectedValue = trackPeriodSelection.ordinal,
+                                onValueChange = { index ->
+                                    trackPeriodSelection = Period.entries[index]
+                                },
+                                options = Period.entries.map { formatEnumPeriodName(it) }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    val currentTopTracks = when (trackPeriodSelection) {
+                        Period.SHORT_TERM -> uiState.data.topTracksShort
+                        Period.MEDIUM_TERM -> uiState.data.topTracksMedium
+                        Period.LONG_TERM -> uiState.data.topTracksLong
+                    }
+
+                    itemsIndexed(currentTopTracks) { index, track ->
+                        TrackItem(index + 1, track) {
+                            onTrackClick(it)
+                        }
+                        if (index < currentTopTracks.size - 1) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        } else Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    if (currentTopTracks.size < GET_ITEM_NUM) {
+                        item {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                             Row(
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Image(
-                                    painter = painterResource(R.drawable.primary_logo_green_rgb),
-                                    contentDescription = null,
-                                    modifier = Modifier.height(28.dp)
-                                )
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Text(
-                                    text = "Your Top Songs",
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Icon(Icons.Default.Info, contentDescription = "Info Icon")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("You data is not enough to show more tracks. (Max = $GET_ITEM_NUM)")
                             }
                         }
-                        DropDownMenuTemplate(
-                            expanded = expandedMenuTrack,
-                            onExpandChange = { expandedMenuTrack = it },
-                            selectedValue = trackPeriodSelection.ordinal,
-                            onValueChange = { index ->
-                                trackPeriodSelection = Period.entries[index]
-                            },
-                            options = Period.entries.map { formatEnumPeriodName(it) }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                val currentTopTracks = when (trackPeriodSelection) {
-                    Period.SHORT_TERM -> uiState.data.topTracksShort
-                    Period.MEDIUM_TERM -> uiState.data.topTracksMedium
-                    Period.LONG_TERM -> uiState.data.topTracksLong
-                }
-
-                itemsIndexed(currentTopTracks) { index, track ->
-                    TrackItem(index + 1, track) {
-                        onTrackClick(it)
-                    }
-                    if (index < currentTopTracks.size - 1) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    } else Spacer(modifier = Modifier.height(12.dp))
-                }
-
-                if (currentTopTracks.size < GET_ITEM_NUM) {
-                    item {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.Info, contentDescription = "Info Icon")
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("You data is not enough to show more tracks. (Max = $GET_ITEM_NUM)")
-                        }
                     }
                 }
-            }
+        }
     }
 //    DetailBox(selectedValue = onTrackSelected, onDismiss = { onTrackSelected = null }) { track, onDetailDismiss ->
 //        TrackDetail(
@@ -349,7 +358,9 @@ fun TopTrackContentPreview() {
         TopTrackContent(
             uiState = FetchResult.Success(mockTopTrackData),
             onTrackClick = {},
-            onRetry = {}
+            isRefreshing = false,
+            onRetry = {},
+            onRefresh = {}
         )
     }
 }
@@ -687,4 +698,3 @@ fun TrackDetailPreview() {
         }
     }
 }
-

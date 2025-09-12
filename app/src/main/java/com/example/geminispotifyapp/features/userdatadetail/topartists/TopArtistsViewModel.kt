@@ -145,7 +145,7 @@ class TopArtistsViewModel @Inject constructor(
             if (!notModified.values.all { it })
                 uiEventManager.sendEvent(UiEvent.ShowSnackbar("Refresh successfully completed."))
             else {
-                uiEventManager.sendEvent(UiEvent.ShowSnackbar("Data is not modified."))
+                uiEventManager.sendEvent(UiEvent.ShowSnackbar("Refresh completed. (Data is not modified.)"))
             }
 
             _isRefreshing.value = false

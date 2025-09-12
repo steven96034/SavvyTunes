@@ -176,25 +176,31 @@ class SpotifyRepositoryImpl @Inject constructor(
     override suspend fun getUserTopTracks(
         timeRange: String,
         limit: Int,
-        offset: Int
-    ): FetchResult<TopTracksResponse> {
+        offset: Int,
+        ifNoneMatch: String?
+    ): FetchResultWithEtag<TopTracksResponse> {
         try {
             val authHeader = getAuthorizationHeader()
-            val result = spotifyUserApiService.getTopTracks(
-                authorization = authHeader,
-                timeRange = timeRange,
-                limit = limit,
-                offset = offset
+            return apiExecutionHelper.executeEtaggedOperation(
+                operation = {
+                    spotifyUserApiService.getTopTracks(
+                        authorization = authHeader,
+                        ifNoneMatch = ifNoneMatch,
+                        timeRange = timeRange,
+                        limit = limit,
+                        offset = offset
+                    )
+                },
+                transformSuccess = { it }
             )
-            return FetchResult.Success(result)
         }
         catch (e: ApiError) {
             Log.e(tag, "Failed to get top tracks", e)
-            return FetchResult.Error(e)
+            return FetchResultWithEtag.Error(e)
         }
         catch (e: Exception) {
             Log.e(tag, "Failed to get top tracks", e)
-            return FetchResult.Error(ApiError.UnknownError("An unknown error occurred"))
+            return FetchResultWithEtag.Error(ApiError.UnknownError("An unknown error occurred"))
         }
     }
 
@@ -306,7 +312,8 @@ class SpotifyRepositoryImpl @Inject constructor(
         try {
             val authHeader = getAuthorizationHeader()
             return spotifyUserApiService.getTopTracksByArtist(authHeader, artistId)
-        } catch (e: Exception) {
+        }
+        catch (e: Exception) {
             Log.d(tag, "Failed to get top tracks of artist $e")
             throw e
         }
@@ -316,7 +323,8 @@ class SpotifyRepositoryImpl @Inject constructor(
         try {
             val authHeader = getAuthorizationHeader()
             return spotifyUserApiService.getAlbumTracks(authHeader, albumId)
-        } catch (e: Exception) {
+        }
+        catch (e: Exception) {
             Log.d(tag, "Failed to get album tracks $e")
             throw e
         }

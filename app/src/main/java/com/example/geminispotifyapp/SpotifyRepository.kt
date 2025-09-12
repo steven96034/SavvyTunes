@@ -48,8 +48,9 @@ interface SpotifyRepository {
     suspend fun getUserTopTracks(
         timeRange: String = "medium_term",
         limit: Int = 20,
-        offset: Int = 0
-    ): FetchResult<TopTracksResponse>
+        offset: Int = 0,
+        ifNoneMatch: String? = null
+    ): FetchResultWithEtag<TopTracksResponse>
 
     suspend fun getAccessTokenThruAuth(
         grantType: String = "authorization_code",
