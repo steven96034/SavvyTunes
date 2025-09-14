@@ -298,12 +298,16 @@ class SpotifyRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun getUserProfile(): UserProfileResponse {
+    override suspend fun getUserProfile(): FetchResult<UserProfileResponse> {
         try {
             val authHeader = getAuthorizationHeader()
-            return spotifyUserApiService.getUserProfile(authHeader)
+            val result = spotifyUserApiService.getUserProfile(authHeader)
+            return FetchResult.Success(result)
+        } catch (e: ApiError) {
+            Log.e(tag, "Failed to get user profile", e)
+            return FetchResult.Error(e)
         } catch (e: Exception) {
-            Log.d(tag, "Failed to get user profile $e")
+            Log.e(tag, "Failed to get user profile", e)
             throw e
         }
     }

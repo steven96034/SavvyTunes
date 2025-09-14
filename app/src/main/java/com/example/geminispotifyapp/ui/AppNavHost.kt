@@ -10,6 +10,7 @@ import com.example.geminispotifyapp.features.MainScreenWithPager
 import com.example.geminispotifyapp.features.Screen
 import com.example.geminispotifyapp.features.bottomNavItems
 import com.example.geminispotifyapp.features.settings.AboutThisAppScreen
+import com.example.geminispotifyapp.features.settings.ProfileScreen
 import com.example.geminispotifyapp.features.settings.UserSettingsScreen
 import com.example.geminispotifyapp.init.LoginPage
 
@@ -45,6 +46,9 @@ fun AppNavHost(navController: NavHostController, paddingValues: PaddingValues) {
         // Independent Settings Pages
         composable("settings") {
             UserSettingsScreen(paddingValues)
+        }
+        composable("profile") {
+            ProfileScreen(paddingValues)
         }
         composable("aboutThisApp") {
             AboutThisAppScreen(paddingValues)

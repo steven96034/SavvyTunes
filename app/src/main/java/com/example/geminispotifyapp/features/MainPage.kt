@@ -84,6 +84,7 @@ sealed class Screen(val route: String, val icon: ImageVector, val label: String)
 
 sealed class SettingsScreen(val route: String, val icon: ImageVector, val label: String) {
     object Settings : SettingsScreen("settings", Icons.Default.Settings, "Settings")
+    object Profile : SettingsScreen("profile", Icons.Default.AccountCircle, "Profile")
     object AboutThisApp : SettingsScreen("aboutThisApp", Icons.Default.Info, "About This App")
 }
 
@@ -101,6 +102,7 @@ var bottomNavItems = listOf(
 
 val settingsItems = listOf(
     SettingsScreen.Settings,
+    SettingsScreen.Profile,
     SettingsScreen.AboutThisApp
 )
 
@@ -233,11 +235,10 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
             ),
         containerColor = Color.Transparent,
         topBar = {
-            //TODO: Replace MyTopAppBar with SmallTopAppBar
             TopAppBar(
                 title = { Text("Music Explorer by Gemini") },
                 navigationIcon = {
-                    if (currentDestination?.route == "settings" || currentDestination?.route == "aboutThisApp") {
+                    if (currentDestination?.route == "settings" || currentDestination?.route == "profile" || currentDestination?.route == "aboutThisApp") {
                         IconButton(onClick = { navController.navigate(MAIN_GRAPH_ROUTE) { popUpTo(MAIN_GRAPH_ROUTE) { inclusive = true } } }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "back")
                         }

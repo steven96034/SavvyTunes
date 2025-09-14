@@ -4,7 +4,7 @@ import com.example.geminispotifyapp.auth.SpotifyTokenResponse
 import com.example.geminispotifyapp.data.SimplifiedTracksResponse
 import com.example.geminispotifyapp.data.RecentlyPlayedResponse
 import com.example.geminispotifyapp.data.SearchResponse
-import com.example.geminispotifyapp.data.SpotifyTrack // <-- Add this import
+import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.data.TopArtistsResponse
 import com.example.geminispotifyapp.data.TopTracksResponse
 import com.example.geminispotifyapp.data.TracksResponse
@@ -60,7 +60,7 @@ interface SpotifyRepository {
         codeVerifier: String
     ): SpotifyTokenResponse
 
-    suspend fun getUserProfile(): UserProfileResponse
+    suspend fun getUserProfile(): FetchResult<UserProfileResponse> // 修改返回類型
 
     suspend fun getTopTracksOfArtist(artistId: String): TracksResponse
 

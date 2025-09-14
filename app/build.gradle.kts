@@ -69,9 +69,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    //implementation("com.google.android.material:material:1.12.0")
     implementation(libs.generativeai)
-    implementation(libs.adamratzman.spotify.api.kotlin.core)
     implementation(files("../spotify-app-remote-release-0.8.0.aar"))
     implementation(libs.gson)
     // Spotify
