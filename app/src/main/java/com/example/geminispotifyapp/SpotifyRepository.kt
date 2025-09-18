@@ -36,7 +36,7 @@ interface SpotifyRepository {
         offset: Int = 0,
         market: String? = null,
         includeExternal: String? = null
-    ): SearchResponse
+    ): FetchResult<SearchResponse>
 
     suspend fun getUserTopArtists(
         timeRange: String = "medium_term",
@@ -60,11 +60,11 @@ interface SpotifyRepository {
         codeVerifier: String
     ): SpotifyTokenResponse
 
-    suspend fun getUserProfile(): FetchResult<UserProfileResponse> // 修改返回類型
+    suspend fun getUserProfile(): FetchResult<UserProfileResponse>
 
-    suspend fun getTopTracksOfArtist(artistId: String): TracksResponse
+    suspend fun getTopTracksOfArtist(artistId: String): FetchResult<TracksResponse>
 
-    suspend fun getAlbumTracks(albumId: String): SimplifiedTracksResponse
+    suspend fun getAlbumTracks(albumId: String): FetchResult<SimplifiedTracksResponse>
 
-    suspend fun getTrack(trackId: String, market: String? = null): SpotifyTrack
+    suspend fun getTrack(trackId: String, market: String? = null): FetchResult<SpotifyTrack>
 }

@@ -690,13 +690,13 @@ fun HomePage(
             }
 
             is SearchUiState.Error -> {
-                item {
-                    Text(
-                        "Error",
-                        fontSize = MaterialTheme.typography.headlineMedium.fontSize,
-                        textAlign = TextAlign.Center
-                    )
-                }
+//                item {
+//                    Text(
+//                        "Error",
+//                        fontSize = MaterialTheme.typography.headlineMedium.fontSize,
+//                        textAlign = TextAlign.Center
+//                    )
+//                }
             }
 
             else -> {

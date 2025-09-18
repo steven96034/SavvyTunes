@@ -234,10 +234,10 @@ class SpotifyRepositoryImpl @Inject constructor(
         offset: Int,
         market: String?,
         includeExternal: String?
-    ): SearchResponse {
+    ): FetchResult<SearchResponse> {
         try {
             val authHeader = getAuthorizationHeader()
-            return spotifyUserApiService.searchTracks(
+            val result = spotifyUserApiService.searchTracks(
                 authorization = authHeader,
                 query = query,
                 type = type,
@@ -246,6 +246,10 @@ class SpotifyRepositoryImpl @Inject constructor(
                 market = market,
                 includeExternal = includeExternal
             )
+            return FetchResult.Success(result)
+        } catch (e: ApiError) {
+            Log.e(tag, "Failed to search data", e)
+            return FetchResult.Error(e)
         } catch (e: Exception) {
             Log.e(tag, "Failed to search data", e)
             throw e
@@ -312,36 +316,46 @@ class SpotifyRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getTopTracksOfArtist(artistId: String): TracksResponse {
+    override suspend fun getTopTracksOfArtist(artistId: String): FetchResult<TracksResponse> {
         try {
             val authHeader = getAuthorizationHeader()
-            return spotifyUserApiService.getTopTracksByArtist(authHeader, artistId)
-        }
-        catch (e: Exception) {
-            Log.d(tag, "Failed to get top tracks of artist $e")
+            val result = spotifyUserApiService.getTopTracksByArtist(authHeader, artistId)
+            return FetchResult.Success(result)
+        } catch (e: ApiError) {
+            Log.e(tag, "Failed to get top tracks of artist", e)
+            return FetchResult.Error(e)
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to get top tracks of artist", e)
             throw e
         }
     }
 
-    override suspend fun getAlbumTracks(albumId: String): SimplifiedTracksResponse {
+    override suspend fun getAlbumTracks(albumId: String): FetchResult<SimplifiedTracksResponse> {
         try {
             val authHeader = getAuthorizationHeader()
-            return spotifyUserApiService.getAlbumTracks(authHeader, albumId)
-        }
-        catch (e: Exception) {
-            Log.d(tag, "Failed to get album tracks $e")
+            val result = spotifyUserApiService.getAlbumTracks(authHeader, albumId)
+            return FetchResult.Success(result)
+        } catch (e: ApiError) {
+            Log.e(tag, "Failed to get album tracks", e)
+            return FetchResult.Error(e)
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to get album tracks", e)
             throw e
         }
     }
 
-    override suspend fun getTrack(trackId: String, market: String?): SpotifyTrack {
+    override suspend fun getTrack(trackId: String, market: String?): FetchResult<SpotifyTrack> {
         try {
             val authHeader = getAuthorizationHeader()
-            return spotifyUserApiService.getTrack(
+            val result = spotifyUserApiService.getTrack(
                 authorization = authHeader,
                 trackId = trackId,
                 market = market
             )
+            return FetchResult.Success(result)
+        } catch (e: ApiError) {
+            Log.e(tag, "Failed to get track details for ID: $trackId", e)
+            return FetchResult.Error(e)
         } catch (e: Exception) {
             Log.e(tag, "Failed to get track details for ID: $trackId", e)
             throw e
