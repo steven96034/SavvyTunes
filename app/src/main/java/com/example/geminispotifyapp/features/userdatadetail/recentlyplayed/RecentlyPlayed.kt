@@ -70,7 +70,6 @@ import com.example.geminispotifyapp.ApiError
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.PlayContext
 import com.example.geminispotifyapp.data.PlayHistoryObject
-import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
 import com.example.geminispotifyapp.data.SimplifiedArtist
 import com.example.geminispotifyapp.data.SpotifyAlbum
 import com.example.geminispotifyapp.data.SpotifyTrack
@@ -87,6 +86,7 @@ fun RecentlyPlayedScreen(onHistoryClick: (PlayHistoryObject) -> Unit, viewModel:
     val uiState by viewModel.downLoadState.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val displayedRecentlyPlayed by viewModel.displayedRecentlyPlayed.collectAsState()
+    val userDataNum by viewModel.userDataNum.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.fetchRecentlyPlayedIfNeeded()
@@ -97,6 +97,7 @@ fun RecentlyPlayedScreen(onHistoryClick: (PlayHistoryObject) -> Unit, viewModel:
         isRefreshing = isRefreshing,
         displayedRecentlyPlayed = displayedRecentlyPlayed,
         onHistoryClick = onHistoryClick,
+        userDataNum = userDataNum,
         onRefresh = { viewModel.refreshRecentlyPlayed() },
         onRetry = { viewModel.reFetchRecentlyPlayedIfNeeded() }
     )
@@ -109,6 +110,7 @@ fun RecentlyPlayedContent(
     isRefreshing: Boolean,
     displayedRecentlyPlayed: List<UiPlayHistoryObject>,
     onHistoryClick: (PlayHistoryObject) -> Unit,
+    userDataNum: Int,
     onRefresh: () -> Unit,
     onRetry: () -> Unit
 ) {
@@ -195,7 +197,7 @@ fun RecentlyPlayedContent(
                     } else Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                if (displayedRecentlyPlayed.size < GET_ITEM_NUM) {
+                if (displayedRecentlyPlayed.size < userDataNum) {
                     item {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                         Row(
@@ -204,7 +206,7 @@ fun RecentlyPlayedContent(
                         ) {
                             Icon(Icons.Default.Info, contentDescription = "Info Icon")
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("You data is not enough to show more recently played songs. (Max = $GET_ITEM_NUM)")
+                            Text("You data is not enough to show more recently played songs. (Max = $userDataNum)")
                         }
                     }
                 }
@@ -348,6 +350,7 @@ fun RecentlyPlayedContentPreview() {
             isRefreshing = false,
             displayedRecentlyPlayed = uiSampleTracks,
             onHistoryClick = {},
+            userDataNum = 20,
             onRefresh = {},
             onRetry = {}
         )

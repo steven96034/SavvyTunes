@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.example.geminispotifyapp.EncryptedPreferenceManager
@@ -25,10 +26,11 @@ class AppDatabase @Inject constructor(
 
         val ACCESS_TOKEN_KEY = stringPreferencesKey("encrypted_access_token")
         val REFRESH_TOKEN_KEY = stringPreferencesKey("encrypted_refresh_token")
-        //val TOKEN_TYPE_KEY = stringPreferencesKey("token_type")
         val EXPIRES_AT_KEY = longPreferencesKey("expires_at")
         val SCOPE_KEY = stringPreferencesKey("scope")
-        //var testRefreshToken = true
+
+        val SEARCH_SIMILAR_NUM_KEY = intPreferencesKey("search_num")
+        val GET_USER_DATA_NUM_KEY = intPreferencesKey("get_item_num")
     }
 
     suspend fun saveCodeVerifier(codeVerifier: String) {
@@ -134,22 +136,9 @@ class AppDatabase @Inject constructor(
         }
     }
 
-//    // Clear all session tokens to try to resign in.
-//    suspend fun clearAllSessionTokens() {
-//        dataStore.edit { preferences ->
-//            preferences.remove(ACCESS_TOKEN_KEY)
-//            preferences.remove(REFRESH_TOKEN_KEY)
-//            //preferences.remove(TOKEN_TYPE_KEY)
-//            preferences.remove(EXPIRES_AT_KEY)
-//            preferences.remove(SCOPE_KEY)
-//            Log.d("AppDatabase", "All session tokens cleared.")
-//        }
-//    }
-
     // Clear all auth data for the current user. (notice some user preference may be added in the future, so don't use it.clear())
     suspend fun logout() {
         dataStore.edit { preferences ->
-            // it.clear()
             preferences.remove(ACCESS_TOKEN_KEY)
             preferences.remove(REFRESH_TOKEN_KEY)
             preferences.remove(EXPIRES_AT_KEY)
@@ -160,37 +149,25 @@ class AppDatabase @Inject constructor(
         }
     }
 
-//    // Always return "Bearer"
-//    private suspend fun getTokenType(): String? {
-//        return dataStore.data.map { preferences ->
-//            preferences[TOKEN_TYPE_KEY]// ?: "Bearer"
-//        }.first()
-//    }
 
-//    // Check if the token has expired
-//    suspend fun isTokenExpired(): Boolean {
-////        if (testRefreshToken) {
-////            Log.d("RefreshToken", "test refresh token")
-////            testRefreshToken = false
-////            return true
-////        }
-//        Log.d("RefreshToken", "Passed")
-//        val expiresAt = dataStore.data.map { preferences ->
-//            preferences[EXPIRES_AT_KEY] // ?: 0L
-//        }.first()
-//        if (expiresAt == null || expiresAt == 0L)
-//            return true
-//        return System.currentTimeMillis() > expiresAt
-//    }
+    // User Settings
+    suspend fun saveSearchSimilarNum(searchNum: Int) {
+        dataStore.edit { preferences ->
+            preferences[SEARCH_SIMILAR_NUM_KEY] = searchNum
+        }
+    }
+    val searchSimilarNumFlow: Flow<Int> = dataStore.data.map { preferences ->
+        preferences[SEARCH_SIMILAR_NUM_KEY] ?: 20
+    }
 
-//    suspend fun getAuthorizationHeader(): String? {
-//        val tokenType = getTokenType()
-//        val accessToken = getAccessToken()
-//        return if (tokenType != null && accessToken != null) {
-//            "$tokenType $accessToken"
-//        } else {
-//            // Handle the case where tokenType or accessToken is null
-//            null
-//        }
-//    }
+
+    suspend fun saveGetUserDataNum(dataNum: Int) {
+        dataStore.edit { preferences ->
+            preferences[GET_USER_DATA_NUM_KEY] = dataNum
+        }
+    }
+
+    val getUserDataNumFlow: Flow<Int> = dataStore.data.map { preferences ->
+        preferences[GET_USER_DATA_NUM_KEY] ?: 20
+    }
 }

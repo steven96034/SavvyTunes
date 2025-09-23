@@ -16,8 +16,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -38,7 +40,17 @@ class TopArtistsViewModel @Inject constructor(
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
-
+    private val _artistPeriodSelection = MutableStateFlow(Period.SHORT_TERM)
+    val artistPeriodSelection: StateFlow<Period> = _artistPeriodSelection.asStateFlow()
+    fun setArtistPeriodSelection(period: Period) {
+        _artistPeriodSelection.value = period
+    }
+    val userDataNum: StateFlow<Int> = spotifyRepository.userDataNumFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 20
+        )
     // In-memory storage for ETags
     private val etags = mutableMapOf<String, String?>(
         "short_term" to null,

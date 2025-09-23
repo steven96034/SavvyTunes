@@ -1,30 +1,28 @@
 package com.example.geminispotifyapp.features.userdatadetail
 
-import androidx.activity.OnBackPressedCallback
-import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.navigation.NavController
+import com.example.geminispotifyapp.features.userdatadetail.Period.Companion.formatEnumPeriodName
+import com.example.geminispotifyapp.ui.theme.GeminiSpotifyAppTheme
 import java.util.Locale
 
 /**
@@ -73,11 +71,25 @@ fun DropDownMenuTemplate(
     options: List<String>
 ) {
     Box (contentAlignment = Alignment.CenterEnd) {
-        IconButton(onClick = { onExpandChange(true) }) {
-            Icon(
-                imageVector = Icons.Default.MoreVert,
-                contentDescription = "Period Selection"
-            )
+
+        TextButton(
+            onClick = { onExpandChange(true) },
+            colors = ButtonDefaults.buttonColors(MaterialTheme.colorScheme.background),
+            shape = MaterialTheme.shapes.medium,
+            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.onSurfaceVariant)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = formatEnumPeriodName(Period.entries[selectedValue]),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Icon(
+                    imageVector = if (expanded) Icons.Filled.ArrowDropUp else Icons.Filled.ArrowDropDown,
+                    contentDescription = "Period Selection",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
         DropdownMenu(
             expanded = expanded,
@@ -105,6 +117,20 @@ fun DropDownMenuTemplate(
     }
 }
 
+@Preview(showBackground = true)
+@Composable
+fun DropDownMenuTemplatePreview() {
+    GeminiSpotifyAppTheme {
+        DropDownMenuTemplate(
+            expanded = false,
+            onExpandChange = {},
+            selectedValue = 0,
+            onValueChange = {},
+            options = Period.entries.map { formatEnumPeriodName(it) }
+        )
+    }
+}
+
 
 
 
@@ -118,7 +144,7 @@ enum class Period(val apiValue: String) {
             return entries.firstOrNull { it.name.lowercase() == value.lowercase() }
         }
         fun formatEnumPeriodName(period: Period): String {
-            return period.name.replace("_", " ").split(" ").joinToString(" ") { word ->
+            return period.apiValue.replace("_", " ").split(" ").joinToString(" ") { word ->
                 word.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
             }
         }

@@ -2,7 +2,7 @@ package com.example.geminispotifyapp
 
 import android.util.Log
 import com.example.geminispotifyapp.auth.SpotifyTokenResponse
-import com.example.geminispotifyapp.data.SpotifyTrack // Required for the new getTrack method
+import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.data.SimplifiedTracksResponse
 import com.example.geminispotifyapp.data.RecentlyPlayedResponse
 import com.example.geminispotifyapp.data.SearchResponse
@@ -14,14 +14,14 @@ import com.example.geminispotifyapp.data.local.AppDatabase
 import com.example.geminispotifyapp.data.remote.SpotifyApiService
 import com.example.geminispotifyapp.data.remote.SpotifyUserApiService
 import com.example.geminispotifyapp.di.ApplicationScope
-import com.example.geminispotifyapp.domain.TokenRefreshFailedException
-import com.example.geminispotifyapp.domain.UserReAuthenticationRequiredException
-import com.example.geminispotifyapp.features.userdatadetail.ApiExecutionHelper // Import ApiExecutionHelper
+import com.example.geminispotifyapp.features.userdatadetail.ApiExecutionHelper
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
-import com.example.geminispotifyapp.features.userdatadetail.FetchResultWithEtag // Import FetchResultWithEtag
+import com.example.geminispotifyapp.features.userdatadetail.FetchResultWithEtag
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -45,6 +45,9 @@ class SpotifyRepositoryImpl @Inject constructor(
     private val _currentAccessTokenFlow = MutableStateFlow<String?>(null)
     val currentAccessTokenFlow: StateFlow<String?> = _currentAccessTokenFlow
     private val _currentTokenExpiryTimeFlow = MutableStateFlow<Long?>(null)
+
+    override val searchSimilarNumFlow: Flow<Int> = appDatabase.searchSimilarNumFlow
+    override val userDataNumFlow: Flow<Int> = appDatabase.getUserDataNumFlow
 
     init {
         // Launch coroutine in ApplicationScope to collect data from DataStore
@@ -76,16 +79,16 @@ class SpotifyRepositoryImpl @Inject constructor(
                 return currentAccessToken
             }
 
-
-            // TODO: Try to integrate the interceptor with centralized error handling.
             // Perform actual token refresh in a coroutine
             if (!isRefreshing) { // Avoid multiple concurrent refreshes inside of tokenRefreshMutex
                 isRefreshing = true
                 try {
                     val refreshToken = appDatabase.getRefreshToken()
                     if (refreshToken == null) {
-                        // TODO: Catch and set UI to AuthenticationExpiredContent() in ViewModel
-                        throw UserReAuthenticationRequiredException("Refresh token not found. User needs to re-authenticate.")
+                        // Use ApiError.Unauthorized to indicate that the user needs to re-authenticate.
+                        Log.e(tag, "Refresh token not found. User needs to re-authenticate.")
+                        throw ApiError.Unauthorized("Refresh token not found. Needs to re-authenticate.")
+                        // throw UserReAuthenticationRequiredException("Refresh token not found. User needs to re-authenticate.")
                     }
 
                     // Call refresh token API from Spotify
@@ -99,19 +102,20 @@ class SpotifyRepositoryImpl @Inject constructor(
 
                         // Clear all session tokens to try to resign in. -
                         applicationScope.launch {
-                            appDatabase.logout()
+                            //performLogOutAndCleanUp() // Done in GlobalErrorHandler
                             _currentAccessTokenFlow.value = null
                             _currentTokenExpiryTimeFlow.value = null
                         }
 
-                        // Throw a more specific exception, indicating that re-authentication is required.
-                        // TODO: Catch and set UI to AuthenticationExpiredContent() in ViewModel
-                        throw UserReAuthenticationRequiredException("Failed to refresh token: HTTP 401, refresh token likely invalid. User needs to re-authenticate.", e)
+                        // Use ApiError.Unauthorized to indicate that the user needs to re-authenticate.
+                        throw ApiError.Unauthorized("Failed to refresh token: HTTP 401, refresh token likely invalid. Need to re-authenticate.")
+                        // throw UserReAuthenticationRequiredException("Failed to refresh token: HTTP 401, refresh token likely invalid. User needs to re-authenticate.", e)
                     }
                     // For other exceptions (network issues, server 5xx errors, etc.)
-                    // TODO: Catch and use snackbar in viewModel and let user retry later to refresh or automatically retry after a fixed duration (through another function)
                     Log.e(tag, "Failed to refresh token with other exception.", e)
-                    throw TokenRefreshFailedException("Failed to refresh token: ${e.message}", e)
+                    // Use ApiError.TooManyRequests to indicate that the user needs to wait before retrying.
+                    throw ApiError.TooManyRequests("Failed to refresh token: ${e.message}", null)
+                    // throw TokenRefreshFailedException("Failed to refresh token: ${e.message}", e)
                 } finally {
                     // Ensure isRefreshing is reset even if an exception occurs
                     isRefreshing = false
@@ -135,8 +139,6 @@ class SpotifyRepositoryImpl @Inject constructor(
     override fun isTokenExpired(expiryTime: Long?): Boolean {
         if (expiryTime == null) return true
         return System.currentTimeMillis() > expiryTime
-
-        //return appDatabase.isTokenExpired()
     }
 
     override suspend fun performLogOutAndCleanUp() {
@@ -158,7 +160,7 @@ class SpotifyRepositoryImpl @Inject constructor(
                         authorization = authHeader,
                         ifNoneMatch = ifNoneMatch,
                         timeRange = timeRange,
-                        limit = limit,
+                        limit = userDataNumFlow.first(),
                         offset = offset
                     )
                 },
@@ -187,7 +189,7 @@ class SpotifyRepositoryImpl @Inject constructor(
                         authorization = authHeader,
                         ifNoneMatch = ifNoneMatch,
                         timeRange = timeRange,
-                        limit = limit,
+                        limit = userDataNumFlow.first(),
                         offset = offset
                     )
                 },
@@ -213,7 +215,7 @@ class SpotifyRepositoryImpl @Inject constructor(
             val authHeader = getAuthorizationHeader()
             val result = spotifyUserApiService.getRecentlyPlayed(
                 authorization = authHeader,
-                limit = limit,
+                limit = userDataNumFlow.first(),
                 before = before,
                 after = after
             )
@@ -362,6 +364,13 @@ class SpotifyRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun setSearchSimilarNum(searchNum: Int) {
+        appDatabase.saveSearchSimilarNum(searchNum)
+    }
+
+    override suspend fun setUserDataNum(dataNum: Int) {
+        appDatabase.saveGetUserDataNum(dataNum)
+    }
 
     companion object {
         // Check expiry as 1 minute before and refresh token

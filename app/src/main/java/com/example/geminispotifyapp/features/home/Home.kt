@@ -61,7 +61,6 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -142,7 +141,8 @@ fun HomeScreen(
         { albumId -> viewModel.getAlbumTracks(albumId) },
         { trackId -> viewModel.getTrackAndSelectedTrack(trackId) },
         searchButtonAnimationTrigger,
-        { viewModel.setSearchButtonAnimationTriggerToInitial() }
+        { viewModel.setSearchButtonAnimationTriggerToInitial() },
+        { viewModel.checkIfFullyInput() }
     )
 }
 
@@ -169,7 +169,6 @@ fun HomePage(
     onHasSelectedArtistAndInputDoesNotChangeSet: (Boolean) -> Unit,
     hasSelectedDataAndInputDoesNotChange: Boolean,
     onHasSelectedDataAndInputDoesNotChangeSet: (Boolean) -> Unit,
-    // Add new parameters for the state from ViewModel
     hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange: Boolean,
     onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet: (Boolean) -> Unit,
     searchSimilarTracksAndArtists: (String, String) -> Unit,
@@ -179,7 +178,8 @@ fun HomePage(
     getAlbumTracks: (String) -> Unit,
     getTrackAndSelectedTrack: (String) -> Unit,
     searchButtonAnimationTrigger: Int,
-    setSearchButtonAnimationTriggerToInitial: () -> Unit
+    setSearchButtonAnimationTriggerToInitial: () -> Unit,
+    checkIfFullyInput: () -> Boolean
 ) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
@@ -269,7 +269,7 @@ fun HomePage(
                         )
                     }
                 },
-                label = { Text("Input Any Name (of artist, album or track)") },
+                label = { Text("Input Any Name (of track, artist, or album)") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 4.dp)
@@ -293,7 +293,7 @@ fun HomePage(
                                        )
                                    }
                     },
-                    label = { Text("Input Song Name") },
+                    label = { Text("Track Name") },
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 4.dp)
@@ -315,7 +315,7 @@ fun HomePage(
                             )
                         }
                     },
-                    label = { Text("Input Artist Name") },
+                    label = { Text("Artist Name") },
                     modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 4.dp)
@@ -548,7 +548,7 @@ fun HomePage(
                             onTrackInputChange(selectedSimplifiedTrack.name)
                             getTrackAndSelectedTrack(selectedSimplifiedTrack.id)
                             onArtistInputChange(selectedSimplifiedTrack.artists.joinToString(", ") { it.name })
-                           onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(true)
+                            onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(true)
                             suggestedTrackById = null
                             focusManager.clearFocus()
                         }
@@ -561,11 +561,13 @@ fun HomePage(
             Button(
                 onClick = {
                     setSearchButtonAnimationTriggerToInitial()
-                    scope.launch {
-                        searchSimilarTracksAndArtists(
-                            trackInput,
-                            artistInput
-                        )
+                    if (checkIfFullyInput()) {
+                        scope.launch {
+                            searchSimilarTracksAndArtists(
+                                trackInput,
+                                artistInput
+                            )
+                        }
                     }
                     focusManager.clearFocus()
                 },
@@ -1085,5 +1087,6 @@ fun HomePagePreview() {
         getTrackAndSelectedTrack = {},
         searchButtonAnimationTrigger = 0,
         setSearchButtonAnimationTriggerToInitial = {},
+        checkIfFullyInput = { true },
     )
 }

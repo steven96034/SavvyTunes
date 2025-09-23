@@ -11,8 +11,12 @@ import com.example.geminispotifyapp.data.TracksResponse
 import com.example.geminispotifyapp.data.UserProfileResponse
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import com.example.geminispotifyapp.features.userdatadetail.FetchResultWithEtag
+import kotlinx.coroutines.flow.Flow
 
 interface SpotifyRepository {
+    val searchSimilarNumFlow: Flow<Int>
+    val userDataNumFlow: Flow<Int>
+
     suspend fun getAccessToken(): String
 
     fun getCurrentAccessToken(): String?
@@ -67,4 +71,8 @@ interface SpotifyRepository {
     suspend fun getAlbumTracks(albumId: String): FetchResult<SimplifiedTracksResponse>
 
     suspend fun getTrack(trackId: String, market: String? = null): FetchResult<SpotifyTrack>
+
+    suspend fun setSearchSimilarNum(searchNum: Int)
+
+    suspend fun setUserDataNum(dataNum: Int)
 }

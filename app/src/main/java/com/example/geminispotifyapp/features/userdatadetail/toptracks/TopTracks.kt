@@ -71,13 +71,15 @@ import coil.request.ImageRequest
 import com.example.geminispotifyapp.ApiError
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.SpotifyTrack
-import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
+import com.example.geminispotifyapp.data.SimplifiedArtist
+import com.example.geminispotifyapp.data.SpotifyAlbum
 import com.example.geminispotifyapp.features.userdatadetail.DropDownMenuTemplate
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import com.example.geminispotifyapp.features.userdatadetail.Period
 import com.example.geminispotifyapp.features.userdatadetail.Period.Companion.formatEnumPeriodName
 import com.example.geminispotifyapp.ui.theme.GeminiSpotifyAppTheme
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
+import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
@@ -88,18 +90,29 @@ import kotlin.time.DurationUnit
 fun TopTracksScreen(onTrackClick: (SpotifyTrack) -> Unit, viewModel: TopTracksViewModel = hiltViewModel()) {
     val uiState by viewModel.downLoadState.collectAsState()
     val refreshing by viewModel.isRefreshing.collectAsState()
+    val trackPeriodSelection by viewModel.trackPeriodSelection.collectAsState()
+    val userDataNum by viewModel.userDataNum.collectAsState()
     LaunchedEffect(Unit) {
         viewModel.fetchTopTracksIfNeeded()
     }
-    TopTrackContent(uiState, onTrackClick, refreshing, { viewModel.reFetchTopTrack() }, { viewModel.refreshTopTracks() })
+    TopTrackContent(uiState, onTrackClick, refreshing, trackPeriodSelection, userDataNum, { viewModel.reFetchTopTrack() }, { viewModel.refreshTopTracks() }, { period -> viewModel.setTrackPeriodSelection(period)})
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopTrackContent(uiState: FetchResult<TopTrackData>, onTrackClick: (SpotifyTrack) -> Unit, isRefreshing: Boolean, onRetry: () -> Unit, onRefresh: () -> Unit) {
+fun TopTrackContent(
+    uiState: FetchResult<TopTrackData>,
+    onTrackClick: (SpotifyTrack) -> Unit,
+    isRefreshing: Boolean,
+    trackPeriodSelection: Period,
+    userDataNum: Int,
+    onRetry: () -> Unit,
+    onRefresh: () -> Unit,
+    setTrackPeriodSelection: (Period) -> Unit
+) {
 
     var expandedMenuTrack by remember { mutableStateOf(false) }
-    var trackPeriodSelection by remember { mutableStateOf(Period.SHORT_TERM) }
+    //var trackPeriodSelection by remember { mutableStateOf(Period.SHORT_TERM) }
     //var onTrackSelected by remember { mutableStateOf<SpotifyTrack?>(null) }
 
     //HandleBackToHome(navController)
@@ -181,7 +194,7 @@ fun TopTrackContent(uiState: FetchResult<TopTrackData>, onTrackClick: (SpotifyTr
                                 onExpandChange = { expandedMenuTrack = it },
                                 selectedValue = trackPeriodSelection.ordinal,
                                 onValueChange = { index ->
-                                    trackPeriodSelection = Period.entries[index]
+                                    setTrackPeriodSelection(Period.entries[index])
                                 },
                                 options = Period.entries.map { formatEnumPeriodName(it) }
                             )
@@ -205,7 +218,7 @@ fun TopTrackContent(uiState: FetchResult<TopTrackData>, onTrackClick: (SpotifyTr
                         } else Spacer(modifier = Modifier.height(12.dp))
                     }
 
-                    if (currentTopTracks.size < GET_ITEM_NUM) {
+                    if (currentTopTracks.size < userDataNum) {
                         item {
                             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                             Row(
@@ -214,7 +227,7 @@ fun TopTrackContent(uiState: FetchResult<TopTrackData>, onTrackClick: (SpotifyTr
                             ) {
                                 Icon(Icons.Default.Info, contentDescription = "Info Icon")
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("You data is not enough to show more tracks. (Max = $GET_ITEM_NUM)")
+                                Text("You data is not enough to show more tracks. (Max = $userDataNum)")
                             }
                         }
                     }
@@ -314,8 +327,8 @@ fun TrackItem(index: Int, track: SpotifyTrack, onTrackSelected: (SpotifyTrack) -
 fun TopTrackContentPreview() {
     val mockTopTracks = List(5) { index ->
         SpotifyTrack(
-            album = com.example.geminispotifyapp.data.SpotifyAlbum(
-                artists = listOf(com.example.geminispotifyapp.data.SimplifiedArtist("artist_id_$index", "Artist Name $index", emptyMap(), "", "")),
+            album = SpotifyAlbum(
+                artists = listOf(SimplifiedArtist("artist_id_$index", "Artist Name $index", emptyMap(), "", "")),
                 availableMarkets = listOf("US", "CA"),
                 externalUrls = emptyMap(),
                 id = "album_id_$index",
@@ -327,7 +340,7 @@ fun TopTrackContentPreview() {
                 uri = "spotify:album:album_id_$index",
                 totalTracks = 10
             ),
-            artists = listOf(com.example.geminispotifyapp.data.SimplifiedArtist("artist_id_$index", "Artist Name $index", emptyMap(), "", "")),
+            artists = listOf(SimplifiedArtist("artist_id_$index", "Artist Name $index", emptyMap(), "", "")),
             availableMarkets = listOf("US", "CA"),
             discNumber = 1,
             durationMs = 200000 + (index * 10000),
@@ -360,7 +373,10 @@ fun TopTrackContentPreview() {
             onTrackClick = {},
             isRefreshing = false,
             onRetry = {},
-            onRefresh = {}
+            userDataNum = 20,
+            onRefresh = {},
+            trackPeriodSelection = Period.SHORT_TERM,
+            setTrackPeriodSelection = { }
         )
     }
 }
@@ -475,7 +491,7 @@ fun TrackDetail(
         }
 
         else -> {
-            val simpleDateFormat = java.text.SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+            val simpleDateFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
             simpleDateFormat.format(duration)
         }
     }
@@ -660,8 +676,8 @@ fun TrackDetailPreview() {
             ) {
                 TrackDetail(
                     track = SpotifyTrack(
-                        album = com.example.geminispotifyapp.data.SpotifyAlbum(
-                            artists = listOf(com.example.geminispotifyapp.data.SimplifiedArtist("06HL4z0CvFAxyc27GXpf02", "Taylor Swift", mapOf("spotify" to "https://open.spotify.com/album/1NAmidJlEaVgA3MpcPFYGq"), "https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02", "https://api.spotify.com/v1/artists/06HL4z0CvFAxyc27GXpf02")),
+                        album = SpotifyAlbum(
+                            artists = listOf(SimplifiedArtist("06HL4z0CvFAxyc27GXpf02", "Taylor Swift", mapOf("spotify" to "https://open.spotify.com/album/1NAmidJlEaVgA3MpcPFYGq"), "https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02", "https://api.spotify.com/v1/artists/06HL4z0CvFAxyc27GXpf02")),
                             availableMarkets = listOf("US", "CA", "GB"),
                             externalUrls = mapOf("spotify" to "https://open.spotify.com/album/1NAmidJlEaVgA3MpcPFYGq"),
                             id = "1NAmidJlEaVgA3MpcPFYGq",
@@ -673,7 +689,7 @@ fun TrackDetailPreview() {
                             uri = "spotify:album:1NAmidJlEaVgA3MpcPFYGq",
                             totalTracks = 13
                         ),
-                        artists = listOf(com.example.geminispotifyapp.data.SimplifiedArtist("06HL4z0CvFAxyc27GXpf02", "Taylor Swift", mapOf("spotify" to "https://open.spotify.com/album/1NAmidJlEaVgA3MpcPFYGq"), "https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02", "https://api.spotify.com/v1/artists/06HL4z0CvFAxyc27GXpf02")),
+                        artists = listOf(SimplifiedArtist("06HL4z0CvFAxyc27GXpf02", "Taylor Swift", mapOf("spotify" to "https://open.spotify.com/album/1NAmidJlEaVgA3MpcPFYGq"), "https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02", "https://api.spotify.com/v1/artists/06HL4z0CvFAxyc27GXpf02")),
                         availableMarkets = listOf("US", "CA", "GB", "AU", "NZ", "DE", "FR", "ES", "IT", "JP"),
                         discNumber = 1,
                         durationMs = 200000,

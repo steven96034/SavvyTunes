@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.ApiError
+import com.example.geminispotifyapp.SpotifyRepository
 import com.example.geminispotifyapp.data.PlayHistoryObject
 import com.example.geminispotifyapp.features.UiEvent
 import com.example.geminispotifyapp.features.UiEventManager
@@ -11,8 +12,10 @@ import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import com.example.geminispotifyapp.utils.GlobalErrorHandler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
@@ -29,6 +32,7 @@ data class UiPlayHistoryObject(
 
 @HiltViewModel
 class RecentlyPlayedViewModel @Inject constructor(
+    spotifyRepository: SpotifyRepository,
     private val getRecentlyPlayedUseCase: GetRecentlyPlayedUseCase,
     private val globalErrorHandler: GlobalErrorHandler,
     private val uiEventManager: UiEventManager
@@ -42,6 +46,12 @@ class RecentlyPlayedViewModel @Inject constructor(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
+    val userDataNum: StateFlow<Int> = spotifyRepository.userDataNumFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 20
+        )
     private var hasFetchedOnce = false
     private val tag = "RecentlyPlayedViewModel"
 
@@ -92,6 +102,7 @@ class RecentlyPlayedViewModel @Inject constructor(
         Log.d(tag, "Refreshing recently played data...")
 
         viewModelScope.launch {
+            val currentData = (_downLoadState.value as? FetchResult.Success)?.data
             _isRefreshing.value = true
             val result = getRecentlyPlayedUseCase()
             _downLoadState.value = when (result) {
@@ -111,7 +122,10 @@ class RecentlyPlayedViewModel @Inject constructor(
                 is FetchResult.Error -> {
                     handleApiError(result.errorData)
                     Log.e(tag, "Failed to refresh recently played data.")
-                    result
+                    if (currentData != null)
+                        FetchResult.Success(currentData)
+                    else
+                        result
                 }
                 FetchResult.Initial -> FetchResult.Initial
                 FetchResult.Loading -> FetchResult.Loading

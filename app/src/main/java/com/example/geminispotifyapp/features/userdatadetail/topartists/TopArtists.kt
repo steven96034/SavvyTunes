@@ -58,7 +58,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import coil.compose.AsyncImage
 import com.example.geminispotifyapp.R
-import com.example.geminispotifyapp.data.SharedData.GET_ITEM_NUM
 import com.example.geminispotifyapp.data.SpotifyArtist
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -74,17 +73,18 @@ import com.example.geminispotifyapp.ui.theme.GeminiSpotifyAppTheme
 fun TopArtistsScreen(onArtistClick: (SpotifyArtist) -> Unit, viewModel: TopArtistsViewModel = hiltViewModel()) {
     val uiState by viewModel.downLoadState.collectAsState()
     val refreshing by viewModel.isRefreshing.collectAsState()
+    val artistPeriodSelection by viewModel.artistPeriodSelection.collectAsState()
+    val dataNum by viewModel.userDataNum.collectAsState()
     LaunchedEffect(Unit) {
         viewModel.fetchTopArtistsIfNeeded()
     }
-    TopArtistContent(uiState, onArtistClick, refreshing, { viewModel.reFetchTopArtist() }, { viewModel.refreshTopArtists() })
+    TopArtistContent(uiState, onArtistClick, refreshing, artistPeriodSelection, dataNum, { viewModel.reFetchTopArtist() }, { viewModel.refreshTopArtists() }, { period -> viewModel.setArtistPeriodSelection(period) })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopArtistContent(uiState: FetchResult<TopArtistsData>, onArtistClick: (SpotifyArtist) -> Unit, isRefreshing: Boolean, onRetry: () -> Unit, onRefresh: () -> Unit) {
+fun TopArtistContent(uiState: FetchResult<TopArtistsData>, onArtistClick: (SpotifyArtist) -> Unit, isRefreshing: Boolean, artistPeriodSelection: Period, dataNum: Int,  onRetry: () -> Unit, onRefresh: () -> Unit, setArtistPeriodSelection: (Period) -> Unit) {
     var expandedMenuArtist by remember { mutableStateOf(false) }
-    var artistPeriodSelection by remember { mutableStateOf(Period.SHORT_TERM) }
 
     //HandleBackToHome(navController)
     PullToRefreshBox (
@@ -165,7 +165,7 @@ fun TopArtistContent(uiState: FetchResult<TopArtistsData>, onArtistClick: (Spoti
                             onExpandChange = { expandedMenuArtist = it },
                             selectedValue = artistPeriodSelection.ordinal,
                             onValueChange = { index ->
-                                artistPeriodSelection = Period.entries[index]
+                                setArtistPeriodSelection(Period.entries[index])
                             },
                             options = Period.entries.map { formatEnumPeriodName(it) }
                         )
@@ -189,7 +189,7 @@ fun TopArtistContent(uiState: FetchResult<TopArtistsData>, onArtistClick: (Spoti
                     } else Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                if (currentTopArtists.size < GET_ITEM_NUM) {
+                if (currentTopArtists.size < dataNum) {
                     item {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
                         Row(
@@ -198,7 +198,7 @@ fun TopArtistContent(uiState: FetchResult<TopArtistsData>, onArtistClick: (Spoti
                         ) {
                             Icon(Icons.Default.Info, contentDescription = "Info Icon")
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("You data is not enough to show more artists. (Max = $GET_ITEM_NUM)")
+                            Text("You data is not enough to show more artists. (Max = $dataNum)")
                         }
                     }
                 }
@@ -312,7 +312,7 @@ fun TopArtistContentPreview() {
             topArtistsMedium = List(5) { sampleArtist.copy(name = "Artist Medium ${it + 1}") },
             topArtistsLong = List(5) { sampleArtist.copy(name = "Artist Long ${it + 1}") }
         )
-        TopArtistContent(uiState = FetchResult.Success(sampleData), onArtistClick = {}, isRefreshing = false, onRetry = {}, onRefresh = {})
+        TopArtistContent(uiState = FetchResult.Success(sampleData), onArtistClick = {}, isRefreshing = false, artistPeriodSelection = Period.SHORT_TERM, dataNum = 20, onRetry = {}, onRefresh = {}, setArtistPeriodSelection = {})
     }
 }
 
