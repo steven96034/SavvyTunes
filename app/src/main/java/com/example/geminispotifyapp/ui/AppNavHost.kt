@@ -7,12 +7,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import com.example.geminispotifyapp.features.MainScreenWithPager
+import com.example.geminispotifyapp.features.MoreScreen
 import com.example.geminispotifyapp.features.Screen
+import com.example.geminispotifyapp.features.SettingsScreen
 import com.example.geminispotifyapp.features.bottomNavItems
 import com.example.geminispotifyapp.features.settings.AboutThisAppScreen
 import com.example.geminispotifyapp.features.settings.ProfileScreen
 import com.example.geminispotifyapp.features.settings.UserSettingsScreen
-import com.example.geminispotifyapp.init.LoginPage
+import com.example.geminispotifyapp.init.login.LoginPage
 
 const val MAIN_GRAPH_ROUTE = "main_graph"
 @Composable
@@ -24,12 +26,6 @@ fun AppNavHost(navController: NavHostController, paddingValues: PaddingValues) {
             route = MAIN_GRAPH_ROUTE
         ) {
             // The composables in the navigation graph are not displayed directly by the NavHost but by the MainScreenWithPager.
-
-//            composable(Screen.Home.route) { /* ... */ }
-//            composable(Screen.TopArtists.route) { /* ... */ }
-//            composable(Screen.TopTracks.route) { /* ... */ }
-//            composable(Screen.RecentlyPlayed.route) { /* ... */ }
-//            composable(Screen.FindMusic.route) { /* ... */ }
 
             // When route is in bottomNavItems, show MainScreenWithPager.
             bottomNavItems.forEach { screen ->
@@ -44,17 +40,17 @@ fun AppNavHost(navController: NavHostController, paddingValues: PaddingValues) {
         }
 
         // Independent Settings Pages
-        composable("settings") {
+        composable(SettingsScreen.Settings.route) {
             UserSettingsScreen(paddingValues)
         }
-        composable("profile") {
+        composable(SettingsScreen.Profile.route) {
             ProfileScreen(paddingValues)
         }
-        composable("aboutThisApp") {
+        composable(SettingsScreen.AboutThisApp.route) {
             AboutThisAppScreen(paddingValues)
         }
-        composable("login") {
-            LoginPage(paddingValues)
+        composable(MoreScreen.LoginPage.route) {
+            LoginPage()
         }
     }
 }

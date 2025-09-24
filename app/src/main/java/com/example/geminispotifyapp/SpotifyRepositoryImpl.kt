@@ -43,7 +43,7 @@ class SpotifyRepositoryImpl @Inject constructor(
 
     // Cache the current access token and expiry time in memory to avoid frequent database reads and more effective token refresh
     private val _currentAccessTokenFlow = MutableStateFlow<String?>(null)
-    val currentAccessTokenFlow: StateFlow<String?> = _currentAccessTokenFlow
+    override val currentAccessTokenFlow: StateFlow<String?> = _currentAccessTokenFlow
     private val _currentTokenExpiryTimeFlow = MutableStateFlow<Long?>(null)
 
     override val searchSimilarNumFlow: Flow<Int> = appDatabase.searchSimilarNumFlow

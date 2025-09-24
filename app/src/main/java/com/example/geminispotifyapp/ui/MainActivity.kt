@@ -8,7 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.example.geminispotifyapp.ui.theme.GeminiSpotifyAppTheme
-import com.example.geminispotifyapp.init.checkauth.CheckAuth
+import com.example.geminispotifyapp.init.login.LoginPage
 import dagger.hilt.android.AndroidEntryPoint
 
 
@@ -18,14 +18,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-
         setContent {
             GeminiSpotifyAppTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    CheckAuth()
+                    LoginPage()
                 }
             }
         }

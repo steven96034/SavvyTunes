@@ -44,7 +44,8 @@ fun ProfileScreen(paddingValues: PaddingValues, viewModel: ProfileViewModel =  h
         paddingValues = paddingValues,
         fetchResult = userProfileState,
         onRetry = { viewModel.fetchUserProfile() },
-        onOpenLinkFailed = { viewModel.onOpenLinkFailed() }
+        onOpenLinkFailed = { viewModel.onOpenLinkFailed() },
+        logOut = { viewModel.logOut() }
     )
 }
 
@@ -53,7 +54,8 @@ private fun ProfileContent(
     paddingValues: PaddingValues,
     fetchResult: FetchResult<UserProfileResponse>,
     onRetry: () -> Unit,
-    onOpenLinkFailed: () -> Unit
+    onOpenLinkFailed: () -> Unit,
+    logOut: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -66,7 +68,7 @@ private fun ProfileContent(
                 CircularProgressIndicator()
             }
             is FetchResult.Success -> {
-                UserProfileDetails(userProfile = fetchResult.data, onOpenLinkFailed = onOpenLinkFailed)
+                UserProfileDetails(userProfile = fetchResult.data, onOpenLinkFailed = onOpenLinkFailed, logOut = logOut)
             }
             is FetchResult.Error -> {
                 ErrorStateView(errorData = fetchResult.errorData, onRetry = onRetry)
@@ -76,7 +78,7 @@ private fun ProfileContent(
 }
 
 @Composable
-private fun UserProfileDetails(userProfile: UserProfileResponse, onOpenLinkFailed: () -> Unit) {
+private fun UserProfileDetails(userProfile: UserProfileResponse, onOpenLinkFailed: () -> Unit, logOut: () -> Unit) {
     val context = LocalContext.current
 
     Column(
@@ -128,7 +130,7 @@ private fun UserProfileDetails(userProfile: UserProfileResponse, onOpenLinkFaile
         ProfileInfoItem(label = "Email", value = userProfile.email)
         ProfileInfoItem(label = "Country", value = userProfile.country)
         ProfileInfoItem(label = "Product Plan", value = userProfile.product)
-        ProfileInfoItem(label = "Followers", value = (userProfile.followers["total"] ?: 0).toString()) // followers 是一個 Map
+        ProfileInfoItem(label = "Followers", value = (userProfile.followers["total"] ?: 0).toString())
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -153,6 +155,10 @@ private fun UserProfileDetails(userProfile: UserProfileResponse, onOpenLinkFaile
                     )
                 }
             }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = { logOut() }) {
+            Text(text = "Log Out")
         }
     }
 }

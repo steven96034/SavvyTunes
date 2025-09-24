@@ -4,7 +4,6 @@ import com.example.geminispotifyapp.ApiError
 import com.example.geminispotifyapp.SpotifyRepository
 import com.example.geminispotifyapp.data.PlayHistoryObject
 import com.example.geminispotifyapp.data.RecentlyPlayedResponse
-import com.example.geminispotifyapp.data.SharedData
 import com.example.geminispotifyapp.features.userdatadetail.ApiExecutionHelper
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +19,7 @@ class GetRecentlyPlayedUseCase @Inject constructor(
             apiExecutionHelper.executeApiOperations(
                 operations = {
                     val recentlyPlayedDeferred = async(Dispatchers.IO) {
-                        spotifyRepository.getRecentlyPlayedTracks(limit = SharedData.GET_ITEM_NUM)
+                        spotifyRepository.getRecentlyPlayedTracks()
                     }
                     listOf(recentlyPlayedDeferred)
                 },

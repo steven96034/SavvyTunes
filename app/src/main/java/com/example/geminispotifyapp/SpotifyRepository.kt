@@ -14,6 +14,7 @@ import com.example.geminispotifyapp.features.userdatadetail.FetchResultWithEtag
 import kotlinx.coroutines.flow.Flow
 
 interface SpotifyRepository {
+    val currentAccessTokenFlow: Flow<String?>
     val searchSimilarNumFlow: Flow<Int>
     val userDataNumFlow: Flow<Int>
 

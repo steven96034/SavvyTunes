@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.ApiError
 import com.example.geminispotifyapp.DownLoadState
 import com.example.geminispotifyapp.SpotifyRepository
-import com.example.geminispotifyapp.auth.AuthManager
 import com.example.geminispotifyapp.features.UiEvent
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import com.example.geminispotifyapp.utils.GlobalErrorHandler
@@ -20,7 +19,6 @@ import javax.inject.Inject
 @HiltViewModel
 class SpotifyDataViewModel @Inject constructor(
     private val spotifyRepository: SpotifyRepository, // 使用介面
-    private val authManager: AuthManager,
     private val globalErrorHandler: GlobalErrorHandler // 注入 GlobalErrorHandler
 ) : ViewModel() {
 
@@ -30,9 +28,9 @@ class SpotifyDataViewModel @Inject constructor(
     private val tag = "SpotifyDataViewModel"
 
     fun startAuthentication() {
-        viewModelScope.launch {
-            authManager.startAuthentication()
-        }
+//        viewModelScope.launch {
+//            authManager.startAuthentication()
+//        }
     }
 
     fun fetchData() {

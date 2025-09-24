@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.ApiError
 import com.example.geminispotifyapp.SpotifyRepository
 import com.example.geminispotifyapp.data.UserProfileResponse
+import com.example.geminispotifyapp.features.MoreScreen
 import com.example.geminispotifyapp.features.UiEvent
 import com.example.geminispotifyapp.features.UiEventManager
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
@@ -60,6 +61,13 @@ class ProfileViewModel @Inject constructor(
     fun onOpenLinkFailed() {
         viewModelScope.launch {
             uiEventManager.sendEvent(UiEvent.ShowSnackbar("Could not open the link. Please make sure Spotify is installed or try again."))
+        }
+    }
+
+    fun logOut() {
+        viewModelScope.launch {
+            spotifyRepository.performLogOutAndCleanUp()
+            uiEventManager.sendEvent(UiEvent.Navigate(MoreScreen.LoginPage.route))
         }
     }
 

@@ -91,12 +91,14 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.commons.text)
     implementation(libs.hilt.android)
+    implementation(libs.androidx.browser)
     ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.accompanist.navigation.animation)
+    implementation(libs.openmeteo)
 
 
     testImplementation(libs.junit)

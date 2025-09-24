@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun UserSettingsScreen(
     paddingValues: PaddingValues,
-    viewModel: UserSettingsViewModel = hiltViewModel(),
+    viewModel: UserSettingsViewModel = hiltViewModel()
 ) {
     val searchSimilarNum by viewModel.searchSimilarNum.collectAsStateWithLifecycle()
     val userDataNum by viewModel.userDataNum.collectAsStateWithLifecycle()

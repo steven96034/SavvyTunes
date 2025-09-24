@@ -3,12 +3,9 @@ package com.example.geminispotifyapp.features
 import android.content.res.Configuration
 import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,7 +18,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FindInPage
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -47,6 +43,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,24 +52,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navOptions
 import com.example.geminispotifyapp.ui.AppNavHost
 import com.example.geminispotifyapp.ui.MAIN_GRAPH_ROUTE
-import com.example.geminispotifyapp.ui.theme.SpotifyBlack
+import com.example.geminispotifyapp.ui.modifiers.autoCloseKeyboardClearFocus
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
 
 sealed class Screen(val route: String, val icon: ImageVector, val label: String) {
@@ -115,7 +107,7 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Use WindowSizeClass to determine more kinds of screen size (e.g. Compact, Medium, Expanded), here's only for phone's orientation
@@ -188,48 +180,32 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
         )
     }
 
+    MainScreen(
+        navController = navController,
+        currentDestination = currentDestination,
+        currentDestinationRoute = currentDestination?.route,
+        scrollBehavior = scrollBehavior,
+        snackbarHostState = snackbarHostState,
+        showMenu = showMenu,
+        onShowMenuChange = { showMenu = it },
+        onNavigateToMainGraph = { navController.navigate(MAIN_GRAPH_ROUTE) { popUpTo(MAIN_GRAPH_ROUTE) { inclusive = true } } },
+        onNavigateToScreen = { route -> navController.navigate(route) }
+    )
+}
 
-
-//    // 創建 PagerState 來管理底部導航頁面的狀態
-//    val pagerState = rememberPagerState(initialPage = 0) {
-//        bottomNavItems.size // 底部導航頁面的總數
-//    }
-//
-//    // 當 NavController 的目的地改變時，同步 PagerState
-//    LaunchedEffect(navController) {
-//        navController.currentBackStackEntryFlow
-//            .distinctUntilChanged { old, new ->
-//                old.destination.route == new.destination.route
-//            }
-//            .collect { backStackEntry ->
-//                val currentRoute = backStackEntry.destination.route
-//                val newPageIndex = bottomNavItems.indexOfFirst { it.route == currentRoute }
-//                if (newPageIndex != -1 && pagerState.currentPage != newPageIndex) {
-//                    scope.launch {
-//                        pagerState.animateScrollToPage(newPageIndex)
-//                    }
-//                }
-//            }
-//    }
-//
-//    // 當 PagerState 的頁面改變時 (例如手勢滑動)，同步 NavController
-//    LaunchedEffect(pagerState) {
-//        snapshotFlow { pagerState.currentPage }
-//            .distinctUntilChanged()
-//            .collect { page ->
-//                val targetRoute = bottomNavItems[page].route
-//                val currentRoute = navController.currentBackStackEntry?.destination?.route
-//                if (targetRoute != currentRoute) {
-//                    navController.navigate(targetRoute) {
-//                        popUpTo(navController.graph.findStartDestination().id) {
-//                            saveState = true
-//                        }
-//                        launchSingleTop = true
-//                        restoreState = true
-//                    }
-//                }
-//            }
-//    }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainScreen(
+    navController: NavHostController,
+    currentDestination: NavDestination?,
+    currentDestinationRoute: String?,
+    scrollBehavior: TopAppBarScrollBehavior,
+    snackbarHostState: SnackbarHostState,
+    showMenu: Boolean,
+    onShowMenuChange: (Boolean) -> Unit,
+    onNavigateToMainGraph: () -> Unit,
+    onNavigateToScreen: (String) -> Unit
+) {
     Box(modifier = Modifier.fillMaxSize()) {
     Scaffold (
         modifier = Modifier
@@ -242,20 +218,21 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
         topBar = {
             TopAppBar(
                 title = { Text("Music Explorer by Gemini") },
+                scrollBehavior = scrollBehavior,
                 navigationIcon = {
-                    if (currentDestination?.route == "settings" || currentDestination?.route == "profile" || currentDestination?.route == "aboutThisApp") {
-                        IconButton(onClick = { navController.navigate(MAIN_GRAPH_ROUTE) { popUpTo(MAIN_GRAPH_ROUTE) { inclusive = true } } }) {
+                    if (currentDestinationRoute == "settings" || currentDestinationRoute == "profile" || currentDestinationRoute == "aboutThisApp") {
+                        IconButton(onClick = onNavigateToMainGraph) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "back")
                         }
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showMenu = !showMenu }) {
+                    IconButton(onClick = { onShowMenuChange(!showMenu) }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "More options")
                     }
                     DropdownMenu(
                         expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
+                        onDismissRequest = { onShowMenuChange(false) }
                     ) {
                         settingsItems.forEach { screen ->
                             val isCurrentDestination = currentDestination?.route == screen.route
@@ -265,8 +242,9 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
                                 onClick = {
                                     if (!isCurrentDestination) {
                                         navController.navigate(screen.route)
+                                        onNavigateToScreen(screen.route)
                                     }
-                                    showMenu = false
+                                    onShowMenuChange(false)
                                 },
                                 colors = MenuDefaults.itemColors(
                                     textColor = if (isCurrentDestination) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
@@ -401,112 +379,38 @@ fun MainPage(viewModel: MainViewModel = hiltViewModel()) {
             navController = navController,
             paddingValues = paddingValues
         )
-//        NavHost(navController, startDestination = "main") {
-//            composable("main") {
-//                MainScreenWithPager(
-//                    paddingValues,
-//                    pagerState,
-//                    selectedScreen
-//                ) { item -> viewModel.showItemDetail(item) }
-//            }
-//            composable("settings") {
-//                UserSettingsScreen(paddingValues)
-//            }
-//            composable("aboutThisApp") {
-//                AboutThisAppScreen(paddingValues)
-//            }
-//        }
-
-//        NavHost(
-//            navController = navController,
-//            startDestination = Screen.Home.route
-//        ) {
-//            // HomePage 不參與底部導航的滑動
-//            composable(Screen.Home.route) {
-//                HomeScreen(paddingValues)
-//            }
-//            composable(
-//                route = Screen.TopArtists.route,
-//                enterTransition = { // 從右側進入並淡入
-//                    slideIntoContainer(
-//                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
-//                        animationSpec = tween(500)
-//                    ) + fadeIn(animationSpec = tween(500))
-//                },
-//                exitTransition = { // 向左側退出並淡出
-//                    slideOutOfContainer(
-//                        towards = AnimatedContentTransitionScope.SlideDirection.End,
-//                        animationSpec = tween(500)
-//                    ) + fadeOut(animationSpec = tween(500))
-//                },
-//                popEnterTransition = { // 從左側進入並淡入 (返回時)
-//                    slideIntoContainer(
-//                        towards = AnimatedContentTransitionScope.SlideDirection.End,
-//                        animationSpec = tween(500)
-//                    ) + fadeIn(animationSpec = tween(500))
-//                },
-//                popExitTransition = { // 向右側退出並淡出 (返回時)
-//                    slideOutOfContainer(
-//                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
-//                        animationSpec = tween(500)
-//                    ) + fadeOut(animationSpec = tween(500))
-//                }
-//            ) {
-//                TestScreen(navController)
-////                TopArtistContent(
-////                    data.topArtistsShort,
-////                    data.topArtistsMedium,
-////                    data.topArtistsLong,
-////                    navController,
-////                    paddingValues
-////                )
-//            }
-//            composable(Screen.TopTracks.route) {
-//                TestTopTracksScreen()
-//            }
-//            composable(Screen.RecentlyPlayed.route) {
-//                TestRecentlyPlayedScreen()
-//            }
-////            composable(Screen.TopTracks.route) {
-////                TopTracksScreen(
-////                    navController,
-////                    paddingValues
-////                )
-////            }
-////            composable(Screen.RecentlyPlayed.route) {
-////                RecentlyPlayedContent(
-////                    data.recentlyPlayed,
-////                    navController,
-////                    paddingValues
-////                )
-////            }
-//        }
-        }
-        // This box is placed outside the Scaffold to cover the entire screen
-//        viewModel.DetailBox (
-//            selectedValue = selectedItemForDetail,
-//            onDismiss = { viewModel.dismissItemDetail() }
-//        ) { item, onDismiss ->
-//            when (bottomNavItems[selectedScreen]) {
-//                is Screen.TopArtists -> ArtistDetail(item as SpotifyArtist, onDismiss)
-//                is Screen.TopTracks -> TrackDetail(item as SpotifyTrack, onDismiss)
-//                is Screen.RecentlyPlayed -> TrackHistoryDetail(item as PlayHistoryObject, onDismiss)
-//                is Screen.Home -> {
-//                    if (item is SpotifyArtist) ArtistDetail(item, onDismiss)
-//                    else if (item is SpotifyTrack) TrackDetail(item, onDismiss)
-//                }
-//                is Screen.FindMusic ->
-//            }
-//        }
+    }
     }
 }
 
-
-
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true)
 @Composable
-fun TestFindMusicContent() {
-    ContentScreen("This is the Find Music Screen.")
+fun MainScreenPreview() {
+    val navController = rememberNavController()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var showMenu by remember { mutableStateOf(false) }
+
+    MainScreen(
+        navController = navController,
+        currentDestination = navController.currentDestination,
+        currentDestinationRoute = navController.currentDestination?.route,
+        scrollBehavior = scrollBehavior,
+        snackbarHostState = snackbarHostState,
+        showMenu = showMenu,
+        onShowMenuChange = { showMenu = it },
+        onNavigateToMainGraph = { navController.navigate(MAIN_GRAPH_ROUTE) { popUpTo(MAIN_GRAPH_ROUTE) { inclusive = true } } },
+        onNavigateToScreen = { route -> navController.navigate(route) }
+    )
 }
+
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun MainScreenDarkPreview() {
+    MainScreenPreview()
+}
+
 @Composable
 fun ContentScreen(text: String) {
     Column(
@@ -516,154 +420,4 @@ fun ContentScreen(text: String) {
     ) {
         Text(text = text, style = MaterialTheme.typography.bodyLarge)
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun MyTopAppBar(navController: NavController, scrollBehavior: TopAppBarScrollBehavior) {
-    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-    val title = when (currentRoute) {
-        "topArtists" -> "Top Artists"
-        "topTracks" -> "Top Tracks"
-        "recentlyPlayed" -> "Recently Played"
-        else -> "Music Explorer by Gemini"
-    }
-    val navigationIcon: (@Composable () -> Unit)? = if (currentRoute != "home") {
-        {
-            IconButton(onClick = { navController.navigate("home") }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-        }
-    } else {
-        null
-    }
-    TopAppBar(
-        title = {
-            if (title != "Music Explorer by Gemini") Text(title)
-            else Text("Music Explorer by Gemini", color = SpotifyGreen, style = MaterialTheme.typography.headlineLarge)
-                },
-        navigationIcon = navigationIcon ?: {},
-        scrollBehavior = scrollBehavior
-    )
-}
-data class CustomBottomNavItem(
-    val route: String,
-    val icon: @Composable (tint: Color) -> Unit, // Let the caller decide how to display the icon
-    val label: String
-)
-
-@Composable
-fun BottomNavigation(navController: NavController) {
-    val items = listOf(
-        CustomBottomNavItem("topArtists", { Icon(Icons.Default.AccountCircle, "topArtists", tint = it) }, "Top Artists"),
-        CustomBottomNavItem("topTracks", { Icon(Icons.Default.Favorite, "topTracks", tint = it) }, "Top Tracks"),
-        CustomBottomNavItem("recentlyPlayed", { Icon(Icons.Default.FavoriteBorder, "recentlyPlayed", tint = it) }, "Recently Played")
-    )
-
-    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-
-
-    Row (
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        items.forEach { item ->
-            val isSelected = currentRoute == item.route
-            val itemColor = if (isSelected) SpotifyBlack else SpotifyGreen // Change color based on selection
-            Column(
-                modifier = Modifier
-                    .background(if (isSelected) SpotifyGreen.copy(alpha = 0.3f) else SpotifyBlack)
-                    .clickable {
-                        // Navigation logic should be placed here
-                        if (currentRoute != item.route) { // Prevent navigating to the same destination
-                            navController.navigate(item.route, navOptions {
-                                // Pop up to the start destination of the graph to avoid building up a large stack of destinations
-                                // on the back stack as users select items
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                // Avoid multiple copies of the same destination when reselecting the same item
-                                launchSingleTop = true
-                                // Restore state when reselecting a previously selected item
-                                restoreState = true
-                            })
-                        }
-                    }
-                    .weight(1f)
-                    .padding(vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                item.icon(itemColor) // Pass the itemColor to the icon composable
-                Text(text = item.label, color = itemColor)
-            }
-        }
-
-//        Button(
-//            onClick = { navController.navigate("topArtists"); Log.d("BottomNavigation", "$currentRoute -> next") },
-//            modifier = Modifier.weight(1f),
-//            shape = RoundedCornerShape(0.dp),
-//            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
-////            if (isSystemInDarkTheme()) {
-////                ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
-////            } else {
-////                ButtonDefaults.buttonColors()
-////            }
-//
-//        ) {
-//            Icon(Icons.Default.AccountCircle, "topArtists", tint = SpotifyGreen)
-//        }
-//        Button(
-//            onClick = { navController.navigate("topTracks"); Log.d("BottomNavigation", "$currentRoute  -> next") },
-//            modifier = Modifier.weight(1f),
-//            shape = RoundedCornerShape(0.dp),
-//            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
-//
-//        ) {
-//            Icon(Icons.Default.Favorite, "topTracks", tint = SpotifyGreen)
-//        }
-//        Button(
-//            onClick = { navController.navigate("recentlyPlayed"); Log.d("BottomNavigation", "$currentRoute  -> next") },
-//            modifier = Modifier.weight(1f),
-//            shape = RoundedCornerShape(0.dp),
-//            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
-//        ) {
-//            Icon(Icons.Default.FavoriteBorder, "recentlyPlayed", tint = SpotifyGreen)
-//        }
-    }
-}
-
-/**
- *  Set a modifier for onTap to hide keyboard and clear focus.
- */
-fun Modifier.autoCloseKeyboardClearFocus(): Modifier = composed {
-    val keyBoardController = LocalSoftwareKeyboardController.current
-    val focusManager = LocalFocusManager.current
-    pointerInput(this) {
-        detectTapGestures(onTap = {
-            keyBoardController?.hide()
-            focusManager.clearFocus()
-        })
-    }
-}
-
-@Preview
-@Composable
-fun MainPagePreview() {
-    MainPage()
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-fun TopAppBarPreview() {
-    val navController = rememberNavController()
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    MyTopAppBar(navController, scrollBehavior)
-}
-
-
-@Preview
-@Composable
-fun BottomNavigationPreview() {
-    val navController = rememberNavController()
-    BottomNavigation(navController = navController)
 }

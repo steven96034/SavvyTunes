@@ -45,11 +45,11 @@ class AppDatabase @Inject constructor(
         }.first()
     }
 
-//    suspend fun clearCodeVerifier() {
-//        dataStore.edit { preferences ->
-//            preferences.remove(CODE_VERIFIER_KEY)
-//        }
-//    }
+    suspend fun deleteCodeVerifier() {
+        dataStore.edit { preferences ->
+            preferences.remove(CODE_VERIFIER_KEY)
+        }
+    }
 
     suspend fun saveAuthState(state: String) {
         dataStore.edit { preferences ->
@@ -63,11 +63,11 @@ class AppDatabase @Inject constructor(
         }.first()
     }
 
-//    suspend fun clearAuthState() {
-//        dataStore.edit { preferences ->
-//            preferences.remove(AUTH_STATE_KEY)
-//        }
-//    }
+    suspend fun deleteAuthState() {
+        dataStore.edit { preferences ->
+            preferences.remove(AUTH_STATE_KEY)
+        }
+    }
 
     // Encrypted Data: Access Token, Refresh Token
     suspend fun saveAccessToken(token: String) {
@@ -75,13 +75,6 @@ class AppDatabase @Inject constructor(
             preferences[ACCESS_TOKEN_KEY] = encryptedPreferenceManager.encrypt(token)
         }
     }
-
-//    suspend fun getAccessToken(): String? {
-//        return dataStore.data.map { preferences ->
-//            preferences[ACCESS_TOKEN_KEY]?.let { encryptedPreferenceManager.decrypt(it) }
-//        }.first()
-//        //return encryptedPreferenceManager.readData(ACCESS_TOKEN_KEY).first()
-//    }
 
     fun getAccessTokenFlow(): Flow<String?> {
         return dataStore.data.map { preferences ->

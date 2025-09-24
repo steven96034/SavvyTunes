@@ -29,6 +29,8 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
+import com.example.geminispotifyapp.features.findmusic.FindMusic
+import com.example.geminispotifyapp.features.findmusic.FindMusicViewModel
 import com.example.geminispotifyapp.features.home.HomeScreen
 import com.example.geminispotifyapp.features.home.HomeViewModel
 import com.example.geminispotifyapp.features.userdatadetail.recentlyplayed.RecentlyPlayedScreen
@@ -52,28 +54,6 @@ fun MainScreenWithPager(
     viewModel: MainScreenWithPagerViewModel = hiltViewModel()
 ) {
     val selectedItemForDetail by viewModel.selectedItemForDetail.collectAsStateWithLifecycle()
-    //val pagerState = rememberPagerState()
-
-//    // --- 同步邏輯 (保持不變) ---
-//    val currentRoute = backStackEntry.destination.route
-//    LaunchedEffect(currentRoute) {
-//        val pageIndex = screens.indexOfFirst { it.route == currentRoute }
-//        if (pageIndex != -1 && pagerState.currentPage != pageIndex) {
-//            pagerState.animateScrollToPage(pageIndex)
-//        }
-//    }
-//    LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
-//        if (!pagerState.isScrollInProgress) {
-//            val newRoute = screens[pagerState.currentPage].route
-//            if (currentRoute != newRoute) {
-//                navController.navigate(newRoute) {
-//                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-//                    launchSingleTop = true
-//                    restoreState = true
-//                }
-//            }
-//        }
-//    }
 
     // To fulfill the circle sliding, we set the total pages to Int.MAX_VALUE
     // From a big number in the middle, then user can slide left or right for a long time
@@ -106,7 +86,7 @@ fun MainScreenWithPager(
     val topArtistsViewModel: TopArtistsViewModel = hiltViewModel(parentEntry)
     val topTracksViewModel: TopTracksViewModel = hiltViewModel(parentEntry)
     val recentlyPlayedViewModel: RecentlyPlayedViewModel = hiltViewModel(parentEntry)
-    // TODO: Add other viewModels here
+    val findMusicViewModel: FindMusicViewModel = hiltViewModel(parentEntry)
 
     Box(
         modifier = Modifier
@@ -117,7 +97,6 @@ fun MainScreenWithPager(
             state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
-            //.padding(paddingValues)
         ) { page ->
             // According to the page index, determine which page to display
             val screenIndex = page % bottomNavItems.size
@@ -143,7 +122,7 @@ fun MainScreenWithPager(
                     viewModel = recentlyPlayedViewModel
                 )
 
-                is Screen.FindMusic -> TestFindMusicContent()
+                is Screen.FindMusic -> FindMusic(findMusicViewModel)
             }
         }
         NavigationBar(

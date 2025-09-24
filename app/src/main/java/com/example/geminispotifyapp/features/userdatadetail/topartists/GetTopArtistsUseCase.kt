@@ -2,7 +2,6 @@ package com.example.geminispotifyapp.features.userdatadetail.topartists
 
 import com.example.geminispotifyapp.ApiError
 import com.example.geminispotifyapp.SpotifyRepository
-import com.example.geminispotifyapp.data.SharedData
 import com.example.geminispotifyapp.data.TopArtistsResponse
 import com.example.geminispotifyapp.features.userdatadetail.ApiExecutionHelper
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
@@ -23,20 +22,17 @@ class GetTopArtistsUseCase @Inject constructor(
                     operations = {
                         val topArtistsDeferredShort = async(Dispatchers.IO) {
                             spotifyRepository.getUserTopArtists(
-                                timeRange = "short_term",
-                                limit = SharedData.GET_ITEM_NUM
+                                timeRange = "short_term"
                             )
                         }
                         val topArtistsDeferredMedium = async(Dispatchers.IO) {
                             spotifyRepository.getUserTopArtists(
-                                timeRange = "medium_term",
-                                limit = SharedData.GET_ITEM_NUM
+                                timeRange = "medium_term"
                             )
                         }
                         val topTracksDeferredLong = async(Dispatchers.IO) {
                             spotifyRepository.getUserTopArtists(
-                                timeRange = "long_term",
-                                limit = SharedData.GET_ITEM_NUM
+                                timeRange = "long_term"
                             )
                         }
                         // Return a list of Deferred, executeApiOperations will await them

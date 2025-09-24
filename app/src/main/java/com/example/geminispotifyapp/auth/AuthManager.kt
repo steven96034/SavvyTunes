@@ -4,22 +4,18 @@ import android.util.Base64
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.SecureRandom
-import android.content.Context
-import android.content.Intent
-import android.widget.Toast
+import android.util.Log
 import androidx.core.net.toUri
 import com.example.geminispotifyapp.BuildConfig
 import com.example.geminispotifyapp.data.local.AppDatabase
-import com.example.geminispotifyapp.utils.toast
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.example.geminispotifyapp.SpotifyRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 
-
 @Singleton
 class AuthManager @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val appDatabase: AppDatabase
+    private val appDatabase: AppDatabase,
+    private val spotifyRepository: SpotifyRepository
 ) {
     companion object {
         /**
@@ -104,10 +100,6 @@ class AuthManager @Inject constructor(
         return base64UrlEncode(hashedBytes)
     }
 
-    suspend fun getCodeVerifier(): String? {
-        return appDatabase.getCodeVerifier()
-    }
-
     private fun generateRandomState(length: Int = 32): String {
         val possibleChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
         val random = SecureRandom()
@@ -116,23 +108,13 @@ class AuthManager @Inject constructor(
         return bytes.map { possibleChars[random.nextInt(possibleChars.length)] }.joinToString("")
     }
 
-    suspend fun getAuthState(): String? {
-        return appDatabase.getAuthState()
-    }
-
     // --- Authentication Flow ---
 
-    /**
-     * Initiates the Spotify PKCE Authorization flow.
-     *
-     * @param context The Activity or Application context.
-     */
-    suspend fun startAuthentication() {
+    suspend fun generateAuthorizationUrlAndSaveVerifier(): String {
         // 1. Generate Code Verifier
         val codeVerifier = generateCodeVerifier()
 
         // 2. Save Code Verifier for later token exchange
-        //saveCodeVerifier(context, codeVerifier)
         appDatabase.saveCodeVerifier(codeVerifier)
 
         // 3. Generate Code Challenge
@@ -140,11 +122,10 @@ class AuthManager @Inject constructor(
 
         // 4. Generate and Save State
         val state = generateRandomState()
-        //saveState(context, state)
         appDatabase.saveAuthState(state)
 
         // 5. Build Authorization URL
-        val authUri = AUTH_ENDPOINT.toUri().buildUpon().apply {
+        return AUTH_ENDPOINT.toUri().buildUpon().apply {
             appendQueryParameter("response_type", "code")
             appendQueryParameter("client_id", CLIENT_ID)
             appendQueryParameter("scope", SCOPES.joinToString(" "))
@@ -152,20 +133,39 @@ class AuthManager @Inject constructor(
             appendQueryParameter("code_challenge", codeChallenge)
             appendQueryParameter("redirect_uri", REDIRECT_URI)
             appendQueryParameter("state", state)
-        }.build()
+        }.build().toString()
+    }
 
-        // 6. Open the URL in a browser or Chrome Custom Tab
-        val intent = Intent(Intent.ACTION_VIEW, authUri).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+    suspend fun exchangeCodeForToken(code: String, receivedState: String): Boolean {
+        val savedCodeVerifier = appDatabase.getCodeVerifier()
+        val savedAuthState = appDatabase.getAuthState()
+
+        // Clean up verifier and state regardless of outcome
+        appDatabase.deleteCodeVerifier()
+        appDatabase.deleteAuthState()
+
+        if (savedCodeVerifier == null) {
+            Log.e("AuthManager", "Saved Code Verifier not found!")
+            return false
+        }
+        if (savedAuthState == null || receivedState != savedAuthState) {
+            Log.e("AuthManager", "Received state does not match saved state, potential CSRF attack!")
+            return false
         }
 
-        try {
-            context.startActivity(intent)
+        return try {
+            val response = spotifyRepository.getAccessTokenThruAuth(
+                grantType = "authorization_code",
+                code = code,
+                redirectUri = REDIRECT_URI,
+                clientId = CLIENT_ID,
+                codeVerifier = savedCodeVerifier
+            )
+            spotifyRepository.updateTokenResponse(response)
+            true
         } catch (e: Exception) {
-            // Handle errors when a browser cannot be opened (e.g., no suitable browser installed)
-            e.printStackTrace()
-            // Consider displaying an error message to the user
-            toast(context, "Error opening browser", Toast.LENGTH_SHORT)
+            Log.e("AuthManager", "Error exchanging Token", e)
+            false
         }
     }
 }
