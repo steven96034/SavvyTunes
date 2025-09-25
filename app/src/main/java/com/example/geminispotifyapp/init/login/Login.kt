@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.geminispotifyapp.R
-import com.example.geminispotifyapp.init.userdata.SpotifyDataScreen
 import androidx.core.net.toUri
 import com.example.geminispotifyapp.utils.toast
 
@@ -44,6 +44,8 @@ fun LoginPage(viewModel: LoginViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val tag = "LoginPage"
 
+    Log.d(tag, "Recomposing LoginPage. isAuthenticated: $isAuthenticated")
+
     LaunchedEffect(viewModel.navigateToUrlEvent) {
         viewModel.navigateToUrlEvent.collect { authUrl ->
             if (context is Activity) {
@@ -51,7 +53,6 @@ fun LoginPage(viewModel: LoginViewModel = hiltViewModel()) {
                     val customTabsIntent = CustomTabsIntent.Builder().build()
                     customTabsIntent.launchUrl(context, authUrl.toUri())
                 } catch (e: ActivityNotFoundException) {
-                    // Fallback to a standard browser if custom tabs are not available
                     val intent = Intent(Intent.ACTION_VIEW, authUrl.toUri())
                     context.startActivity(intent)
                 }
@@ -69,31 +70,31 @@ fun LoginPage(viewModel: LoginViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun LoginContent(onAuthSpotifyClick: () -> Unit, isAuthenticated: Boolean) {
+fun LoginContent(onAuthSpotifyClick: () -> Unit, isAuthenticated: Boolean, modifier: Modifier = Modifier) {
     if (!isAuthenticated) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
                 painter = painterResource(id = R.drawable.full_logo_green_rgb),
                 contentDescription = "Spotify Logo",
-                modifier = Modifier.height(60.dp) // Adjust size as needed
+                modifier = Modifier.height(60.dp)
             )
             Spacer(modifier = Modifier.height(32.dp))
-            Text("Please connect to your Spotify account to continue.")
+            Text("Please connect to Spotify to continue")
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = onAuthSpotifyClick,
                 contentPadding = PaddingValues(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary) // Changed to primary for better visibility
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Connect to Spotify")
-                    Spacer(modifier = Modifier.width(8.dp)) // Added space between text and icon
-                    Icon( // Changed Image to Icon for a more consistent look with Material Design icons
-                        imageVector = Icons.AutoMirrored.Filled.Login, // Using a Material icon for demonstration, could be a custom Spotify icon
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Login,
                         contentDescription = "Login with Spotify",
                         modifier = Modifier.height(20.dp)
                     )
@@ -101,12 +102,21 @@ fun LoginContent(onAuthSpotifyClick: () -> Unit, isAuthenticated: Boolean) {
             }
         }
     } else {
-        SpotifyDataScreen()
+        Column(
+            modifier = modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            CircularProgressIndicator()
+        }
     }
 }
 
 @Preview
 @Composable
 fun LoginPagePreview() {
-    LoginContent(onAuthSpotifyClick = {}, isAuthenticated = false)
+    LoginContent(
+        onAuthSpotifyClick = {},
+        isAuthenticated = false
+    )
 }

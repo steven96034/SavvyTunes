@@ -1,10 +1,9 @@
 package com.example.geminispotifyapp.features.settings
 
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
-import com.example.geminispotifyapp.features.ContentScreen
+import com.example.geminispotifyapp.features.findmusic.ContentScreen
 
 @Composable
-fun AboutThisAppScreen(paddingValues: PaddingValues) {
+fun AboutThisAppScreen() {
     ContentScreen("This is the About This App Screen.")
 }

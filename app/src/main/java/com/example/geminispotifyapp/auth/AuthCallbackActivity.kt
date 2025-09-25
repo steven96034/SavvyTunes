@@ -6,7 +6,6 @@ import android.util.Log
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.example.geminispotifyapp.SpotifyRepository
 import com.example.geminispotifyapp.ui.MainActivity
 import com.example.geminispotifyapp.utils.toast
 import kotlinx.coroutines.launch
@@ -17,7 +16,6 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class AuthCallbackActivity : AppCompatActivity() {
 
-    @Inject lateinit var spotifyRepository: SpotifyRepository
     @Inject lateinit var authManager: AuthManager
 
     companion object {

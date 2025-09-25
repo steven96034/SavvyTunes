@@ -16,20 +16,21 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    spotifyRepository: SpotifyRepository,
+    spotifyRepository: SpotifyRepository, // 保持為 private val
     private val authManager: AuthManager
 ): ViewModel() {
     private val _navigateToUrlEvent = MutableSharedFlow<String>()
     val navigateToUrlEvent = _navigateToUrlEvent.asSharedFlow()
+
     val isAuthenticated: StateFlow<Boolean> = spotifyRepository.currentAccessTokenFlow
         .map { accessToken ->
-            // Transform the Access Token into a Boolean value, indicating whether logged in
             !accessToken.isNullOrBlank()
         }.stateIn(
-            scope = viewModelScope, // Ensure Flow is cancelled when ViewModel is cleared
+            scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = false // Initial value, not logged in
+            initialValue = false
         )
+
     fun onLoginClicked() {
         viewModelScope.launch {
             val authUrl = authManager.generateAuthorizationUrlAndSaveVerifier()

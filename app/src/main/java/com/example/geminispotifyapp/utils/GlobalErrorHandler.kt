@@ -3,7 +3,6 @@ package com.example.geminispotifyapp.utils
 import android.util.Log
 import com.example.geminispotifyapp.ApiError
 import com.example.geminispotifyapp.SpotifyRepository
-import com.example.geminispotifyapp.features.MoreScreen
 import com.example.geminispotifyapp.features.UiEvent
 import javax.inject.Inject
 
@@ -43,7 +42,7 @@ class GlobalErrorHandler @Inject constructor(
             is ApiError.Unauthorized -> {
                 Log.d(tag, "Unauthorized: ${error.message}")
                 spotifyRepository.performLogOutAndCleanUp()
-                UiEvent.Unauthorized("Unauthorized, please log in again.", MoreScreen.LoginPage.route)
+                UiEvent.Unauthorized("Unauthorized, please log in again.")
             }
             else -> {
                 Log.d(tag, "UnknownError of ApiError: ${error.message}")

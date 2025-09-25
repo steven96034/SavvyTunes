@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -43,7 +42,9 @@ import com.example.geminispotifyapp.features.userdatadetail.topartists.TopArtist
 import com.example.geminispotifyapp.features.userdatadetail.toptracks.TopTracksScreen
 import com.example.geminispotifyapp.features.userdatadetail.toptracks.TopTracksViewModel
 import com.example.geminispotifyapp.features.userdatadetail.toptracks.TrackDetail
-import com.example.geminispotifyapp.ui.MAIN_GRAPH_ROUTE
+import com.example.geminispotifyapp.init.MAIN_APP_ROUTE
+import com.example.geminispotifyapp.init.Screen
+import com.example.geminispotifyapp.init.bottomNavItems
 import kotlinx.coroutines.launch
 
 @Composable
@@ -79,7 +80,7 @@ fun MainScreenWithPager(
 
     // --- ViewModel Scope Setting ---
     val parentEntry = remember(backStackEntry) {
-        navController.getBackStackEntry(MAIN_GRAPH_ROUTE)
+        navController.getBackStackEntry(MAIN_APP_ROUTE)
     }
 
     val homeViewModel: HomeViewModel = hiltViewModel(parentEntry)
@@ -91,7 +92,6 @@ fun MainScreenWithPager(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = paddingValues.calculateTopPadding())
     ) {
         HorizontalPager(
             state = pagerState,

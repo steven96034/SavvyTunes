@@ -1,6 +1,5 @@
 package com.example.geminispotifyapp.features.settings
 
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,7 +20,6 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun UserSettingsScreen(
-    paddingValues: PaddingValues,
     viewModel: UserSettingsViewModel = hiltViewModel()
 ) {
     val searchSimilarNum by viewModel.searchSimilarNum.collectAsStateWithLifecycle()
@@ -29,7 +27,6 @@ fun UserSettingsScreen(
     val scope = rememberCoroutineScope()
 
     UserSettingsContent(
-        paddingValues = paddingValues,
         searchSimilarNum = searchSimilarNum,
         userDataNum = userDataNum,
         onSearchSimilarNumChange = { newValue -> scope.launch { viewModel.setSearchSimilarNum(newValue) } },
@@ -39,14 +36,13 @@ fun UserSettingsScreen(
 
 @Composable
 fun UserSettingsContent(
-    paddingValues: PaddingValues,
     searchSimilarNum: Int,
     userDataNum: Int,
     onSearchSimilarNumChange: (Int) -> Unit,
     onUserDataNumChange: (Int) -> Unit,
 ) {
 
-    LazyColumn(modifier = Modifier.padding(paddingValues).padding(16.dp)) {
+    LazyColumn(modifier = Modifier.padding(16.dp)) {
         item {
             Text(text = "Number of similar tracks and artists to search: $searchSimilarNum", modifier = Modifier.padding(bottom = 8.dp))
         }
@@ -89,7 +85,6 @@ fun UserSettingsContent(
 fun UserSettingsScreenPreview() {
     // You can provide a mock ViewModel or use default values for preview
     UserSettingsContent(
-        paddingValues = PaddingValues(0.dp),
         searchSimilarNum = 10,
         userDataNum = 20,
         onSearchSimilarNumChange = {},

@@ -150,8 +150,7 @@ class RecentlyPlayedViewModel @Inject constructor(
                     uiEventManager.sendEvent(UiEvent.Navigate(uiEvent.route))
                 }
                 is UiEvent.Unauthorized -> {
-                    uiEventManager.sendEvent(UiEvent.ShowSnackbar(uiEvent.message))
-                    uiEventManager.sendEvent(UiEvent.Navigate(uiEvent.navigationRoute))
+                    uiEventManager.sendEvent(UiEvent.Unauthorized(uiEvent.message))
                 }
             }
         }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -44,7 +45,7 @@ fun ProfileScreen(paddingValues: PaddingValues, viewModel: ProfileViewModel =  h
         paddingValues = paddingValues,
         fetchResult = userProfileState,
         onRetry = { viewModel.fetchUserProfile() },
-        onOpenLinkFailed = { viewModel.onOpenLinkFailed() },
+        onOpenLinkFailed = { exception -> viewModel.onOpenLinkFailed(exception) },
         logOut = { viewModel.logOut() }
     )
 }
@@ -54,7 +55,7 @@ private fun ProfileContent(
     paddingValues: PaddingValues,
     fetchResult: FetchResult<UserProfileResponse>,
     onRetry: () -> Unit,
-    onOpenLinkFailed: () -> Unit,
+    onOpenLinkFailed: (Exception) -> Unit,
     logOut: () -> Unit
 ) {
     Box(
@@ -68,7 +69,7 @@ private fun ProfileContent(
                 CircularProgressIndicator()
             }
             is FetchResult.Success -> {
-                UserProfileDetails(userProfile = fetchResult.data, onOpenLinkFailed = onOpenLinkFailed, logOut = logOut)
+                UserProfileDetails(userProfile = fetchResult.data, onOpenLinkFailed = { exception -> onOpenLinkFailed(exception) }, logOut = logOut)
             }
             is FetchResult.Error -> {
                 ErrorStateView(errorData = fetchResult.errorData, onRetry = onRetry)
@@ -78,7 +79,7 @@ private fun ProfileContent(
 }
 
 @Composable
-private fun UserProfileDetails(userProfile: UserProfileResponse, onOpenLinkFailed: () -> Unit, logOut: () -> Unit) {
+private fun UserProfileDetails(userProfile: UserProfileResponse, onOpenLinkFailed: (Exception) -> Unit, logOut: () -> Unit) {
     val context = LocalContext.current
 
     Column(
@@ -140,7 +141,7 @@ private fun UserProfileDetails(userProfile: UserProfileResponse, onOpenLinkFaile
                     val intent = Intent(Intent.ACTION_VIEW, spotifyProfileUrl.toUri())
                     context.startActivity(intent)
                 } catch (e: Exception) {
-                    onOpenLinkFailed()
+                    onOpenLinkFailed(e)
                 }
             },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
@@ -158,7 +159,15 @@ private fun UserProfileDetails(userProfile: UserProfileResponse, onOpenLinkFaile
         }
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = { logOut() }) {
-            Text(text = "Log Out")
+            Row {
+                Text(text = "Log Out")
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Logout,
+                    contentDescription = "Logout with Spotify",
+                    modifier = Modifier.height(20.dp)
+                )
+            }
         }
     }
 }

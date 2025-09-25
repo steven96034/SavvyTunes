@@ -1,6 +1,7 @@
 package com.example.geminispotifyapp.features.userdatadetail.recentlyplayed
 
 import android.content.Intent
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -82,7 +83,7 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.DurationUnit
 
 @Composable
-fun RecentlyPlayedScreen(onHistoryClick: (PlayHistoryObject) -> Unit, viewModel: RecentlyPlayedViewModel = hiltViewModel()) {
+fun RecentlyPlayedScreen(onHistoryClick: (UiPlayHistoryObject) -> Unit, viewModel: RecentlyPlayedViewModel = hiltViewModel()) {
     val uiState by viewModel.downLoadState.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val displayedRecentlyPlayed by viewModel.displayedRecentlyPlayed.collectAsState()
@@ -109,7 +110,7 @@ fun RecentlyPlayedContent(
     uiState: FetchResult<List<UiPlayHistoryObject>>,
     isRefreshing: Boolean,
     displayedRecentlyPlayed: List<UiPlayHistoryObject>,
-    onHistoryClick: (PlayHistoryObject) -> Unit,
+    onHistoryClick: (UiPlayHistoryObject) -> Unit,
     userDataNum: Int,
     onRefresh: () -> Unit,
     onRetry: () -> Unit
@@ -191,7 +192,7 @@ fun RecentlyPlayedContent(
                     Spacer(modifier = Modifier.height(14.dp))
                 }
                 itemsIndexed(displayedRecentlyPlayed) { index, uiPlayHistory ->
-                    RecentTrackItem(index + 1, uiPlayHistory, onHistoryClick) 
+                    RecentTrackItem(index + 1, uiPlayHistory, onHistoryClick)
                     if (index < displayedRecentlyPlayed.size - 1) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     } else Spacer(modifier = Modifier.height(12.dp))
@@ -216,7 +217,7 @@ fun RecentlyPlayedContent(
 }
 
 @Composable
-private fun RecentTrackItem(index: Int, uiPlayHistory: UiPlayHistoryObject, onHistorySelected: (PlayHistoryObject) -> Unit) {
+private fun RecentTrackItem(index: Int, uiPlayHistory: UiPlayHistoryObject, onHistorySelected: (UiPlayHistoryObject) -> Unit) {
     val track = uiPlayHistory.originalPlayHistory.track
 
     Row(
@@ -230,7 +231,10 @@ private fun RecentTrackItem(index: Int, uiPlayHistory: UiPlayHistoryObject, onHi
             modifier = Modifier.width(30.dp)
         )
         Button(
-            onClick = { onHistorySelected(uiPlayHistory.originalPlayHistory) },
+            onClick = {
+                Log.d("RecentTrackItem", "History clicked $uiPlayHistory")
+                onHistorySelected(uiPlayHistory)
+                 },
             shape = RoundedCornerShape(0.dp),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background),
             contentPadding = PaddingValues(0.dp)

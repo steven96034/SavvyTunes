@@ -7,8 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.example.geminispotifyapp.init.RootApp
 import com.example.geminispotifyapp.ui.theme.GeminiSpotifyAppTheme
-import com.example.geminispotifyapp.init.login.LoginPage
 import dagger.hilt.android.AndroidEntryPoint
 
 
@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    LoginPage()
+                    RootApp()
                 }
             }
         }

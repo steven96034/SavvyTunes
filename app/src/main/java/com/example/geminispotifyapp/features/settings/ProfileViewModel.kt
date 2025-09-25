@@ -5,10 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.ApiError
 import com.example.geminispotifyapp.SpotifyRepository
 import com.example.geminispotifyapp.data.UserProfileResponse
-import com.example.geminispotifyapp.features.MoreScreen
 import com.example.geminispotifyapp.features.UiEvent
 import com.example.geminispotifyapp.features.UiEventManager
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
+import com.example.geminispotifyapp.init.LOGIN_ROUTE
 import com.example.geminispotifyapp.utils.GlobalErrorHandler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,16 +58,17 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    fun onOpenLinkFailed() {
+    fun onOpenLinkFailed(e: Exception) {
         viewModelScope.launch {
-            uiEventManager.sendEvent(UiEvent.ShowSnackbar("Could not open the link. Please make sure Spotify is installed or try again."))
+            uiEventManager.sendEvent(UiEvent.ShowSnackbarDetail("Could not open the link. Please make sure Spotify is installed or try again.", e.message  ?: "Unknown error"))
         }
     }
 
     fun logOut() {
         viewModelScope.launch {
             spotifyRepository.performLogOutAndCleanUp()
-            uiEventManager.sendEvent(UiEvent.Navigate(MoreScreen.LoginPage.route))
+            uiEventManager.sendEvent(UiEvent.Navigate(LOGIN_ROUTE))
+            uiEventManager.sendEvent(UiEvent.ShowSnackbar("You have logged out."))
         }
     }
 
@@ -85,8 +86,7 @@ class ProfileViewModel @Inject constructor(
                     uiEventManager.sendEvent(UiEvent.Navigate(uiEvent.route))
                 }
                 is UiEvent.Unauthorized -> {
-                    uiEventManager.sendEvent(UiEvent.ShowSnackbar(uiEvent.message))
-                    uiEventManager.sendEvent(UiEvent.Navigate(uiEvent.navigationRoute))
+                    uiEventManager.sendEvent(UiEvent.Unauthorized(uiEvent.message))
                 }
             }
         }
