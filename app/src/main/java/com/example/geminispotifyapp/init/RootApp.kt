@@ -109,17 +109,14 @@ fun RootApp() {
     val loginViewModel: LoginViewModel = hiltViewModel()
     val isAuthenticated by loginViewModel.isAuthenticated.collectAsStateWithLifecycle()
 
-    // 將 MainAppShell 的邏輯提取到一個 AppContainer Composable
-    // AppContainer 將包裹整個 NavHost，確保所有顯示的畫面都能享有其功能
+    // AppContainer wraps up whole NavHost to ensure all the displayed screens have their features
     AppContainer(rootNavController = navController) { rootPaddingValues -> // rootPaddingValues 來自 AppContainer 的 Scaffold
         NavHost(
             navController = navController,
             startDestination = if (isAuthenticated) MAIN_APP_ROUTE else LOGIN_ROUTE,
-            modifier = Modifier.padding(rootPaddingValues) // 將外部 padding 應用到 NavHost
+            modifier = Modifier.padding(rootPaddingValues)
         ) {
-            // 登入相關的畫面都在這裡
             composable(LOGIN_ROUTE) { backStackEntry ->
-                // LoginPage 可以直接使用 rootPaddingValues，或者根據需要忽略它
                 LoginPage(
                     viewModel = loginViewModel,
                 )
@@ -135,16 +132,13 @@ fun RootApp() {
                 bottomNavItems.forEach { screen ->
                     composable(screen.route) { backStackEntry ->
                         MainScreenWithPager(
-                            paddingValues = rootPaddingValues, // 使用外部傳遞的 paddingValues
                             backStackEntry = backStackEntry,
-                            navController = navController // 使用 RootApp 的 NavController
+                            navController = navController
                         )
                     }
                 }
             }
 
-            // Independent Settings Pages and More Screens
-            // 這些頁面現在也在 AppContainer 的 Scaffold 內部，所以也能享有 Snackbar 等功能
             composable(SettingsScreen.Settings.route) {
                 UserSettingsScreen()
             }
@@ -154,28 +148,16 @@ fun RootApp() {
             composable(SettingsScreen.AboutThisApp.route) {
                 AboutThisAppScreen()
             }
-//            composable(MoreScreen.LoginPage.route) {
-//                // 如果這是登入頁面的另一個入口，可能需要處理導航
-//                LoginPage(
-//                    viewModel = loginViewModel,
-//                    onAuthSuccess = {
-//                        navController.navigate(MAIN_GRAPH_ROUTE) {
-//                            popUpTo(MoreLoginPage.route) { inclusive = true } // 清除此登入頁面的返回堆疊
-//                        }
-//                    },
-//                    paddingValues = rootPaddingValues
-//                )
-//            }
         }
     }
 }
 
-// 這個新的 Composable 將作為應用程式的頂層容器，提供 Scaffold 和事件處理
+// This new Composable will serve as the top-level container for the application, providing Scaffold and event handling.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppContainer(
     rootNavController: NavHostController,
-    content: @Composable (PaddingValues) -> Unit // 接收一個 Composable lambda 作為其主要內容
+    content: @Composable (PaddingValues) -> Unit
 ) {
     val mainViewModel: MainViewModel = hiltViewModel()
     val navBackStackEntry by rootNavController.currentBackStackEntryAsState()
@@ -219,7 +201,7 @@ fun AppContainer(
                 }
                 is UiEvent.Unauthorized -> {
                     rootNavController.navigate(LOGIN_ROUTE) {
-                        popUpTo(MAIN_APP_ROUTE) { inclusive = true } // 清除主應用程式的返回堆疊
+                        popUpTo(MAIN_APP_ROUTE) { inclusive = true }
                     }
                     snackbarHostState.showSnackbar(event.message)
                     Log.d(tag, "AppContainer_Collector: ${event.message}")
@@ -262,22 +244,16 @@ fun AppContainer(
                     title = { Text("Music Explorer by Gemini") },
                     scrollBehavior = scrollBehavior,
                     navigationIcon = {
-                        // 判斷是否顯示返回按鈕，對於設定頁面等
-                        // 注意：這裡需要判斷當前路由是否是登入頁面，如果是，就不顯示返回按鈕
                         if (currentDestinationRoute in settingsItems.map { it.route }
-                            //!isLoginPage && navBackStackEntry?.destination?.route != MAIN_APP_ROUTE
-                            ) { // 避免在主圖形根部顯示返回
+                            ) {
                             IconButton(onClick = { rootNavController.popBackStack() }) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "back")
                             }
                         }
                     },
                     actions = {
-                        // 只在主圖形時顯示 MoreVert 選單
                         val isLoginPage = currentDestinationRoute == LOGIN_ROUTE
-                        if (!isLoginPage)
-                            //(currentDestinationRoute?.startsWith(MAIN_APP_ROUTE) == true || currentDestinationRoute in settingsItems.map { it.route })
-                        {
+                        if (!isLoginPage) {
                             IconButton(onClick = { showMenu = !showMenu }) {
                                 Icon(Icons.Default.MoreVert, contentDescription = "More options")
                             }

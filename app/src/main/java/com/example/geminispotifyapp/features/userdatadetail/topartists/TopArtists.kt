@@ -318,8 +318,7 @@ fun TopArtistContentPreview() {
 
 @Composable
 fun ArtistDetail(
-    artist: SpotifyArtist,
-    onDismiss: () -> Unit,
+    artist: SpotifyArtist
 ) {
     // Artist Image
     val images = artist.images
@@ -426,16 +425,6 @@ fun ArtistDetail(
             }
         }
     }
-
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
-        Button(
-            onClick = { onDismiss() },
-            modifier = Modifier.padding(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-        ) {
-            Text(text = "Close")
-        }
-    }
 }
 
 @Preview(uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
@@ -469,7 +458,7 @@ fun ArtistDetailPreview() {
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                ArtistDetail(artist = sampleArtist, onDismiss = {})
+                ArtistDetail(artist = sampleArtist)
             }
         }
     }

@@ -366,8 +366,7 @@ fun RecentlyPlayedContentPreview() {
 
 @Composable
 internal fun TrackHistoryDetail(
-    historyTrack: UiPlayHistoryObject,
-    onDismiss: () -> Unit,
+    historyTrack: UiPlayHistoryObject
 ) {
     val track = historyTrack.originalPlayHistory.track
 
@@ -604,16 +603,6 @@ internal fun TrackHistoryDetail(
         )
         Spacer(modifier = Modifier.height(4.dp))
     }
-
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
-        Button(
-            onClick = { onDismiss() },
-            modifier = Modifier.padding(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-        ) {
-            Text(text = "Close")
-        }
-    }
 }
 
 @Preview
@@ -680,8 +669,7 @@ fun TrackHistoryDetailPreview() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 TrackHistoryDetail(
-                    historyTrack = uiSampleTrack,
-                    onDismiss = {}
+                    historyTrack = uiSampleTrack
                 )
             }
         }

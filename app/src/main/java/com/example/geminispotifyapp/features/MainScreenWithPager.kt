@@ -2,19 +2,27 @@ package com.example.geminispotifyapp.features
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,6 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
@@ -49,7 +60,6 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreenWithPager(
-    paddingValues: PaddingValues,
     backStackEntry: NavBackStackEntry,
     navController: NavHostController,
     viewModel: MainScreenWithPagerViewModel = hiltViewModel()
@@ -163,19 +173,49 @@ fun MainScreenWithPager(
             }
         }
     }
-    viewModel.DetailBox (
-        selectedValue = selectedItemForDetail,
-        onDismiss = { viewModel.dismissItemDetail() }
-    ) { item, onDismiss ->
-        when (bottomNavItems[selectedScreen]) {
-            is Screen.TopArtists -> ArtistDetail(item as SpotifyArtist, onDismiss)
-            is Screen.TopTracks -> TrackDetail(item as SpotifyTrack, onDismiss)
-            is Screen.RecentlyPlayed -> TrackHistoryDetail(item as UiPlayHistoryObject, onDismiss)
-            is Screen.Home -> {
-                if (item is SpotifyArtist) ArtistDetail(item, onDismiss)
-                else if (item is SpotifyTrack) TrackDetail(item, onDismiss)
+    if (selectedItemForDetail != null) {
+        Dialog(
+            onDismissRequest = { viewModel.dismissItemDetail() },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            val scrollState = rememberScrollState()
+            val item = selectedItemForDetail
+
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .fillMaxHeight(0.75f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(top = 16.dp, bottom = 64.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                        , horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        when (item) {
+                            is SpotifyArtist -> ArtistDetail(item)
+                            is SpotifyTrack -> TrackDetail(item)
+                            is UiPlayHistoryObject -> TrackHistoryDetail(item)
+                        }
+                    }
+                }
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
+                    Button(
+                        onClick = { viewModel.dismissItemDetail() },
+                        modifier = Modifier.padding(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    ) {
+                        Text(text = "Close")
+                    }
+                }
             }
-            is Screen.FindMusic -> TODO()
         }
     }
 }

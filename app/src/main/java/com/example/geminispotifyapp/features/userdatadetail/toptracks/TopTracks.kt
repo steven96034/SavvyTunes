@@ -385,8 +385,7 @@ fun TopTrackContentPreview() {
 @SuppressLint("UnusedContentLambdaTargetStateParameter")
 @Composable
 fun TrackDetail(
-    track: SpotifyTrack,
-    onDismiss: () -> Unit,
+    track: SpotifyTrack
 ) {
     // Image
     val images = track.album.images
@@ -618,16 +617,6 @@ fun TrackDetail(
         Spacer(modifier = Modifier.height(4.dp))
     }
 
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
-        Button(
-            onClick = { onDismiss() },
-            modifier = Modifier.padding(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-        ) {
-            Text(text = "Close")
-        }
-    }
-
     // Deprecated Data
 //            Text(
 //                text = "URI: ${track.uri}",
@@ -707,8 +696,7 @@ fun TrackDetailPreview() {
                         type = "track",
                         uri = "spotify:track:1dGr1c8CrMLDpV6mPbImSI",
                         isLocal = false
-                    ),
-                    onDismiss = {}
+                    )
                 )
             }
         }
