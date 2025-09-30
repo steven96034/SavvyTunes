@@ -77,6 +77,7 @@ import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import com.example.geminispotifyapp.ui.theme.GeminiSpotifyAppTheme
 import com.example.geminispotifyapp.ui.theme.SpotifyGreen
+import java.util.Locale
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -366,7 +367,8 @@ fun RecentlyPlayedContentPreview() {
 
 @Composable
 internal fun TrackHistoryDetail(
-    historyTrack: UiPlayHistoryObject
+    historyTrack: UiPlayHistoryObject,
+    checkMarketIfPlayable: String? = null
 ) {
     val track = historyTrack.originalPlayHistory.track
 
@@ -467,17 +469,17 @@ internal fun TrackHistoryDetail(
     val formattedDuration: String = when {
         duration < 1.minutes -> { // Less than 1 minute
             val seconds = duration.toInt(DurationUnit.SECONDS)
-            String.format(java.util.Locale.getDefault(), "%02d", seconds)
+            String.format(Locale.getDefault(), "%02d", seconds)
         }
 
         duration < 1.hours -> { // Less than 1 hour
             val minutes = duration.toInt(DurationUnit.MINUTES)
             val seconds = (duration - minutes.minutes).toInt(DurationUnit.SECONDS)
-            String.format(java.util.Locale.getDefault(), "%02d:%02d", minutes, seconds)
+            String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
         }
 
         else -> {
-            val simpleDateFormat = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+            val simpleDateFormat = java.text.SimpleDateFormat("HH:mm:ss", Locale.getDefault())
             simpleDateFormat.format(duration)
         }
     }
@@ -495,54 +497,73 @@ internal fun TrackHistoryDetail(
     Spacer(modifier = Modifier.height(4.dp))
 
     // Available Markets
-    val limit = 5
-    val availableMarkets = track.availableMarkets
-    var showMore by remember { mutableStateOf(false) }
-    val textToShow by remember {
-        derivedStateOf {
-            if (showMore) {
-                availableMarkets.joinToString(", ")
-            } else {
-                if (availableMarkets.size > limit) {
-                    availableMarkets.take(limit).joinToString(", ")
-                } else {
+    if (!track.availableMarkets.isNullOrEmpty()) {
+        val limit = 5
+        val availableMarkets = track.availableMarkets
+        var showMore by remember { mutableStateOf(false) }
+        val textToShow by remember {
+            derivedStateOf {
+                if (showMore) {
                     availableMarkets.joinToString(", ")
+                } else {
+                    if (availableMarkets.size > limit) {
+                        availableMarkets.take(limit).joinToString(", ")
+                    } else {
+                        availableMarkets.joinToString(", ")
+                    }
                 }
             }
         }
-    }
-    val annotatedText = buildAnnotatedString {
-        if (availableMarkets.size > limit)
-            append("Available Markets:\n $textToShow")
-        else append("Available Markets: $textToShow")
-        if (availableMarkets.size > limit) {
-            pushStringAnnotation(tag = "VIEW_MORE", annotation = "view_more")
-            withStyle(
-                style = SpanStyle(
-                    color = SpotifyGreen,
-                    textDecoration = TextDecoration.Underline,
-                )
-            ) {
-                append(if (showMore) "...View Less" else "...+${availableMarkets.size - limit} More")
+        val annotatedText = buildAnnotatedString {
+            if (availableMarkets.size > limit)
+                append("Available Markets:\n $textToShow")
+            else append("Available Markets: $textToShow")
+            if (availableMarkets.size > limit) {
+                pushStringAnnotation(tag = "VIEW_MORE", annotation = "view_more")
+                withStyle(
+                    style = SpanStyle(
+                        color = SpotifyGreen,
+                        textDecoration = TextDecoration.Underline,
+                    )
+                ) {
+                    append(if (showMore) "...View Less" else "...+${availableMarkets.size - limit} More")
+                }
+                pop()
             }
-            pop()
         }
-    }
-    Text(
-        text = annotatedText,
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.pointerInput(Unit) {
-            detectTapGestures {
-                annotatedText.getStringAnnotations(
-                    tag = "VIEW_MORE",
-                    start = 0,
-                    end = annotatedText.length
-                ).firstOrNull()?.let {
-                    showMore = !showMore
+        Text(
+            text = annotatedText,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.pointerInput(Unit) {
+                detectTapGestures {
+                    annotatedText.getStringAnnotations(
+                        tag = "VIEW_MORE",
+                        start = 0,
+                        end = annotatedText.length
+                    ).firstOrNull()?.let {
+                        showMore = !showMore
+                    }
                 }
             }
+        )
+        if (checkMarketIfPlayable != null) {
+            Text(
+                text = if (availableMarkets.contains(checkMarketIfPlayable)) "Playable in ${
+                    checkMarketIfPlayable.let { Locale("", it).displayCountry }
+                }? Yes"
+                else "Playable in ${
+                    checkMarketIfPlayable.let { Locale("", it).displayCountry }
+                }? No",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.height(4.dp))
         }
-    )
+    } else if (track.isPlayable != null) {
+        Text(
+            text = "Is Playable: ${track.isPlayable}",
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
 
     Spacer(modifier = Modifier.height(6.dp))
     HorizontalDivider()

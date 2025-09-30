@@ -65,6 +65,7 @@ fun MainScreenWithPager(
     viewModel: MainScreenWithPagerViewModel = hiltViewModel()
 ) {
     val selectedItemForDetail by viewModel.selectedItemForDetail.collectAsStateWithLifecycle()
+    val checkMarketIfPlayable by viewModel.checkMarketIfPlayable.collectAsStateWithLifecycle()
 
     // To fulfill the circle sliding, we set the total pages to Int.MAX_VALUE
     // From a big number in the middle, then user can slide left or right for a long time
@@ -197,12 +198,13 @@ fun MainScreenWithPager(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
+                            .padding(horizontal = 16.dp)
                         , horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         when (item) {
                             is SpotifyArtist -> ArtistDetail(item)
-                            is SpotifyTrack -> TrackDetail(item)
-                            is UiPlayHistoryObject -> TrackHistoryDetail(item)
+                            is SpotifyTrack -> TrackDetail(item, checkMarketIfPlayable)
+                            is UiPlayHistoryObject -> TrackHistoryDetail(item, checkMarketIfPlayable)
                         }
                     }
                 }

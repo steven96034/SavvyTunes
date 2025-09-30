@@ -4,14 +4,14 @@ import com.google.gson.annotations.SerializedName
 
 interface TrackInformation {
     val artists: List<SimplifiedArtist>
-    val availableMarkets: List<String>
+    val availableMarkets: List<String>?
     val discNumber: Int
     val durationMs: Int
     val explicit: Boolean
     val externalUrls: Map<String, String>
     val href: String
     val id: String
-    val isPlayable: Boolean
+    val isPlayable: Boolean?
     val linkedFrom: Map<String, String>
     val restrictions: Map<String, String>
     val name: String
@@ -49,7 +49,7 @@ data class SpotifyTrack(
     val album: SpotifyAlbum, // Not provide in SimplifiedTrackObject
     override val artists: List<SimplifiedArtist>,
     @SerializedName("available_markets")
-    override val availableMarkets: List<String>,
+    override val availableMarkets: List<String>?,
     @SerializedName("disc_number")
     override val discNumber: Int,
     @SerializedName("duration_ms")
@@ -62,7 +62,7 @@ data class SpotifyTrack(
     override val href: String,
     override val id: String,
     @SerializedName("is_playable")
-    override val isPlayable: Boolean,
+    override val isPlayable: Boolean?,
     @SerializedName("linked_from")
     override val linkedFrom: Map<String, String>,
     override val restrictions: Map<String, String>,
@@ -186,7 +186,7 @@ data class UserProfileResponse(
 data class SimplifiedTrack(
     override val artists: List<SimplifiedArtist>,
     @SerializedName("available_markets")
-    override val availableMarkets: List<String>,
+    override val availableMarkets: List<String>?,
     @SerializedName("disc_number")
     override val discNumber: Int,
     @SerializedName("duration_ms")
@@ -197,7 +197,7 @@ data class SimplifiedTrack(
     override val href: String,
     override val id: String,
     @SerializedName("is_playable")
-    override val isPlayable: Boolean,
+    override val isPlayable: Boolean?,
     @SerializedName("linked_from")
     override val linkedFrom: Map<String, String>,
     override val restrictions: Map<String, String>,

@@ -1,6 +1,5 @@
 package com.example.geminispotifyapp.features.userdatadetail.toptracks
 
-import android.annotation.SuppressLint
 import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -234,12 +233,6 @@ fun TopTrackContent(
                 }
         }
     }
-//    DetailBox(selectedValue = onTrackSelected, onDismiss = { onTrackSelected = null }) { track, onDetailDismiss ->
-//        TrackDetail(
-//            track = track,
-//            onDismiss = onDetailDismiss
-//        )
-//    }
 }
 
 @Composable
@@ -382,10 +375,10 @@ fun TopTrackContentPreview() {
 }
 
 
-@SuppressLint("UnusedContentLambdaTargetStateParameter")
 @Composable
 fun TrackDetail(
-    track: SpotifyTrack
+    track: SpotifyTrack,
+    checkMarketIfPlayable: String? = null
 ) {
     // Image
     val images = track.album.images
@@ -508,54 +501,74 @@ fun TrackDetail(
     Spacer(modifier = Modifier.height(4.dp))
 
     // Available Markets
-    val limit = 5
-    val availableMarkets = track.availableMarkets
-    var showMore by remember { mutableStateOf(false) }
-    val textToShow by remember {
-        derivedStateOf {
-            if (showMore) {
-                availableMarkets.joinToString(", ")
-            } else {
-                if (availableMarkets.size > limit) {
-                    availableMarkets.take(limit).joinToString(", ")
-                } else {
+    if (!track.availableMarkets.isNullOrEmpty()) {
+        val limit = 5
+        val availableMarkets = track.availableMarkets
+        var showMore by remember { mutableStateOf(false) }
+        val textToShow by remember {
+            derivedStateOf {
+                if (showMore) {
                     availableMarkets.joinToString(", ")
+                } else {
+                    if (availableMarkets.size > limit) {
+                        availableMarkets.take(limit).joinToString(", ")
+                    } else {
+                        availableMarkets.joinToString(", ")
+                    }
                 }
             }
         }
-    }
-    val annotatedText = buildAnnotatedString {
-        if (availableMarkets.size > limit)
-            append("Available Markets:\n $textToShow")
-        else append("Available Markets: $textToShow")
-        if (availableMarkets.size > limit) {
-            pushStringAnnotation(tag = "VIEW_MORE", annotation = "view_more")
-            withStyle(
-                style = SpanStyle(
-                    color = SpotifyGreen,
-                    textDecoration = TextDecoration.Underline,
-                )
-            ) {
-                append(if (showMore) "...View Less" else "...+${availableMarkets.size - limit} More")
+        val annotatedText = buildAnnotatedString {
+            if (availableMarkets.size > limit)
+                append("Available Markets:\n $textToShow")
+            else append("Available Markets: $textToShow")
+            if (availableMarkets.size > limit) {
+                pushStringAnnotation(tag = "VIEW_MORE", annotation = "view_more")
+                withStyle(
+                    style = SpanStyle(
+                        color = SpotifyGreen,
+                        textDecoration = TextDecoration.Underline,
+                    )
+                ) {
+                    append(if (showMore) "...View Less" else "...+${availableMarkets.size - limit} More")
+                }
+                pop()
             }
-            pop()
         }
-    }
-    Text(
-        text = annotatedText,
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.pointerInput(Unit) {
-            detectTapGestures {
-                annotatedText.getStringAnnotations(
-                    tag = "VIEW_MORE",
-                    start = 0,
-                    end = annotatedText.length
-                ).firstOrNull()?.let {
-                    showMore = !showMore
+        Text(
+            text = annotatedText,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.pointerInput(Unit) {
+                detectTapGestures {
+                    annotatedText.getStringAnnotations(
+                        tag = "VIEW_MORE",
+                        start = 0,
+                        end = annotatedText.length
+                    ).firstOrNull()?.let {
+                        showMore = !showMore
+                    }
                 }
             }
+        )
+        if (checkMarketIfPlayable != null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = if (availableMarkets.contains(checkMarketIfPlayable)) "Playable in ${
+                    checkMarketIfPlayable.let { Locale("", it).displayCountry }
+                }($checkMarketIfPlayable)? Yes"
+                else "Playable in ${
+                    checkMarketIfPlayable.let { Locale("", it).displayCountry }
+                }($checkMarketIfPlayable)? No",
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
-    )
+    }
+    else if (track.isPlayable != null){
+        Text(
+            text = "Is Playable: ${track.isPlayable}",
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
 
     Spacer(modifier = Modifier.height(6.dp))
     HorizontalDivider()
@@ -633,12 +646,6 @@ fun TrackDetail(
 
 //            Text(
 //                text = "Is Local: ${track.isLocal}",
-//                style = MaterialTheme.typography.bodyMedium
-//            )
-//            Spacer(modifier = Modifier.height(4.dp))
-
-//            Text(
-//                text = "Is Playable: ${track.isPlayable}",
 //                style = MaterialTheme.typography.bodyMedium
 //            )
 //            Spacer(modifier = Modifier.height(4.dp))

@@ -1,43 +1,27 @@
 package com.example.geminispotifyapp.features
 
-import android.util.Log
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.Velocity
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.geminispotifyapp.SpotifyRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
 @HiltViewModel
-class MainScreenWithPagerViewModel @Inject constructor() : ViewModel() {
+class MainScreenWithPagerViewModel @Inject constructor(spotifyRepository: SpotifyRepository) : ViewModel() {
     private val _selectedItemForDetail = MutableStateFlow<Any?>(null)
     val selectedItemForDetail = _selectedItemForDetail.asStateFlow()
+
+    val checkMarketIfPlayable: StateFlow<String?> = spotifyRepository.checkMarketIfPlayableFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
     fun showItemDetail(item: Any?) {
         _selectedItemForDetail.value = item
@@ -45,93 +29,5 @@ class MainScreenWithPagerViewModel @Inject constructor() : ViewModel() {
 
     fun dismissItemDetail() {
         _selectedItemForDetail.value = null
-    }
-
-    @Composable
-    fun <T> DetailBox(
-        selectedValue: T?, // Generic Type
-        onDismiss: () -> Unit, // Dismiss the detail box
-        modifier: Modifier = Modifier,
-        content: @Composable (T, () -> Unit) -> Unit // Content to be displayed
-    ) {
-        if (selectedValue == null) {
-            return
-        }
-
-        val consumeAllScrollConnection = remember {
-            object : NestedScrollConnection {
-                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                    return Offset.Zero
-                }
-
-                override fun onPostScroll(
-                    consumed: Offset,
-                    available: Offset,
-                    source: NestedScrollSource
-                ): Offset {
-                    return available
-                }
-
-                override suspend fun onPreFling(available: Velocity): Velocity {
-                    return Velocity.Zero
-                }
-
-                override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                    return available
-                }
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.5f))
-                .pointerInput(Unit) {
-                    detectTapGestures { offset ->
-                        val innerBoxWidth = size.width * 0.8f
-                        val innerBoxHeight = size.height * 0.75f
-                        val innerBoxLeft = (size.width - innerBoxWidth) / 2
-                        val innerBoxTop = (size.height - innerBoxHeight) / 2
-
-                        if (offset.x < innerBoxLeft || offset.x > innerBoxLeft + innerBoxWidth ||
-                            offset.y < innerBoxTop || offset.y > innerBoxTop + innerBoxHeight
-                        ) {
-                            Log.d("DetailBox", "Outside tap detected, dismissing.")
-                            onDismiss()
-                        } else Log.d("DetailBox", "Inside tap detected.")
-                    }
-                }.pointerInput(Unit) {
-                    detectHorizontalDragGestures { change, dragAmount ->
-                        change.consume()
-                        if (dragAmount < -30 || dragAmount > 30) {
-                            // Swipe to the left || Swipe to the right, then exit detail layout.
-                            Log.d("DetailBox", "Swipe detected, dismissing.")
-                            onDismiss()
-                        }
-                    }
-                }.nestedScroll(consumeAllScrollConnection),
-            contentAlignment = Alignment.Center
-        ){
-            val scrollState = rememberScrollState()
-
-            Surface(
-                color = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(16.dp),
-                modifier = modifier
-                    .fillMaxWidth(0.8f)
-                    .fillMaxHeight(0.75f)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.TopCenter)
-                        .verticalScroll(scrollState),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    content(selectedValue, onDismiss)
-                }
-            }
-        }
     }
 }

@@ -31,6 +31,7 @@ class AppDatabase @Inject constructor(
 
         val SEARCH_SIMILAR_NUM_KEY = intPreferencesKey("search_num")
         val GET_USER_DATA_NUM_KEY = intPreferencesKey("get_item_num")
+        val CHECK_MARKET_IF_PLAYABLE_KEY = stringPreferencesKey("check_market_if_playable")
     }
 
     suspend fun saveCodeVerifier(codeVerifier: String) {
@@ -162,5 +163,15 @@ class AppDatabase @Inject constructor(
 
     val getUserDataNumFlow: Flow<Int> = dataStore.data.map { preferences ->
         preferences[GET_USER_DATA_NUM_KEY] ?: 20
+    }
+
+    suspend fun saveCheckMarketIfPlayableFlow(market: String?) {
+        dataStore.edit { preferences ->
+            preferences[CHECK_MARKET_IF_PLAYABLE_KEY] = market ?: "TW"
+        }
+    }
+
+    val checkMarketIfPlayableFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[CHECK_MARKET_IF_PLAYABLE_KEY] ?: "TW"
     }
 }

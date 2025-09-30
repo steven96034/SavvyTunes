@@ -49,6 +49,8 @@ class SpotifyRepositoryImpl @Inject constructor(
     override val searchSimilarNumFlow: Flow<Int> = appDatabase.searchSimilarNumFlow
     override val userDataNumFlow: Flow<Int> = appDatabase.getUserDataNumFlow
 
+    override val checkMarketIfPlayableFlow: Flow<String?> = appDatabase.checkMarketIfPlayableFlow
+
     init {
         // Launch coroutine in ApplicationScope to collect data from DataStore
         applicationScope.launch {
@@ -370,6 +372,10 @@ class SpotifyRepositoryImpl @Inject constructor(
 
     override suspend fun setUserDataNum(dataNum: Int) {
         appDatabase.saveGetUserDataNum(dataNum)
+    }
+
+    override suspend fun setCheckMarketIfPlayable(market: String?) {
+        appDatabase.saveCheckMarketIfPlayableFlow(market)
     }
 
     companion object {

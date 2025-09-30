@@ -17,6 +17,7 @@ interface SpotifyRepository {
     val currentAccessTokenFlow: Flow<String?>
     val searchSimilarNumFlow: Flow<Int>
     val userDataNumFlow: Flow<Int>
+    val checkMarketIfPlayableFlow: Flow<String?>
 
     suspend fun getAccessToken(): String
 
@@ -76,4 +77,6 @@ interface SpotifyRepository {
     suspend fun setSearchSimilarNum(searchNum: Int)
 
     suspend fun setUserDataNum(dataNum: Int)
+
+    suspend fun setCheckMarketIfPlayable(market: String?)
 }
