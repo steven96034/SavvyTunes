@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PersonPin
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -72,7 +73,7 @@ import com.example.geminispotifyapp.features.settings.AboutThisAppScreen
 import com.example.geminispotifyapp.features.settings.ProfileScreen
 import com.example.geminispotifyapp.features.settings.UserSettingsScreen
 
-
+const val SPLASH_ROUTE = "splash_route"
 const val LOGIN_ROUTE = "login_route"
 const val MAIN_APP_ROUTE = "main_app_route"
 sealed class Screen(val route: String, val icon: ImageVector, val label: String) {
@@ -108,14 +109,35 @@ fun RootApp() {
     val navController = rememberNavController()
     val loginViewModel: LoginViewModel = hiltViewModel()
     val isAuthenticated by loginViewModel.isAuthenticated.collectAsStateWithLifecycle()
+    var initialAuthCheckCompleted by remember { mutableStateOf(false) }
 
+    LaunchedEffect(isAuthenticated, initialAuthCheckCompleted) {
+        if (initialAuthCheckCompleted) {
+            val targetRoute = if (isAuthenticated) MAIN_APP_ROUTE else LOGIN_ROUTE
+            navController.navigate(targetRoute) {
+                popUpTo(SPLASH_ROUTE) { inclusive = true }
+            }
+        }
+    }
+
+    LaunchedEffect(loginViewModel.isAuthenticated) {
+        loginViewModel.isAuthenticated.collect { authStatus ->
+            if (!initialAuthCheckCompleted) {
+                initialAuthCheckCompleted = true
+            }
+        }
+    }
     // AppContainer wraps up whole NavHost to ensure all the displayed screens have their features
     AppContainer(rootNavController = navController) { rootPaddingValues -> // rootPaddingValues 來自 AppContainer 的 Scaffold
         NavHost(
             navController = navController,
-            startDestination = if (isAuthenticated) MAIN_APP_ROUTE else LOGIN_ROUTE,
+            startDestination = SPLASH_ROUTE,
             modifier = Modifier.padding(rootPaddingValues)
         ) {
+            composable(SPLASH_ROUTE) {
+                SplashScreen()
+            }
+
             composable(LOGIN_ROUTE) { backStackEntry ->
                 LoginPage(
                     viewModel = loginViewModel,
@@ -196,6 +218,28 @@ fun AppContainer(
                         }
                         SnackbarResult.Dismissed -> {
                             Log.d(tag, "AppContainer_Collector: Snackbar dismissed for: ${event.message}")
+                        }
+                    }
+                }
+                is UiEvent.ShowSnackbarWithAction -> {
+                    if (event.actionLabel == Screen.Home.label) {
+                        val snackbarActionResult = snackbarHostState.showSnackbar(
+                            event.message,
+                            "See Result",
+                            true,
+                            SnackbarDuration.Long
+                        )
+                        if (snackbarActionResult == SnackbarResult.ActionPerformed) {
+                            rootNavController.navigate(Screen.Home.route) {
+                                popUpTo(MAIN_APP_ROUTE) {
+                                    inclusive = false
+                                }
+                                launchSingleTop = true
+                            }
+                            Log.d(
+                                tag,
+                                "AppContainer_Collector: Navigating to Home triggered by Snackbar action."
+                            )
                         }
                     }
                 }
@@ -302,5 +346,17 @@ fun AppContainer(
         ) { paddingValues ->
             content(paddingValues)
         }
+    }
+}
+
+@Composable
+fun SplashScreen() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator()
     }
 }

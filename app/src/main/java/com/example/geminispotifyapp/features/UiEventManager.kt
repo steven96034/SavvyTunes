@@ -13,6 +13,7 @@ sealed class UiEvent {
     data class ShowSnackbar(val message: String) : UiEvent()
     data class ShowSnackbarDetail(val message: String, val detail: String) : UiEvent()
     data class Navigate(val route: String) : UiEvent()
+    data class ShowSnackbarWithAction(val message: String, val actionLabel: String) : UiEvent()
     data class Unauthorized(val message: String) : UiEvent()
 }
 

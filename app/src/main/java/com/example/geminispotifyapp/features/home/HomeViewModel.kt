@@ -13,6 +13,7 @@ import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.features.UiEvent
 import com.example.geminispotifyapp.features.UiEventManager
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
+import com.example.geminispotifyapp.init.Screen
 import com.example.geminispotifyapp.utils.GlobalErrorHandler
 import com.google.ai.client.generativeai.type.GenerateContentResponse
 import com.google.ai.client.generativeai.type.ServerException
@@ -671,6 +672,7 @@ class HomeViewModel @Inject constructor(
 
         searchJob = viewModelScope.launch {
 
+            uiEventManager.sendEvent(UiEvent.ShowSnackbar("You can explore other content in app, we'll inform you when it's ready!"))
             _searchSimilarUiState.value = SearchUiState.Loading
 
             try {
@@ -806,7 +808,7 @@ class HomeViewModel @Inject constructor(
                             null
                         )
                         _searchSimilarUiState.value = SearchUiState.Success(data)
-                        uiEventManager.sendEvent(UiEvent.ShowSnackbar("Search successfully completed."))
+                        uiEventManager.sendEvent(UiEvent.ShowSnackbarWithAction("Search successfully completed.", Screen.Home.label))
 
                         Log.d(tag, "Tracks and Artists Data: $data")
                     }
@@ -875,6 +877,9 @@ class HomeViewModel @Inject constructor(
                 }
                 is UiEvent.Navigate -> {
                     uiEventManager.sendEvent(UiEvent.Navigate(uiEvent.route))
+                }
+                is UiEvent.ShowSnackbarWithAction -> {
+                    uiEventManager.sendEvent(UiEvent.ShowSnackbarWithAction(uiEvent.message, uiEvent.actionLabel))
                 }
                 is UiEvent.Unauthorized -> {
                     uiEventManager.sendEvent(UiEvent.Unauthorized(uiEvent.message))
