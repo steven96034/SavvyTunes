@@ -312,7 +312,10 @@ fun AppContainer(
                                         leadingIcon = { Icon(screen.icon, contentDescription = screen.label) },
                                         onClick = {
                                             if (!isCurrentDestination) {
-                                                rootNavController.navigate(screen.route)
+                                                rootNavController.navigate(screen.route) {
+                                                    if (currentDestinationRoute in settingsItems.map { it.route })
+                                                        popUpTo(currentDestinationRoute ?: "") { inclusive = true }
+                                                }
                                             }
                                             showMenu = false
                                         },

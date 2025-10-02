@@ -37,6 +37,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -111,7 +114,13 @@ fun UserSettingsContent(
 
     LazyColumn(modifier = Modifier.padding(16.dp)) {
         item {
-            Text(text = "Number of similar tracks and artists to search: $searchSimilarNum", modifier = Modifier.padding(bottom = 8.dp))
+            val annotatedText = buildAnnotatedString {
+                append("Number of similar tracks and artists to search: ")
+                pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
+                append("$searchSimilarNum")
+                pop()
+            }
+            Text(text = annotatedText, modifier = Modifier.padding(bottom = 8.dp))
         }
         item {
             Slider(
@@ -128,8 +137,16 @@ fun UserSettingsContent(
             Spacer(modifier = Modifier.height(24.dp))
         }
         item {
+            val annotatedText = buildAnnotatedString {
+                append("Number of user data to retrieve ")
+                pushStyle(SpanStyle(textDecoration = TextDecoration.None, color = MaterialTheme.colorScheme.onSurfaceVariant))
+                append("(for your Top Tracks/Top Artists/Recently Played data): ")
+                pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
+                append("$userDataNum")
+                pop()
+            }
             Text(
-                text = "Number of user data to retrieve (Top Tracks/Top Artists/Recently Played): $userDataNum",
+                text = annotatedText,
                 modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
             )
         }
@@ -154,11 +171,20 @@ fun UserSettingsContent(
                     .padding(top = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val marketText = checkMarketIfPlayable?.let { Locale("", it).displayCountry } ?: "None selected"
+                val annotatedText = buildAnnotatedString {
+                    append("Quickly check if the selected track is playable in the specified market: ")
+                    pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
+                    append(marketText)
+                    pushStyle(SpanStyle(textDecoration = TextDecoration.None, color = MaterialTheme.colorScheme.onSurfaceVariant))
+                    append("\n(You can see the result in each track detail page.)\n")
+                    pop()
+                }
                 Text(
-                    text = "Quickly check if the selected track is playable in the specified market: ${checkMarketIfPlayable?.let { Locale("", it).displayCountry } ?: "None selected"}\n" +
-                            "(You can see the result in each track detail page.)\n",
+                    text = annotatedText,
                     modifier = Modifier.weight(1f)
                 )
+
                 IconButton(onClick = { expandedExpandable = !expandedExpandable }) {
                     Icon(
                         imageVector = Icons.Filled.Info,

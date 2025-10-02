@@ -3,10 +3,12 @@ package com.example.geminispotifyapp.features
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -205,6 +207,15 @@ fun MainScreenWithPager(
                             is SpotifyArtist -> ArtistDetail(item)
                             is SpotifyTrack -> TrackDetail(item, checkMarketIfPlayable)
                             is UiPlayHistoryObject -> TrackHistoryDetail(item, checkMarketIfPlayable)
+                        }
+                        if ((item is SpotifyTrack || item is UiPlayHistoryObject) && currentScreenIndex != 0) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Button(onClick = {
+                                viewModel.dismissItemDetail()
+                                viewModel.navigateToHomeWithTrackAndArtist(item, homeViewModel)
+                            }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) {
+                                Text("Find similar tracks and artists!")
+                            }
                         }
                     }
                 }

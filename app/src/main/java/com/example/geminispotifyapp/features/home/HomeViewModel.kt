@@ -82,9 +82,6 @@ class HomeViewModel @Inject constructor(
     val hasSelectedTrackAndInputDoesNotChange: StateFlow<Boolean> =
         _hasSelectedTrackAndInputDoesNotChange.asStateFlow()
 
-    private var _selectedSuggestedArtist: MutableStateFlow<SpotifyArtist?> = MutableStateFlow(null)
-    val selectedSuggestedArtist: StateFlow<SpotifyArtist?> = _selectedSuggestedArtist.asStateFlow()
-
     private var _hasSelectedArtistAndInputDoesNotChange: MutableStateFlow<Boolean> =
         MutableStateFlow(false)
     val hasSelectedArtistAndInputDoesNotChange: StateFlow<Boolean> =
@@ -154,21 +151,12 @@ class HomeViewModel @Inject constructor(
         _hasSelectedTrackAndInputDoesNotChange.value = set
     }
 
-    fun onSelectedSuggestedArtistChange(artist: SpotifyArtist?) {
-        _selectedSuggestedArtist.value = artist
-    }
-
     fun onHasSelectedArtistAndInputDoesNotChangeSet(set: Boolean) {
         _hasSelectedArtistAndInputDoesNotChange.value = set
     }
 
     fun onHasSelectedDataAndInputDoesNotChangeSet(set: Boolean) {
         _hasSelectedDataAndInputDoesNotChange.value = set
-    }
-
-    // For Search Button Animation, set to 0 after clicking search button.
-    fun setSearchButtonAnimationTriggerToInitial() {
-        _searchButtonAnimationTrigger.value = 0
     }
 
     fun checkIfFullyInput(): Boolean {
