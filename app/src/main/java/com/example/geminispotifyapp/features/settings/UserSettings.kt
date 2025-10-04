@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
@@ -205,6 +206,7 @@ fun UserSettingsContent(
         }
 
         item {
+            val focusManager = LocalFocusManager.current
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = { expanded = !expanded },
@@ -219,7 +221,7 @@ fun UserSettingsContent(
                         }
                         if (!expanded) expanded = true
                     },
-                    label = { Text("Search For Market") },
+                    label = { Text("Select/Search For Market") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                     modifier = Modifier
                         .menuAnchor(MenuAnchorType.PrimaryEditable)
@@ -227,7 +229,8 @@ fun UserSettingsContent(
                         // Monitor the layout of OutlinedTextField and get its width for anchor point
                         .onGloballyPositioned { coordinates ->
                             textFieldWidthPx = coordinates.size.width
-                        }
+                        },
+                    placeholder = { Text(checkMarketIfPlayable?.let { Locale("", it).displayCountry } ?: "Market") }
                 )
 
                 ExposedDropdownMenu(
@@ -275,6 +278,7 @@ fun UserSettingsContent(
                                             onSearchForMarketChange(countryCode)
                                             onSearchTextChange(countryName)
                                             expanded = false
+                                            focusManager.clearFocus()
                                         },
                                         modifier = Modifier.height(assumedDropdownMenuItemHeight) // Keep height consistent
                                     )
@@ -288,6 +292,7 @@ fun UserSettingsContent(
                                             onSearchForMarketChange(countryCode)
                                             onSearchTextChange(countryName)
                                             expanded = false
+                                            focusManager.clearFocus()
                                         },
                                         modifier = Modifier.height(assumedDropdownMenuItemHeight) // Keep height consistent
                                     )

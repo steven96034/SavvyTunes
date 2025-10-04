@@ -138,6 +138,7 @@ fun HomeScreen(
         { albumId -> viewModel.getAlbumTracks(albumId) },
         { trackId -> viewModel.getTrackAndSelectedTrack(trackId) },
         searchButtonAnimationTrigger,
+        { viewModel.setSearchButtonAnimationTriggerToInitial() },
         { viewModel.checkIfFullyInput() }
     )
 }
@@ -172,6 +173,7 @@ fun HomePage(
     getAlbumTracks: (String) -> Unit,
     getTrackAndSelectedTrack: (String) -> Unit,
     searchButtonAnimationTrigger: Int,
+    onAnimationComplete: () -> Unit,
     checkIfFullyInput: () -> Boolean
 ) {
     val scope = rememberCoroutineScope()
@@ -186,6 +188,7 @@ fun HomePage(
             isSearchButtonHighlighted = true
             delay(1000L)
             isSearchButtonHighlighted = false
+            onAnimationComplete()
         }
     }
 
@@ -1088,6 +1091,7 @@ fun HomePagePreview() {
         getAlbumTracks = {},
         getTrackAndSelectedTrack = {},
         searchButtonAnimationTrigger = 0,
+        onAnimationComplete = {},
         checkIfFullyInput = { true },
     )
 }

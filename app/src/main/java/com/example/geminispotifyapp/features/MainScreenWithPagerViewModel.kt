@@ -6,7 +6,7 @@ import com.example.geminispotifyapp.SpotifyRepository
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.features.home.HomeViewModel
 import com.example.geminispotifyapp.features.userdatadetail.recentlyplayed.UiPlayHistoryObject
-import com.example.geminispotifyapp.init.Screen
+import com.example.geminispotifyapp.init.MainScreen
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,7 +19,7 @@ import javax.inject.Inject
 @HiltViewModel
 class MainScreenWithPagerViewModel @Inject constructor(
     spotifyRepository: SpotifyRepository,
-    private val uiEventManager: UiEventManager
+    val uiEventManager: UiEventManager
 ) : ViewModel() {
     private val _selectedItemForDetail = MutableStateFlow<Any?>(null)
     val selectedItemForDetail = _selectedItemForDetail.asStateFlow()
@@ -68,7 +68,7 @@ class MainScreenWithPagerViewModel @Inject constructor(
             homeViewModel.onHasSelectedDataAndInputDoesNotChangeSet(true)
             homeViewModel.setHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange(true)
 
-            uiEventManager.sendEvent(UiEvent.Navigate(Screen.Home.route))
+            uiEventManager.sendEvent(UiEvent.Navigate(MainScreen.Home.route))
         }
     }
 }

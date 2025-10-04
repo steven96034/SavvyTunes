@@ -256,6 +256,7 @@ class TopTracksViewModel @Inject constructor(
                 is UiEvent.Unauthorized -> {
                     uiEventManager.sendEvent(UiEvent.Unauthorized(uiEvent.message))
                 }
+                else -> {}
             }
         }
     }

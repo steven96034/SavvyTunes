@@ -15,6 +15,7 @@ sealed class UiEvent {
     data class Navigate(val route: String) : UiEvent()
     data class ShowSnackbarWithAction(val message: String, val actionLabel: String) : UiEvent()
     data class Unauthorized(val message: String) : UiEvent()
+    data class UpdateAppBarTitle(val title: String) : UiEvent()
 }
 
 @Singleton

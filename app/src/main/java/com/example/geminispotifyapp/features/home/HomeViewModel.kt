@@ -13,7 +13,7 @@ import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.features.UiEvent
 import com.example.geminispotifyapp.features.UiEventManager
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
-import com.example.geminispotifyapp.init.Screen
+import com.example.geminispotifyapp.init.MainScreen
 import com.example.geminispotifyapp.utils.GlobalErrorHandler
 import com.google.ai.client.generativeai.type.GenerateContentResponse
 import com.google.ai.client.generativeai.type.ServerException
@@ -157,6 +157,11 @@ class HomeViewModel @Inject constructor(
 
     fun onHasSelectedDataAndInputDoesNotChangeSet(set: Boolean) {
         _hasSelectedDataAndInputDoesNotChange.value = set
+    }
+
+    // For Search Button Animation, set to 0 after clicking search button.
+    fun setSearchButtonAnimationTriggerToInitial() {
+        _searchButtonAnimationTrigger.value = 0
     }
 
     fun checkIfFullyInput(): Boolean {
@@ -796,7 +801,7 @@ class HomeViewModel @Inject constructor(
                             null
                         )
                         _searchSimilarUiState.value = SearchUiState.Success(data)
-                        uiEventManager.sendEvent(UiEvent.ShowSnackbarWithAction("Search successfully completed.", Screen.Home.label))
+                        uiEventManager.sendEvent(UiEvent.ShowSnackbarWithAction("Search successfully completed.", MainScreen.Home.label))
 
                         Log.d(tag, "Tracks and Artists Data: $data")
                     }
@@ -872,6 +877,7 @@ class HomeViewModel @Inject constructor(
                 is UiEvent.Unauthorized -> {
                     uiEventManager.sendEvent(UiEvent.Unauthorized(uiEvent.message))
                 }
+                else -> {}
             }
         }
     }

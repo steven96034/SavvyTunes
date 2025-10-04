@@ -53,6 +53,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -76,26 +78,33 @@ import com.example.geminispotifyapp.features.settings.UserSettingsScreen
 const val SPLASH_ROUTE = "splash_route"
 const val LOGIN_ROUTE = "login_route"
 const val MAIN_APP_ROUTE = "main_app_route"
-sealed class Screen(val route: String, val icon: ImageVector, val label: String) {
-    object Home : Screen("home", Icons.Default.Home, "Home")
-    object TopArtists : Screen("topArtists", Icons.Default.PersonPin, "Top Artists")
-    object TopTracks : Screen("topTracks", Icons.Default.Favorite, "Top Tracks")
-    object RecentlyPlayed : Screen("recentlyPlayed", Icons.Default.AccessTime, "Recently Played")
-    object FindMusic : Screen("findMusic", Icons.Default.FindInPage, "Find Music")
+
+interface Screen {
+    val route: String
+    val icon: ImageVector
+    val label: String
 }
 
-sealed class SettingsScreen(val route: String, val icon: ImageVector, val label: String) {
+sealed class MainScreen(override val route: String, override val icon: ImageVector, override val label: String): Screen {
+    object Home : MainScreen("home", Icons.Default.Home, "Home")
+    object TopArtists : MainScreen("topArtists", Icons.Default.PersonPin, "Top Artists")
+    object TopTracks : MainScreen("topTracks", Icons.Default.Favorite, "Top Tracks")
+    object RecentlyPlayed : MainScreen("recentlyPlayed", Icons.Default.AccessTime, "Recently Played")
+    object FindMusic : MainScreen("findMusic", Icons.Default.FindInPage, "Find Music")
+}
+
+sealed class SettingsScreen(override val route: String, override val icon: ImageVector, override val label: String): Screen {
     object Settings : SettingsScreen("settings", Icons.Default.Settings, "Settings")
     object Profile : SettingsScreen("profile", Icons.Default.AccountCircle, "Profile")
     object AboutThisApp : SettingsScreen("aboutThisApp", Icons.Default.Info, "About This App")
 }
 
 var bottomNavItems = listOf(
-    Screen.Home,
-    Screen.TopArtists,
-    Screen.TopTracks,
-    Screen.RecentlyPlayed,
-    Screen.FindMusic
+    MainScreen.Home,
+    MainScreen.TopArtists,
+    MainScreen.TopTracks,
+    MainScreen.RecentlyPlayed,
+    MainScreen.FindMusic
 )
 
 val settingsItems = listOf(
@@ -146,7 +155,7 @@ fun RootApp() {
 
             // Nested navigation graph for the main app content
             navigation(
-                startDestination = Screen.Home.route,
+                startDestination = MainScreen.Home.route,
                 route = MAIN_APP_ROUTE
             ) {
                 // The composables in the navigation graph are not displayed directly by the NavHost but by the MainScreenWithPager.
@@ -194,6 +203,8 @@ fun AppContainer(
     val tag = "UiEvent"
     var dialogMessage by remember { mutableStateOf("") }
 
+    var dynamicAppBarTitle by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(Unit) {
         Log.d("AppContainer_Collector", "LAUNCHED EFFECT STARTED.")
         mainViewModel.uiEventManager.eventFlow.collect { event ->
@@ -222,7 +233,7 @@ fun AppContainer(
                     }
                 }
                 is UiEvent.ShowSnackbarWithAction -> {
-                    if (event.actionLabel == Screen.Home.label) {
+                    if (event.actionLabel == MainScreen.Home.label) {
                         val snackbarActionResult = snackbarHostState.showSnackbar(
                             event.message,
                             "See Result",
@@ -230,7 +241,7 @@ fun AppContainer(
                             SnackbarDuration.Long
                         )
                         if (snackbarActionResult == SnackbarResult.ActionPerformed) {
-                            rootNavController.navigate(Screen.Home.route) {
+                            rootNavController.navigate(MainScreen.Home.route) {
                                 popUpTo(MAIN_APP_ROUTE) {
                                     inclusive = false
                                 }
@@ -249,6 +260,10 @@ fun AppContainer(
                     }
                     snackbarHostState.showSnackbar(event.message)
                     Log.d(tag, "AppContainer_Collector: ${event.message}")
+                }
+                is UiEvent.UpdateAppBarTitle -> {
+                    dynamicAppBarTitle = event.title
+                    Log.d(tag, "AppContainer_Collector: Updated app bar title to: ${event.title}")
                 }
             }
         }
@@ -285,7 +300,19 @@ fun AppContainer(
             containerColor = Color.Transparent,
             topBar = {
                 TopAppBar(
-                    title = { Text("Music Explorer by Gemini") },
+                    title = {
+                        val allScreens = bottomNavItems + settingsItems
+                        val currentScreen = allScreens.find { it.route == currentDestinationRoute }
+                        val title = dynamicAppBarTitle
+                            ?: currentScreen?.label
+                            ?: "Music Explorer by Gemini"
+
+                        Log.d("AppContainer", "currentDestinationRoute: $currentDestinationRoute, Calculated title: $title")
+                        Text(text = title,
+                            fontFamily = FontFamily.SansSerif,
+                            fontSize = MaterialTheme.typography.headlineMedium.fontSize,
+                            fontWeight = FontWeight.Bold)
+                    },
                     scrollBehavior = scrollBehavior,
                     navigationIcon = {
                         if (currentDestinationRoute in settingsItems.map { it.route }
@@ -317,6 +344,7 @@ fun AppContainer(
                                                         popUpTo(currentDestinationRoute ?: "") { inclusive = true }
                                                 }
                                             }
+                                            dynamicAppBarTitle = null
                                             showMenu = false
                                         },
                                         colors = MenuDefaults.itemColors(

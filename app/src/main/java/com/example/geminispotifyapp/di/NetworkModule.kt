@@ -25,7 +25,9 @@ object NetWorkModule {
     private const val API_BASE_URL = "https://api.spotify.com/"
     @Provides
     @Singleton
-    fun provideSpotifyApiService(okHttpClient: OkHttpClient): SpotifyUserApiService {
+    fun provideSpotifyApiService(
+        @UserOkHttpClient okHttpClient: OkHttpClient
+    ): SpotifyUserApiService {
         return Retrofit.Builder()
             .baseUrl(API_BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
@@ -37,7 +39,9 @@ object NetWorkModule {
     private const val ACCOUNT_BASE_URL = "https://accounts.spotify.com/"
     @Provides
     @Singleton
-    fun provideSpotifyAccountApiService(okHttpClient: OkHttpClient): SpotifyApiService {
+    fun provideSpotifyAccountApiService(
+        @AuthOkHttpClient okHttpClient: OkHttpClient
+    ): SpotifyApiService {
         return Retrofit.Builder()
             .baseUrl(ACCOUNT_BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
@@ -47,9 +51,10 @@ object NetWorkModule {
     }
 
     // Singleton OkHttpClient instance
+    @UserOkHttpClient
     @Provides
     @Singleton
-    fun provideOkHttpClient(
+    fun provideUserOkHttpClient(
         tokenInterceptor: TokenInterceptor,
         authenticator: TokenAuthenticator,
         errorHandlingInterceptor: ErrorHandlingInterceptor
@@ -63,6 +68,23 @@ object NetWorkModule {
             })
             .addInterceptor(tokenInterceptor)
             .authenticator(authenticator)
+            .addInterceptor(errorHandlingInterceptor)
+            .build()
+    }
+
+    @AuthOkHttpClient
+    @Provides
+    @Singleton
+    fun provideAuthOkHttpClient(
+        errorHandlingInterceptor: ErrorHandlingInterceptor
+    ): OkHttpClient {
+        return OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BODY
+            })
             .addInterceptor(errorHandlingInterceptor)
             .build()
     }

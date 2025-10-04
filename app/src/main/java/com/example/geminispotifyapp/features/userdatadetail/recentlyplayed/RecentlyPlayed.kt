@@ -550,10 +550,10 @@ internal fun TrackHistoryDetail(
             Text(
                 text = if (availableMarkets.contains(checkMarketIfPlayable)) "Playable in ${
                     checkMarketIfPlayable.let { Locale("", it).displayCountry }
-                }? Yes"
+                }($checkMarketIfPlayable)? Yes"
                 else "Playable in ${
                     checkMarketIfPlayable.let { Locale("", it).displayCountry }
-                }? No",
+                }($checkMarketIfPlayable)? No",
                 style = MaterialTheme.typography.bodyMedium
             )
             Spacer(modifier = Modifier.height(4.dp))

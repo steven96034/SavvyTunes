@@ -1,5 +1,6 @@
 package com.example.geminispotifyapp.features
 
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -56,7 +58,7 @@ import com.example.geminispotifyapp.features.userdatadetail.toptracks.TopTracksS
 import com.example.geminispotifyapp.features.userdatadetail.toptracks.TopTracksViewModel
 import com.example.geminispotifyapp.features.userdatadetail.toptracks.TrackDetail
 import com.example.geminispotifyapp.init.MAIN_APP_ROUTE
-import com.example.geminispotifyapp.init.Screen
+import com.example.geminispotifyapp.init.MainScreen
 import com.example.geminispotifyapp.init.bottomNavItems
 import kotlinx.coroutines.launch
 
@@ -90,6 +92,13 @@ fun MainScreenWithPager(
     }
     val selectedScreen = pagerState.currentPage % bottomNavItems.size
 
+    LaunchedEffect(selectedScreen) {
+        val currentScreen = bottomNavItems[selectedScreen]
+        val newTitle = currentScreen.label
+        viewModel.uiEventManager.sendEvent(UiEvent.UpdateAppBarTitle(newTitle))
+        Log.d("MainScreenWithPager", "Pager page changed to: ${currentScreen.label}, sending title update.")
+    }
+
 
     // --- ViewModel Scope Setting ---
     val parentEntry = remember(backStackEntry) {
@@ -114,32 +123,33 @@ fun MainScreenWithPager(
             // According to the page index, determine which page to display
             val screenIndex = page % bottomNavItems.size
             when (bottomNavItems[screenIndex]) {
-                is Screen.Home -> HomeScreen(
+                is MainScreen.Home -> HomeScreen(
                     onArtistClick = { artist -> viewModel.showItemDetail(artist) },
                     onTrackClick = { track -> viewModel.showItemDetail(track) },
                     viewModel = homeViewModel
                 )
 
-                is Screen.TopArtists -> TopArtistsScreen(
+                is MainScreen.TopArtists -> TopArtistsScreen(
                     onArtistClick = { artist -> viewModel.showItemDetail(artist) },
                     viewModel = topArtistsViewModel
                 )
 
-                is Screen.TopTracks -> TopTracksScreen(
+                is MainScreen.TopTracks -> TopTracksScreen(
                     onTrackClick = { track -> viewModel.showItemDetail(track) },
                     viewModel = topTracksViewModel
                 )
 
-                is Screen.RecentlyPlayed -> RecentlyPlayedScreen(
+                is MainScreen.RecentlyPlayed -> RecentlyPlayedScreen(
                     onHistoryClick = { history -> viewModel.showItemDetail(history) },
                     viewModel = recentlyPlayedViewModel
                 )
 
-                is Screen.FindMusic -> FindMusic(findMusicViewModel)
+                is MainScreen.FindMusic -> FindMusic(findMusicViewModel)
             }
         }
         NavigationBar(
-            modifier = Modifier.align(Alignment.BottomCenter) // Align to bottom center
+            modifier = Modifier
+                .align(Alignment.BottomCenter) // Align to bottom center
                 .fillMaxWidth()
                 // Add bottom padding to avoid overlap with system gesture navigation bar
                 .windowInsetsPadding(WindowInsets.navigationBars),
