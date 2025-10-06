@@ -92,6 +92,7 @@ dependencies {
     implementation(libs.commons.text)
     implementation(libs.hilt.android)
     implementation(libs.androidx.browser)
+    implementation(libs.play.services.location)
     ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.androidx.material.icons.core)
@@ -99,6 +100,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.accompanist.navigation.animation)
     implementation(libs.openmeteo)
+    implementation(libs.accompanist.permissions)
 
 
     testImplementation(libs.junit)

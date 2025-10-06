@@ -1,9 +1,20 @@
 package com.example.geminispotifyapp.features.findmusic
 
+import android.location.Location
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.geminispotifyapp.SearchUiState
+import com.example.geminispotifyapp.SpotifyDataList
 import com.example.geminispotifyapp.SpotifyRepository
+import com.example.geminispotifyapp.features.UiEvent
+import com.example.geminispotifyapp.features.UiEventManager
+import com.example.geminispotifyapp.features.findmusic.domain.LocationResult
+import com.example.geminispotifyapp.features.findmusic.domain.LocationTracker
+import com.example.geminispotifyapp.features.home.GeminiApi
+import com.example.geminispotifyapp.init.MainScreen
+import com.google.ai.client.generativeai.type.GenerateContentResponse
+import com.google.ai.client.generativeai.type.ServerException
 import com.openmeteo.sdk.Variable
 import com.openmeteo.sdk.VariableWithValues
 import com.openmeteo.sdk.VariablesSearch
@@ -11,8 +22,13 @@ import com.openmeteo.sdk.VariablesWithTime
 import com.openmeteo.sdk.WeatherApiResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Call
@@ -26,13 +42,19 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
+import kotlin.collections.chunked
+import kotlin.collections.map
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
+import kotlin.math.abs
+import kotlin.text.split
 
 @HiltViewModel
 class FindMusicViewModel @Inject constructor(
-    private val spotifyRepository: SpotifyRepository
+    private val spotifyRepository: SpotifyRepository,
+    private val locationTracker: LocationTracker,
+    private val uiEventManager: UiEventManager
 ): ViewModel() {
     private val client = OkHttpClient()
     private val TAG = "WeatherService"
@@ -46,11 +68,43 @@ class FindMusicViewModel @Inject constructor(
     private val _allForecastTimes = MutableStateFlow<List<String?>>(emptyList())
     val allForecastTimes: StateFlow<List<String?>> = _allForecastTimes
 
+    private val _location = MutableStateFlow<Location?>(null)
+    val location: StateFlow<Location?> = _location
+
+    private val _showGpsDialog = MutableStateFlow(false)
+    val showGpsDialog: StateFlow<Boolean> = _showGpsDialog
+
+    fun fetchLocation() {
+        viewModelScope.launch {
+            when (val result = locationTracker.getCurrentLocation()) {
+                is LocationResult.Success -> {
+                    _location.value = result.location
+                    fetchWeatherData(result.location.latitude, result.location.longitude)
+                }
+                is LocationResult.GpsDisabled -> {
+                    _showGpsDialog.value = true
+                }
+                is LocationResult.MissingPermission -> {
+                    Log.d("LocationTracker", "Missing location permission")
+                }
+                is LocationResult.Error -> {
+                    // 處理其他錯誤，例如顯示一個 Snackbar
+                    Log.d("LocationTracker", "Error getting location")
+                    uiEventManager.sendEvent(UiEvent.ShowSnackbar("Error getting location. Please try again."))
+                }
+            }
+        }
+    }
+
+    fun onGpsDialogDismiss() {
+        _showGpsDialog.value = false
+    }
+
 
     init {
-        viewModelScope.launch {
-            fetchWeatherData()
-        }
+//        viewModelScope.launch {
+//            fetchWeatherData()
+//        }
     }
 
     /**
@@ -74,10 +128,12 @@ class FindMusicViewModel @Inject constructor(
         }
     }
 
-    suspend fun fetchWeatherData() = withContext(Dispatchers.IO) {
+    suspend fun fetchWeatherData(latitude: Double, longitude: Double) = withContext(Dispatchers.IO) {
         // Step 1 : Request
+        // Found that "current" data is not transferred from OpenMeteo endpoint in flatbuffers format. (Maybe this data is not in demand of extremely effective transfer./)
+        // So we just get the time near the current time in hourly data. (&current=temperature_2m,weather_code)
         val mUrl =
-            "https://api.open-meteo.com/v1/forecast?latitude=24&longitude=120&hourly=temperature_2m,weather_code&current=temperature_2m,weather_code&timezone=auto&forecast_days=1&format=flatbuffers"
+            "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&hourly=temperature_2m,weather_code&timezone=auto&forecast_days=1&format=flatbuffers"
 
         val request = Request.Builder()
             .url(mUrl)
@@ -129,42 +185,11 @@ class FindMusicViewModel @Inject constructor(
                 val mApiResponse =
                     WeatherApiResponse.getRootAsWeatherApiResponse(buffer.position(4) as ByteBuffer)
 
-                val current: VariablesWithTime? = mApiResponse.current()
                 val hourly: VariablesWithTime? = mApiResponse.hourly()
 
                 val timeValues = mutableListOf<String?>()
                 val tempValues = mutableListOf<Float?>()
                 val wmoValues = mutableListOf<Float?>()
-
-                current?.let {
-                    val temperature2m: VariableWithValues? = VariablesSearch(it)
-                        .variable(Variable.temperature)
-                        .altitude(2)
-                        .first()
-                    val wmo: VariableWithValues? = VariablesSearch(it)
-                        .variable(Variable.weather_code)
-                        .first()
-                    val currentTimeSeconds = it.time()
-
-                    withContext(Dispatchers.Default) {
-                        if (temperature2m != null && wmo != null && temperature2m.valuesLength() > 0) {
-                            val currentTemp = temperature2m.values(0)
-                            val currentWmo = wmo.values(0)
-                            val currentTimeString =
-                                formatUnixTimestampToDateTimeString(currentTimeSeconds)
-                            Log.d(
-                                TAG,
-                                "Current data at $currentTimeString: Temperature -> $currentTemp / WMO -> $currentWmo"
-                            )
-
-                            timeValues.add(currentTimeString)
-                            tempValues.add(currentTemp)
-                            wmoValues.add(currentWmo)
-                        } else {
-                            Log.w(TAG, "Current temperature or WMO data not found or empty.")
-                        }
-                    }
-                } ?: Log.w(TAG, "Current data is null.")
 
                 hourly?.let {
                     val temperature2m: VariableWithValues? = VariablesSearch(it)

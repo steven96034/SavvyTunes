@@ -43,7 +43,7 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
-import com.example.geminispotifyapp.features.findmusic.FindMusic
+import com.example.geminispotifyapp.features.findmusic.FindMusicScreen
 import com.example.geminispotifyapp.features.findmusic.FindMusicViewModel
 import com.example.geminispotifyapp.features.home.HomeScreen
 import com.example.geminispotifyapp.features.home.HomeViewModel
@@ -144,7 +144,7 @@ fun MainScreenWithPager(
                     viewModel = recentlyPlayedViewModel
                 )
 
-                is MainScreen.FindMusic -> FindMusic(findMusicViewModel)
+                is MainScreen.FindMusic -> FindMusicScreen(findMusicViewModel)
             }
         }
         NavigationBar(
