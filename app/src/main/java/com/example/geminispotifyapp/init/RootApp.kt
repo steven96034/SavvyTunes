@@ -253,6 +253,26 @@ fun AppContainer(
                             )
                         }
                     }
+                    else if (event.actionLabel == MainScreen.FindMusic.label) {
+                        val snackbarActionResult = snackbarHostState.showSnackbar(
+                            event.message,
+                            "See Result",
+                            true,
+                            SnackbarDuration.Long
+                        )
+                        if (snackbarActionResult == SnackbarResult.ActionPerformed) {
+                            rootNavController.navigate(MainScreen.FindMusic.route) {
+                                popUpTo(MAIN_APP_ROUTE) {
+                                    inclusive = false
+                                }
+                                launchSingleTop = true
+                            }
+                            Log.d(
+                                tag,
+                                "AppContainer_Collector: Navigating to Home triggered by Snackbar action."
+                            )
+                        }
+                    }
                 }
                 is UiEvent.Unauthorized -> {
                     rootNavController.navigate(LOGIN_ROUTE) {

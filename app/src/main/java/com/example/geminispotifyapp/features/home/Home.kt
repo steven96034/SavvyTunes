@@ -65,7 +65,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.geminispotifyapp.SearchUiState
+import com.example.geminispotifyapp.UiState
 import com.example.geminispotifyapp.SpotifyDataList
 import com.example.geminispotifyapp.data.SimplifiedTrack
 import com.example.geminispotifyapp.data.SpotifyAlbum
@@ -145,9 +145,9 @@ fun HomeScreen(
 
 @Composable
 fun HomePage(
-    uiState: SearchUiState,
-    suggestedUiState: SearchUiState,
-    searchByIdUiState: SearchUiState,
+    uiState: UiState<SpotifyDataList>,
+    suggestedUiState: UiState<SpotifyDataList>,
+    searchByIdUiState: UiState<SpotifyDataList>,
     trackInput: String,
     artistInput: String,
     dataInput: String,
@@ -325,7 +325,7 @@ fun HomePage(
         var suggestedTracks: List<SpotifyTrack>? = null
         var suggestedArtists: List<SpotifyArtist>? = null
         var suggestedAlbums: List<SpotifyAlbum>? = null
-        if (suggestedUiState is SearchUiState.Success) {
+        if (suggestedUiState is UiState.Success) {
             suggestedData = suggestedUiState.data
             suggestedTracks = suggestedData.tracks
             suggestedArtists = suggestedData.artists
@@ -333,7 +333,7 @@ fun HomePage(
         }
 
         var suggestedTrackById: List<TrackInformation>? = null
-        if (searchByIdUiState is SearchUiState.Success) {
+        if (searchByIdUiState is UiState.Success) {
             suggestedTrackById = searchByIdUiState.data.trackInformation
         }
         suggestedTracks?.let { tracks ->
@@ -590,7 +590,7 @@ fun HomePage(
                         shape = RoundedCornerShape(50)
                     )
             ) {
-                if (uiState != SearchUiState.Loading) {
+                if (uiState != UiState.Loading) {
                     Icon(
                         Icons.Filled.Search,
                         contentDescription = "Search Icon",
@@ -631,13 +631,13 @@ fun HomePage(
             }
         }
         when (uiState) {
-            is SearchUiState.Loading -> {
+            is UiState.Loading -> {
                 item {
                     LoadingContent()
                 }
             }
 
-            is SearchUiState.Success -> {
+            is UiState.Success -> {
                 val artists = uiState.data.artists
                 val tracks = uiState.data.tracks
                 item {
@@ -698,7 +698,7 @@ fun HomePage(
                 }
             }
 
-            is SearchUiState.Error -> {
+            is UiState.Error -> {
 //                item {
 //                    Text(
 //                        "Error",
@@ -1058,9 +1058,9 @@ fun LoadingContent() {
 @Preview
 @Composable
 fun HomePagePreview() {
-    val mockUiState = SearchUiState.Success(SpotifyDataList(emptyList(), emptyList(), emptyList(), emptyList()))
-    val mockSuggestedUiState = SearchUiState.Success(SpotifyDataList(emptyList(), emptyList(), emptyList(), emptyList()))
-    val mockSearchByIdUiState = SearchUiState.Success(SpotifyDataList(emptyList(), emptyList(), emptyList(), emptyList()))
+    val mockUiState = UiState.Success(SpotifyDataList(emptyList(), emptyList(), emptyList(), emptyList()))
+    val mockSuggestedUiState = UiState.Success(SpotifyDataList(emptyList(), emptyList(), emptyList(), emptyList()))
+    val mockSearchByIdUiState = UiState.Success(SpotifyDataList(emptyList(), emptyList(), emptyList(), emptyList()))
 
     HomePage(
         uiState = mockUiState,

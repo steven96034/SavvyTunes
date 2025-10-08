@@ -1,4 +1,4 @@
-package com.example.geminispotifyapp.features.home
+package com.example.geminispotifyapp.features.domain
 
 import com.example.geminispotifyapp.BuildConfig
 import com.google.ai.client.generativeai.GenerativeModel
@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.Flow
 class GeminiApi {
     // For Gemini Model
     private val generativeModel = GenerativeModel(
-        modelName = "gemini-2.5-pro",
+        modelName = "gemini-2.5-flash",
         apiKey = BuildConfig.apiKey
     )
 

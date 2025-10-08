@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.ApiError
-import com.example.geminispotifyapp.SearchUiState
+import com.example.geminispotifyapp.UiState
 import com.example.geminispotifyapp.SpotifyDataList
 import com.example.geminispotifyapp.SpotifyRepository
 import com.example.geminispotifyapp.data.SpotifyAlbum
@@ -12,9 +12,12 @@ import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.features.UiEvent
 import com.example.geminispotifyapp.features.UiEventManager
+import com.example.geminispotifyapp.features.domain.GeminiApi
+import com.example.geminispotifyapp.features.domain.SearchForSpecificTrackUseCase
 import com.example.geminispotifyapp.features.userdatadetail.FetchResult
 import com.example.geminispotifyapp.init.MainScreen
 import com.example.geminispotifyapp.utils.GlobalErrorHandler
+import com.example.geminispotifyapp.utils.StringSimilarityCalculator.calculateSimilarity
 import com.google.ai.client.generativeai.type.GenerateContentResponse
 import com.google.ai.client.generativeai.type.ServerException
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,20 +41,21 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val spotifyRepository: SpotifyRepository,
     private val uiEventManager: UiEventManager,
-    private val globalErrorHandler: GlobalErrorHandler
+    private val globalErrorHandler: GlobalErrorHandler,
+    private val searchForSpecificTrackUseCase: SearchForSpecificTrackUseCase
 ) : ViewModel() {
     // For Search State
-    private var _searchSimilarUiState: MutableStateFlow<SearchUiState> =
-        MutableStateFlow(SearchUiState.Initial)
-    val searchSimilarUiState: StateFlow<SearchUiState> = _searchSimilarUiState.asStateFlow()
+    private var _searchSimilarUiState: MutableStateFlow<UiState<SpotifyDataList>> =
+        MutableStateFlow(UiState.Initial)
+    val searchSimilarUiState: StateFlow<UiState<SpotifyDataList>> = _searchSimilarUiState.asStateFlow()
 
-    private var _searchDataUiState: MutableStateFlow<SearchUiState> =
-        MutableStateFlow(SearchUiState.Initial)
-    val searchDataUiState: StateFlow<SearchUiState> = _searchDataUiState.asStateFlow()
+    private var _searchDataUiState: MutableStateFlow<UiState<SpotifyDataList>> =
+        MutableStateFlow(UiState.Initial)
+    val searchDataUiState: StateFlow<UiState<SpotifyDataList>> = _searchDataUiState.asStateFlow()
 
-    private var _searchByIdUiState: MutableStateFlow<SearchUiState> =
-        MutableStateFlow(SearchUiState.Initial)
-    val searchByIdUiState: StateFlow<SearchUiState> = _searchByIdUiState.asStateFlow()
+    private var _searchByIdUiState: MutableStateFlow<UiState<SpotifyDataList>> =
+        MutableStateFlow(UiState.Initial)
+    val searchByIdUiState: StateFlow<UiState<SpotifyDataList>> = _searchByIdUiState.asStateFlow()
 
     // For Gemini API
     private var relatedTracks = mutableListOf<String>()
@@ -142,8 +146,8 @@ class HomeViewModel @Inject constructor(
 
     fun onSelectedSuggestedTrackChange(track: SpotifyTrack?) {
         _selectedSuggestedTrack.value = track
-        _searchSimilarUiState.value = SearchUiState.Initial
-        _searchByIdUiState.value = SearchUiState.Initial
+        _searchSimilarUiState.value = UiState.Initial
+        _searchByIdUiState.value = UiState.Initial
         _searchButtonAnimationTrigger.value++
     }
 
@@ -174,7 +178,7 @@ class HomeViewModel @Inject constructor(
     fun searchTrack(searchName: String, byType: Type = Type.TRACK, searchFor: Type = Type.TRACK) {
         if (searchName.isBlank()) return
 
-        if (_searchDataUiState.value is SearchUiState.Loading) {
+        if (_searchDataUiState.value is UiState.Loading) {
             searchInputJob?.cancel(CancellationException("New search by user."))
             Log.d(tag, "New search by user. Total searchCount so far: $searchCount")
         }
@@ -182,7 +186,7 @@ class HomeViewModel @Inject constructor(
         searchInputJob = viewModelScope.launch {
             delay(debouncePeriod)
             ++searchCount
-            _searchDataUiState.value = SearchUiState.Loading
+            _searchDataUiState.value = UiState.Loading
             try {
                 val query = when (byType) {
                     Type.TRACK -> "track:\"$searchName\""
@@ -205,32 +209,32 @@ class HomeViewModel @Inject constructor(
                         when (searchFor) {
                             Type.TRACK -> {
                                 if (response.tracks == null || response.tracks.items.isEmpty()) {
-                                    _searchDataUiState.value = SearchUiState.Error("No tracks found")
+                                    _searchDataUiState.value = UiState.Error("No tracks found")
                                     return@launch
                                 }
                                 val tracks = response.tracks.items
                                 _searchDataUiState.value =
-                                    SearchUiState.Success((SpotifyDataList(tracks, null, null, null)))
+                                    UiState.Success((SpotifyDataList(tracks, null, null, null)))
                             }
 
                             Type.ARTIST -> {
                                 if (response.artists == null || response.artists.items.isEmpty()) {
-                                    _searchDataUiState.value = SearchUiState.Error("No artists found")
+                                    _searchDataUiState.value = UiState.Error("No artists found")
                                     return@launch
                                 }
                                 val artists = response.artists.items
                                 _searchDataUiState.value =
-                                    SearchUiState.Success((SpotifyDataList(null, artists, null, null)))
+                                    UiState.Success((SpotifyDataList(null, artists, null, null)))
                             }
 
                             Type.ALBUM -> {
                                 if (response.albums == null || response.albums.items.isEmpty()) {
-                                    _searchDataUiState.value = SearchUiState.Error("No albums found")
+                                    _searchDataUiState.value = UiState.Error("No albums found")
                                     return@launch
                                 }
                                 val albums = response.albums.items
                                 _searchDataUiState.value =
-                                    SearchUiState.Success((SpotifyDataList(null, null, albums, null)))
+                                    UiState.Success((SpotifyDataList(null, null, albums, null)))
                             }
 
                             Type.ALLMENTIONED -> {
@@ -238,20 +242,20 @@ class HomeViewModel @Inject constructor(
                                     (response.artists == null || response.artists.items.isEmpty()) &&
                                     (response.albums == null || response.albums.items.isEmpty())
                                 ) {
-                                    _searchDataUiState.value = SearchUiState.Error("No data found")
+                                    _searchDataUiState.value = UiState.Error("No data found")
                                     return@launch
                                 }
                                 val tracks = response.tracks?.items
                                 val artists = response.artists?.items
                                 val albums = response.albums?.items
                                 _searchDataUiState.value =
-                                    SearchUiState.Success((SpotifyDataList(tracks, artists, albums, null)))
+                                    UiState.Success((SpotifyDataList(tracks, artists, albums, null)))
                             }
                         }
                     }
                     is FetchResult.Error -> {
                         handleApiError(result.errorData)
-                        _searchDataUiState.value = SearchUiState.Error(result.errorData.message ?: "Some Error Happened...")
+                        _searchDataUiState.value = UiState.Error(result.errorData.message ?: "Some Error Happened...")
                     }
                     else -> {}
                 }
@@ -266,7 +270,7 @@ class HomeViewModel @Inject constructor(
                     )
                 )
                 _searchDataUiState.value =
-                    SearchUiState.Error(e.message ?: "Some Error Happened...")
+                    UiState.Error(e.message ?: "Some Error Happened...")
             }
         }
     }
@@ -275,7 +279,7 @@ class HomeViewModel @Inject constructor(
     fun getTopTracksOfArtist(artistId: String) {
         if (artistId.isBlank()) return
         viewModelScope.launch {
-            _searchByIdUiState.value = SearchUiState.Loading
+            _searchByIdUiState.value = UiState.Loading
             try {
                 val result = spotifyRepository.getTopTracksOfArtist(artistId)
 
@@ -283,18 +287,18 @@ class HomeViewModel @Inject constructor(
                     is FetchResult.Success -> {
                         val response = result.data
                         if (response.tracks.isEmpty()) {
-                            _searchByIdUiState.value = SearchUiState.Error("No tracks found in this return list")
+                            _searchByIdUiState.value = UiState.Error("No tracks found in this return list")
                             uiEventManager.sendEvent(UiEvent.ShowSnackbar("No tracks found from the artist."))
                             return@launch
                         }
                         Log.d(tag, "response: $response")
                         _searchByIdUiState.value =
-                            SearchUiState.Success((SpotifyDataList(null, null, null, response.tracks)))
+                            UiState.Success((SpotifyDataList(null, null, null, response.tracks)))
                     }
                     is FetchResult.Error -> {
                         val errorMessage = result.errorData.message ?: "Some Error Happened..."
                         handleApiError(result.errorData)
-                        _searchByIdUiState.value = SearchUiState.Error(errorMessage)
+                        _searchByIdUiState.value = UiState.Error(errorMessage)
                     }
                     else -> {}
                 }
@@ -304,7 +308,7 @@ class HomeViewModel @Inject constructor(
                         "Some error occurred when getting top tracks of the artist, please try again later.", e.stackTraceToString()
                     )
                 )
-                _searchByIdUiState.value = SearchUiState.Error(e.message ?: "Some Error Happened...")
+                _searchByIdUiState.value = UiState.Error(e.message ?: "Some Error Happened...")
             }
         }
     }
@@ -312,7 +316,7 @@ class HomeViewModel @Inject constructor(
     fun getAlbumTracks(albumId: String) {
         if (albumId.isBlank()) return
         viewModelScope.launch {
-            _searchByIdUiState.value = SearchUiState.Loading
+            _searchByIdUiState.value = UiState.Loading
             try {
                 val result = spotifyRepository.getAlbumTracks(albumId)
 
@@ -320,17 +324,17 @@ class HomeViewModel @Inject constructor(
                     is FetchResult.Success -> {
                         val response = result.data
                         if (response.tracks.isEmpty()) {
-                            _searchByIdUiState.value = SearchUiState.Error("No tracks found in this album")
+                            _searchByIdUiState.value = UiState.Error("No tracks found in this album")
                             uiEventManager.sendEvent(UiEvent.ShowSnackbar("No tracks found in this album."))
                             return@launch
                         }
                         _searchByIdUiState.value =
-                            SearchUiState.Success((SpotifyDataList(null, null, null, response.tracks)))
+                            UiState.Success((SpotifyDataList(null, null, null, response.tracks)))
                     }
                     is FetchResult.Error -> {
                         val errorMessage = result.errorData.message ?: "Some Error Happened..."
                         handleApiError(result.errorData)
-                        _searchByIdUiState.value = SearchUiState.Error(errorMessage)
+                        _searchByIdUiState.value = UiState.Error(errorMessage)
                     }
                     else -> {}
                 }
@@ -340,7 +344,7 @@ class HomeViewModel @Inject constructor(
                         "Some error occurred when getting tracks of the album, please try again later.", e.stackTraceToString()
                     )
                 )
-                _searchByIdUiState.value = SearchUiState.Error(e.message ?: "Some Error Happened...")
+                _searchByIdUiState.value = UiState.Error(e.message ?: "Some Error Happened...")
             }
         }
     }
@@ -349,23 +353,6 @@ class HomeViewModel @Inject constructor(
         _selectedAlbum.value = album
     }
 
-//    fun getTrack(trackId: String) {
-//        if (trackId.isBlank()) return
-//        viewModelScope.launch {
-//            _searchByIdUiState.value = SearchUiState.Loading
-//            try {
-//                val response = spotifyRepositoryImpl.getTrack(trackId)
-////                if (response == null) {
-////                    _searchByIdUiState.value = SearchUiState.Error("No track information found")
-////                    return@launch
-////                }
-//                _searchByIdUiState.value = SearchUiState.Success((SpotifyDataList(listOf(response), null, null, null)))
-//            } catch (e: Exception) {
-//                uiEventManager.showSnackbar(SnackbarMessage.ExceptionMessage(e))
-//                _searchByIdUiState.value = SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
-//            }
-//        }
-//    }
 
     fun getTrackAndSelectedTrack(trackId: String) {
         if (trackId.isBlank()) return
@@ -392,197 +379,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-//    fun searchArtist(artistName: String) {
-//        if (artistName.isBlank()) return
-//
-//        viewModelScope.launch {
-//            _searchDataUiState.value = SearchUiState.Loading
-//            try {
-//                val response = spotifyRepositoryImpl.searchData("artist:$artistName", "artist", 10)
-//                if (response.artists == null || response.artists.items.isEmpty()) {
-//                    _searchDataUiState.value = SearchUiState.Error("No artists found")
-//                    return@launch
-//                }
-//                // 處理前十個結果
-////                val artists = response.tracks!!.items
-////                    .take(10)
-////                    .flatMap { it.artists }
-////                    .map { it.name }
-////                    .distinct()//移除重複的名稱
-//                val artists = response.artists.items
-//                _searchDataUiState.value =
-//                    SearchUiState.Success((SpotifyDataList(null, artists, null, null)))
-//            } catch (e: Exception) {
-//                uiEventManager.sendEvent(
-//                    UiEvent.ShowSnackbar(
-//                        e.localizedMessage ?: "Some Error Happened..."
-//                    )
-//                )
-//                _searchDataUiState.value =
-//                    SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
-//            }
-//        }
-//    }
-
-
-    // (Pass from Gemini response)
-    // Here check the equality of track name, album name and artist name, then calculate the most similar track.
-    // To get more reachable in spotify search, due to the miswrite of album name of the track from Gemini response,
-    //      we need to just search by the track name and artist name but more selection criteria (TBD).
-//    private suspend fun searchForSpecificTrack(
-//        trackName: String,
-//        albumName: String,
-//        artistName: String
-//    ) {
-//        //lateinit var response: SearchResponse
-//        var query: String? = ""
-//        try {
-//            if (trackName.isNotEmpty()) query += "track:\"$trackName\""
-//            if (albumName.isNotEmpty()) query += " album:\"$albumName\""
-//            if (artistName.isNotEmpty()) query += " artist:\"$artistName\""
-//            Log.d(tag, "Query: $query")
-//            if (query.isNullOrEmpty()) {
-//                Log.d(tag, "Query is empty. No search performed.")
-//                return
-//            }
-//            val result = spotifyRepositoryImpl.searchData(query, "track")
-//
-//            when (result) {
-//                is FetchResult.Success -> {
-//                    // Explicitly check for null and assign to a local variable
-//                    val response = result.data
-//                    val tracks = response.tracks
-//                    if (tracks == null || tracks.total == 0) {
-//                        // Handle the case where response.tracks is null
-//                        trackNotFoundList.add("$trackName by $artistName")
-//                        Log.e(tag, "response.tracks is null")
-//                        return
-//                    }
-//                    //val candidateTempList = mutableListOf<SpotifyTrack>() // For further filtering
-//                    val foundTrack = tracks.items.take(20).find { track ->
-//                        track.name.equals(trackName, ignoreCase = true) &&
-//                                track.album.name.equals(albumName, ignoreCase = true) &&
-//                                track.artists.any { artist ->
-//                                    artist.name.equals(artistName, ignoreCase = true)
-//                                }
-//                    }
-//                    if (foundTrack != null) {
-//                        trackTempList.add(foundTrack)
-//                        Log.d(tag, "Track found: ${foundTrack.name}")
-//                    } else {
-//                        //find the most closed track name
-//                        val mostSimilarTrack =
-//                            tracks.items.maxByOrNull { track -> // Use the local 'tracks' variable
-//                                val trackNameSimilarity = calculateSimilarity(track.name, trackName)
-//                                val albumNameSimilarity =
-//                                    calculateSimilarity(track.album.name, albumName)
-//                                val artistNameSimilarity = track.artists.maxOfOrNull { artist ->
-//                                    calculateSimilarity(artist.name, artistName)
-//                                } ?: 0.0
-//                                trackNameSimilarity * 1.5 + albumNameSimilarity * 2 + artistNameSimilarity
-//                            }
-//                        if (mostSimilarTrack != null) {
-//                            trackTempList.add(mostSimilarTrack)
-//                            Log.d(
-//                                tag,
-//                                "Track not found: $trackName, but similar track found: ${mostSimilarTrack.name}"
-//                            )
-//                        } else {
-//                            trackNotFoundList.add("$trackName by $artistName")
-//                            Log.e(tag, "Track not found: $trackName")
-//                        }
-//                    }
-//                }
-//                // What should i do if the track is not found?
-//                is FetchResult.Error -> {
-//                    // No need to handle error for UI snackbar here, this function it's just a part of searchSimilarTracksAndArtists
-//                    // handleApiError(result.errorData)
-//                    // _searchDataUiState.value = SearchUiState.Error(result.errorData.message ?: "Some Error Happened...")
-//                    Log.e(tag, "Error occurred during searchForSpecificTrack($query): ${result.errorData.message}")
-//                }
-//                else -> {}
-//            }
-//        } catch (e: Exception) {
-//            // No need to handle error here, this function it's just a part of searchSimilarTracksAndArtists
-//            Log.e(tag, "Error occurred during searchForSpecificTrack($query): ${e.message}")
-//            //throw e
-//        }
-//    }
-    private suspend fun searchForSpecificTrack(
-        trackName: String,
-        albumName: String,
-        artistName: String
-    ): Pair<SpotifyTrack?, String?> { // 修改回傳型別為 Pair<SpotifyTrack?, String?>
-        var query: String? = ""
-        try {
-            if (trackName.isNotEmpty()) query += "track:\"$trackName\""
-            if (albumName.isNotEmpty()) query += " album:\"$albumName\""
-            if (artistName.isNotEmpty()) query += " artist:\"$artistName\""
-            Log.d(tag, "Query: $query")
-            if (query.isNullOrEmpty()) {
-                Log.d(tag, "Query is empty. No search performed.")
-                return Pair(null, "$trackName by $artistName (Null query)")
-            }
-            val result = spotifyRepository.searchData(query, "track")
-
-            return when (result) {
-                is FetchResult.Success -> {
-                    // Explicitly check for null and assign to a local variable
-                    val response = result.data
-                    val tracks = response.tracks
-                    if (tracks == null || tracks.total == 0) {
-                        Log.e(tag, "response.tracks is null or empty for query: $query")
-                        return Pair(null, "$trackName by $artistName")
-                    }
-                    //val candidateTempList = mutableListOf<SpotifyTrack>() // For further filtering
-                    val foundTrack = tracks.items.take(20).find { track ->
-                        track.name.equals(trackName, ignoreCase = true) &&
-                                track.album.name.equals(albumName, ignoreCase = true) &&
-                                track.artists.any { artist ->
-                                    artist.name.equals(artistName, ignoreCase = true)
-                                }
-                    }
-                    if (foundTrack != null) {
-                        Log.d(tag, "Track found: ${foundTrack.name}")
-                        Pair(foundTrack, null)
-                    } else {
-                        //find the most closed track name
-                        val mostSimilarTrack =
-                            tracks.items.maxByOrNull { track -> // Use the local 'tracks' variable
-                                val trackNameSimilarity = calculateSimilarity(track.name, trackName)
-                                val albumNameSimilarity =
-                                    calculateSimilarity(track.album.name, albumName)
-                                val artistNameSimilarity = track.artists.maxOfOrNull { artist ->
-                                    calculateSimilarity(artist.name, artistName)
-                                } ?: 0.0
-                                trackNameSimilarity * 1.5 + albumNameSimilarity * 2 + artistNameSimilarity
-                            }
-                        if (mostSimilarTrack != null) {
-                            Log.d(
-                                tag,
-                                "Track not found: $trackName, but similar track found: ${mostSimilarTrack.name}"
-                            )
-                            Pair(mostSimilarTrack, null)
-                        } else {
-                            Log.e(tag, "Track not found: $trackName")
-                            Pair(null, "$trackName by $artistName")
-                        }
-                    }
-                }
-                is FetchResult.Error -> {
-                    Log.e(tag, "Error occurred during searchForSpecificTrack($query): ${result.errorData.message}")
-                    Pair(null, "$trackName by $artistName (API Error: ${result.errorData.message})")
-                }
-                else -> {
-                    Log.e(tag, "Unexpected FetchResult state for searchForSpecificTrack($query)")
-                    Pair(null, "$trackName by $artistName (Unexpected)")
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(tag, "Exception during searchForSpecificTrack($query): ${e.message}")
-            return Pair(null, "$trackName by $artistName (Exception: ${e.message})")
-        }
-    }
 
     // (Pass from Gemini response)
     // To simply get artists, we only get the artists with enough popularity.
@@ -624,39 +420,17 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun calculateSimilarity(str1: String, str2: String): Double {
-        val s1 = str1.lowercase()
-        val s2 = str2.lowercase()
-        if (s1.isEmpty() || s2.isEmpty()) {
-            return 0.0
-        }
-        // Use Levenshtein Distance to calculate the edit distance between the two strings.
-        val editDistance =
-            org.apache.commons.text.similarity.LevenshteinDistance.getDefaultInstance()
-                .apply(s1, s2)
-
-        // Calculate the similarity as 1 - (edit distance / max length of the two strings).
-        val maxLength = maxOf(s1.length, s2.length)
-        val similarity = if (maxLength > 0) {
-            1.0 - (editDistance.toDouble() / maxLength)
-        } else {
-            1.0 // If both strings are empty, similarity is 1.0.
-        }
-
-        return similarity
-    }
-
 
     private lateinit var responseSimilar: GenerateContentResponse
     private var searchJob: Job? = null
     fun searchSimilarTracksAndArtists(track: String, artist: String) {
         // Check if the search is already in progress, if yes, then return and display initial.
-        if (_searchSimilarUiState.value is SearchUiState.Loading) {
+        if (_searchSimilarUiState.value is UiState.Loading) {
             searchJob?.cancel(CancellationException("Cancel search by user."))
             viewModelScope.launch {
                 uiEventManager.sendEvent(UiEvent.ShowSnackbar("Previous search has successfully cancelled."))
             }
-            _searchSimilarUiState.value = SearchUiState.Initial
+            _searchSimilarUiState.value = UiState.Initial
             return
         }
         Log.d(tag, "Started searchSimilarTracksAndArtists($track, $artist)")
@@ -666,7 +440,7 @@ class HomeViewModel @Inject constructor(
         searchJob = viewModelScope.launch {
 
             uiEventManager.sendEvent(UiEvent.ShowSnackbar("You can explore other content in app, we'll inform you when it's ready!"))
-            _searchSimilarUiState.value = SearchUiState.Loading
+            _searchSimilarUiState.value = UiState.Loading
 
             try {
                 val numOfSearch = searchSimilarNum.value
@@ -735,7 +509,7 @@ class HomeViewModel @Inject constructor(
                                         val trackName = parts[0].trim()
                                         val albumName = parts[1].trim()
                                         val artistName = parts[2].trim()
-                                        searchForSpecificTrack(trackName, albumName, artistName)
+                                        searchForSpecificTrackUseCase(trackName, albumName, artistName)
                                     } else {
                                         Log.e(tag, "Unexpected track format: $trackInfo")
                                         Pair(null, trackInfo) // Format error also consider as not found
@@ -800,14 +574,14 @@ class HomeViewModel @Inject constructor(
                             null,
                             null
                         )
-                        _searchSimilarUiState.value = SearchUiState.Success(data)
+                        _searchSimilarUiState.value = UiState.Success(data)
                         uiEventManager.sendEvent(UiEvent.ShowSnackbarWithAction("Search successfully completed.", MainScreen.Home.label))
 
                         Log.d(tag, "Tracks and Artists Data: $data")
                     }
                 } ?: if (isActive) { // If response.text is null
                     _searchSimilarUiState.value =
-                        SearchUiState.Error("Failed to get a valid response from Gemini.")
+                        UiState.Error("Failed to get a valid response from Gemini.")
                 } else {
                     Log.d(tag, "Response is null.")
                 }
@@ -815,7 +589,7 @@ class HomeViewModel @Inject constructor(
             catch (e: ServerException) {
                 if (isActive) {
                     _searchSimilarUiState.value =
-                        SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
+                        UiState.Error(e.localizedMessage ?: "Some Error Happened...")
                     uiEventManager.sendEvent(
                         UiEvent.ShowSnackbarDetail(
                             "Gemini Server Error, please try again later.", e.stackTraceToString()
@@ -828,7 +602,7 @@ class HomeViewModel @Inject constructor(
             catch (e: Exception) {
                 if (isActive) {
                     _searchSimilarUiState.value =
-                        SearchUiState.Error(e.localizedMessage ?: "Some Error Happened...")
+                        UiState.Error(e.localizedMessage ?: "Some Error Happened...")
                     uiEventManager.sendEvent(
                         UiEvent.ShowSnackbarDetail(
                             "Some error occurred when searching similar tracks and artists, please try again later.", e.stackTraceToString()
@@ -841,8 +615,8 @@ class HomeViewModel @Inject constructor(
                 // The "isActive" here is the status of the coroutine that is in finally block
                 // If the coroutine is cancelled, isActive will be false in finally block
                 // Ensure that this is caused by cancellation and that searchJob is the one that is being cancelled.
-                if (_searchSimilarUiState.value is SearchUiState.Loading && !isActive && searchJob?.isCancelled == true) {
-                    _searchSimilarUiState.value = SearchUiState.Initial
+                if (_searchSimilarUiState.value is UiState.Loading && !isActive && searchJob?.isCancelled == true) {
+                    _searchSimilarUiState.value = UiState.Initial
                     Log.d(
                         tag,
                         "Search was cancelled and UI state reset to Initial in finally."
