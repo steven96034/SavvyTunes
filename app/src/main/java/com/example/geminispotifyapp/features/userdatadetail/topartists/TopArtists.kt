@@ -198,7 +198,7 @@ fun TopArtistContent(uiState: FetchResult<TopArtistsData>, onArtistClick: (Spoti
                         ) {
                             Icon(Icons.Default.Info, contentDescription = "Info Icon")
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("You data is not enough to show more artists. (Max = $dataNum)")
+                            Text("You data is not enough to show more artists, or try to refresh this page to get newer data. (Max = $dataNum)")
                         }
                     }
                 }

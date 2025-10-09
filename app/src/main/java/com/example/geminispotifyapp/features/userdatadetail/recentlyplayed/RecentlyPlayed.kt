@@ -208,7 +208,7 @@ fun RecentlyPlayedContent(
                         ) {
                             Icon(Icons.Default.Info, contentDescription = "Info Icon")
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("You data is not enough to show more recently played songs. (Max = $userDataNum)")
+                            Text("You data is not enough to show more recently played songs, or try to refresh this page to get newer data. (Max = $userDataNum)")
                         }
                     }
                 }

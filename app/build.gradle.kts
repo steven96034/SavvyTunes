@@ -93,6 +93,7 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.androidx.browser)
     implementation(libs.play.services.location)
+    implementation(libs.androidx.palette.ktx)
     ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.androidx.material.icons.core)

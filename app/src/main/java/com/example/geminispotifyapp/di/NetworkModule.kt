@@ -89,6 +89,17 @@ object NetWorkModule {
             .build()
     }
 
+    @WeatherInfoGist
+    @Provides
+    @Singleton
+    fun provideWeatherInfoGistOkHttpClient(
+        errorHandlingInterceptor: ErrorHandlingInterceptor
+    ): OkHttpClient {
+        return OkHttpClient.Builder()
+            .addInterceptor(errorHandlingInterceptor)
+            .build()
+    }
+
     @Provides
     @Singleton
     fun provideGson(): Gson {

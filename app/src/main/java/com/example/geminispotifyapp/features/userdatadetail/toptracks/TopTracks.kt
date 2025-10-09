@@ -226,7 +226,7 @@ fun TopTrackContent(
                             ) {
                                 Icon(Icons.Default.Info, contentDescription = "Info Icon")
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("You data is not enough to show more tracks. (Max = $userDataNum)")
+                                Text("You data is not enough to show more tracks, or try to refresh this page to get newer data. (Max = $userDataNum)")
                             }
                         }
                     }

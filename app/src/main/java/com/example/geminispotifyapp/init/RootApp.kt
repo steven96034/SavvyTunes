@@ -100,11 +100,11 @@ sealed class SettingsScreen(override val route: String, override val icon: Image
 }
 
 var bottomNavItems = listOf(
-    MainScreen.Home,
+    MainScreen.FindMusic,
     MainScreen.TopArtists,
     MainScreen.TopTracks,
     MainScreen.RecentlyPlayed,
-    MainScreen.FindMusic
+    MainScreen.Home
 )
 
 val settingsItems = listOf(
@@ -155,7 +155,7 @@ fun RootApp() {
 
             // Nested navigation graph for the main app content
             navigation(
-                startDestination = MainScreen.Home.route,
+                startDestination = MainScreen.FindMusic.route,
                 route = MAIN_APP_ROUTE
             ) {
                 // The composables in the navigation graph are not displayed directly by the NavHost but by the MainScreenWithPager.
@@ -194,7 +194,7 @@ fun AppContainer(
     val navBackStackEntry by rootNavController.currentBackStackEntryAsState()
     val currentDestinationRoute = navBackStackEntry?.destination?.route
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showMenu by remember { mutableStateOf(false) }
@@ -319,65 +319,91 @@ fun AppContainer(
                 .windowInsetsPadding(WindowInsets.navigationBars),
             containerColor = Color.Transparent,
             topBar = {
-                TopAppBar(
-                    title = {
-                        val allScreens = bottomNavItems + settingsItems
-                        val currentScreen = allScreens.find { it.route == currentDestinationRoute }
-                        val title = dynamicAppBarTitle
-                            ?: currentScreen?.label
-                            ?: "Music Explorer by Gemini"
+                if (dynamicAppBarTitle != MainScreen.FindMusic.label) {
+                    TopAppBar(
+                        title = {
+                            val allScreens = bottomNavItems + settingsItems
+                            val currentScreen =
+                                allScreens.find { it.route == currentDestinationRoute }
+                            val title = dynamicAppBarTitle
+                                ?: currentScreen?.label
+                                ?: "Music Explorer by Gemini"
 
-                        Log.d("AppContainer", "currentDestinationRoute: $currentDestinationRoute, Calculated title: $title")
-                        Text(text = title,
-                            fontFamily = FontFamily.SansSerif,
-                            fontSize = MaterialTheme.typography.headlineMedium.fontSize,
-                            fontWeight = FontWeight.Bold)
-                    },
-                    scrollBehavior = scrollBehavior,
-                    navigationIcon = {
-                        if (currentDestinationRoute in settingsItems.map { it.route }
+                            Log.d(
+                                "AppContainer",
+                                "currentDestinationRoute: $currentDestinationRoute, Calculated title: $title"
+                            )
+                            Text(
+                                text = title,
+                                fontFamily = FontFamily.SansSerif,
+                                fontSize = MaterialTheme.typography.headlineMedium.fontSize,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        scrollBehavior = scrollBehavior,
+                        navigationIcon = {
+                            if (currentDestinationRoute in settingsItems.map { it.route }
                             ) {
-                            IconButton(onClick = { rootNavController.popBackStack() }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "back")
-                            }
-                        }
-                    },
-                    actions = {
-                        val isLoginPage = currentDestinationRoute == LOGIN_ROUTE
-                        if (!isLoginPage) {
-                            IconButton(onClick = { showMenu = !showMenu }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "More options")
-                            }
-                            DropdownMenu(
-                                expanded = showMenu,
-                                onDismissRequest = { showMenu = false }
-                            ) {
-                                settingsItems.forEach { screen ->
-                                    val isCurrentDestination = currentDestinationRoute == screen.route
-                                    DropdownMenuItem(
-                                        text = { Text(screen.label) },
-                                        leadingIcon = { Icon(screen.icon, contentDescription = screen.label) },
-                                        onClick = {
-                                            if (!isCurrentDestination) {
-                                                rootNavController.navigate(screen.route) {
-                                                    if (currentDestinationRoute in settingsItems.map { it.route })
-                                                        popUpTo(currentDestinationRoute ?: "") { inclusive = true }
-                                                }
-                                            }
-                                            dynamicAppBarTitle = null
-                                            showMenu = false
-                                        },
-                                        colors = MenuDefaults.itemColors(
-                                            textColor = if (isCurrentDestination) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                                            leadingIconColor = if (isCurrentDestination) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                        ),
-                                        modifier = if (isCurrentDestination) Modifier.background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)) else Modifier
+                                IconButton(onClick = { rootNavController.popBackStack() }) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "back"
                                     )
                                 }
                             }
+                        },
+                        actions = {
+                            val isLoginPage = currentDestinationRoute == LOGIN_ROUTE
+                            if (!isLoginPage) {
+                                IconButton(onClick = { showMenu = !showMenu }) {
+                                    Icon(
+                                        Icons.Default.MoreVert,
+                                        contentDescription = "More options"
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false }
+                                ) {
+                                    settingsItems.forEach { screen ->
+                                        val isCurrentDestination =
+                                            currentDestinationRoute == screen.route
+                                        DropdownMenuItem(
+                                            text = { Text(screen.label) },
+                                            leadingIcon = {
+                                                Icon(
+                                                    screen.icon,
+                                                    contentDescription = screen.label
+                                                )
+                                            },
+                                            onClick = {
+                                                if (!isCurrentDestination) {
+                                                    rootNavController.navigate(screen.route) {
+                                                        if (currentDestinationRoute in settingsItems.map { it.route })
+                                                            popUpTo(
+                                                                currentDestinationRoute ?: ""
+                                                            ) { inclusive = true }
+                                                    }
+                                                }
+                                                dynamicAppBarTitle = null
+                                                showMenu = false
+                                            },
+                                            colors = MenuDefaults.itemColors(
+                                                textColor = if (isCurrentDestination) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                                leadingIconColor = if (isCurrentDestination) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                            ),
+                                            modifier = if (isCurrentDestination) Modifier.background(
+                                                MaterialTheme.colorScheme.primaryContainer.copy(
+                                                    alpha = 0.5f
+                                                )
+                                            ) else Modifier
+                                        )
+                                    }
+                                }
+                            }
                         }
-                    }
-                )
+                    )
+                }
             },
             snackbarHost = {
                 SnackbarHost(

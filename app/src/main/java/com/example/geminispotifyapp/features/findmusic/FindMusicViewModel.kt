@@ -57,19 +57,22 @@ class FindMusicViewModel @Inject constructor(
     private val spotifyRepository: SpotifyRepository,
     private val locationTracker: LocationTracker,
     private val uiEventManager: UiEventManager,
-    private val searchForSpecificTrackUseCase: SearchForSpecificTrackUseCase
+    private val searchForSpecificTrackUseCase: SearchForSpecificTrackUseCase,
+    val weatherIconRepository: WeatherIconRepository
 ): ViewModel() {
     private val client = OkHttpClient()
     private val TAG = "WeatherService"
 
     private val _wmo = MutableStateFlow<List<Float?>?>(null)
-    val wmo: StateFlow<List<Float?>?> = _wmo
 
     private val _temperature2m = MutableStateFlow<List<Float?>?>(null)
-    val temperature2m: StateFlow<List<Float?>?> = _temperature2m
 
     private val _allForecastTimes = MutableStateFlow<List<String?>>(emptyList())
     val allForecastTimes: StateFlow<List<String?>> = _allForecastTimes
+
+    // Data display in UI (temp, wmo code, time)
+    private val _currentWeatherData = MutableStateFlow<CurrentWeatherDisplayData?>(null)
+    val currentWeatherData: StateFlow<CurrentWeatherDisplayData?> = _currentWeatherData.asStateFlow()
 
     private val _location = MutableStateFlow<Location?>(null)
     val location: StateFlow<Location?> = _location
@@ -92,7 +95,6 @@ class FindMusicViewModel @Inject constructor(
                     Log.d("LocationTracker", "Missing location permission")
                 }
                 is LocationResult.Error -> {
-                    // 處理其他錯誤，例如顯示一個 Snackbar
                     Log.d("LocationTracker", "Error getting location")
                     uiEventManager.sendEvent(UiEvent.ShowSnackbar("Error getting location. Please try again."))
                 }
@@ -106,9 +108,9 @@ class FindMusicViewModel @Inject constructor(
 
 
     init {
-//        viewModelScope.launch {
-//            fetchWeatherData()
-//        }
+        viewModelScope.launch {
+            fetchLocation()
+        }
     }
 
     /**
@@ -271,7 +273,6 @@ class FindMusicViewModel @Inject constructor(
 //            _findWeatherMusicUiState.value = UiState.Initial
             return
         }
-//        Log.d(tag, "Started searchSimilarTracksAndArtists($track, $artist)")
         val startTime = System.currentTimeMillis()
         var geminiFinishedTime = System.currentTimeMillis()
 
@@ -287,7 +288,10 @@ class FindMusicViewModel @Inject constructor(
             _findWeatherMusicUiState.value = UiState.Loading
 
             try {
-                val numOfSearch = 5
+                val numOfSearch = 15
+                val language = "English"
+                val genre = "Country"
+                val year = "2010"
                 val wmo = _wmo.value!![nearestTimeIndex]!!.toInt()
                 val temperature = _temperature2m.value!![nearestTimeIndex]
 
@@ -296,7 +300,7 @@ class FindMusicViewModel @Inject constructor(
                 withContext(Dispatchers.IO) {
                     // Song name and album name for artists list is redundant for now, more precise for future.
                     responseRelated = GeminiApi().askGemini(
-                        """Rules to respond: List only one related music track in each row using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,
+                        """Rules to respond: List only one related music of $language track around A.D. $year in each row using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,
                              if there is more than one artist, just separate them with comma, also do not use blank row to separate each track(only use one row for each track).
                              Use one blank row to separate the response of aforementioned weather condition and the response of related emotion of this weather.
 
@@ -304,15 +308,9 @@ class FindMusicViewModel @Inject constructor(
                              The current weather represented in WMO weather interpretation code is $wmo, the current temperature is $temperature.
                              Please recommend $numOfSearch related music tracks of aforementioned weather condition, where the format mentioned is: Song Name##Artists Name.
                              Also, recommend $numOfSearch related music tracks of the related emotion of this weather, where the format mentioned is: Song Name##Artists Name.
+                             Notice: List only one related music track in each row using format: Song Name##Album Name##Artists Name
                                     """
                     )
-                    //                            Please list $numOfSearch music tracks of related genres of $track##$artist, where the format mentioned is: Song Name##Artists Name.
-//                                List only one related music track in each row using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,
-//                                    if there is more than one artist, just separate them with comma, also do not use blank row to separate each track(only use one row for each track).
-//                                Also, list most related $numOfSearch music artists/band name of the song genre mentioned before, while followed by the famous song name and its album of the artists/band.
-//                                List only one related music artist name in each row using format: Artists Name##Song Name##Album Name, responding the name of artists by English, also do not use blank row to separate each artist(only use one row for each artist)
-//                                Other response rule: Do not use No., and do not respond any other statement, neither.
-//                                    Use one blank row to separate the response of related music tracks and the response of related music artists.
                     Log.d(tag, "response: ${responseRelated.text}")
                     geminiFinishedTime = System.currentTimeMillis()
                     Log.d(
@@ -416,38 +414,6 @@ class FindMusicViewModel @Inject constructor(
                             }
                         }
 
-//                        // Deal with the batch query of relatedArtists
-//                        relatedTracksOfEmotion.chunked(batchSize).forEach { artistBatch ->
-//                            val deferredArtistResults = artistBatch.map { artistInfo ->
-//                                async {
-//                                    val parts = artistInfo.split("##")
-//                                    if (parts.size == 3) {
-//                                        val artistName = parts[0].trim()
-//                                        // We only need artistName for now
-//                                        // val trackName = parts[1].trim()
-//                                        // val albumName = parts[2].trim()
-//                                        searchForSpecificArtists(artistName)
-//                                    } else {
-//                                        Log.e(tag, "Unexpected artist format: $artistInfo")
-//                                        Pair(null, artistInfo)
-//                                    }
-//                                }
-//                            }
-//                            // Wait for all artists to be fetched
-//                            @Suppress("UNCHECKED_CAST")
-//                            val artistResults = deferredArtistResults.awaitAll()
-//                            Log.d(tag, "Chunk search finished.")
-//                            artistResults.forEach { result ->
-//                                val (artistObj, notFoundId) = result
-//                                if (artistObj != null) {
-//                                    emotionTempList.add(artistObj)
-//                                } else if (notFoundId != null) {
-//                                    emotionNotFoundList.add(notFoundId)
-//                                }
-//                            }
-//                        }
-
-
                         Log.d(tag, "conditionNotFoundList: $conditionNotFoundList")
                         Log.d(tag, "emotionNotFoundList: $emotionNotFoundList")
                         Log.d(tag, "conditionTempList: ${conditionTempList.joinToString { it.name }}")
@@ -507,7 +473,7 @@ class FindMusicViewModel @Inject constructor(
                     )
                 }
             }
-//            Log.d(tag, "Spotify API takes time: ${System.currentTimeMillis() - geminiFinishedTime}ms")
+            Log.d(tag, "Spotify API takes time: ${System.currentTimeMillis() - geminiFinishedTime}ms")
             Log.d(
                 tag,
                 "Search job finished. Overall time: ${(System.currentTimeMillis() - startTime)}ms"
@@ -532,6 +498,20 @@ class FindMusicViewModel @Inject constructor(
                     minDiff = diff
                     nearestTimeIndex = index
                 }
+            }
+        }
+        nearestTimeIndex?.let { index ->
+            val temp = _temperature2m.value?.get(index)
+            val wmoCode = _wmo.value?.get(index)
+            val time = _allForecastTimes.value[index]
+            val isDay = time?.let {
+                val hour = it.substring(11, 13).toIntOrNull()
+                hour != null && hour in 6..17
+            } ?: true // Default to day if time is null
+            if (temp != null && wmoCode != null && time != null) {
+                _currentWeatherData.value = CurrentWeatherDisplayData(temp, wmoCode.toInt(), time, isDay)
+            } else {
+                Log.e(tag, "Cannot set current weather data due to null values.")
             }
         }
         nearestTimeIndex

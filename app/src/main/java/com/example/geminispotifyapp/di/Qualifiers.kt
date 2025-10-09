@@ -8,3 +8,7 @@ annotation class AuthOkHttpClient
 @Qualifier
 @Retention(AnnotationRetention.RUNTIME)
 annotation class UserOkHttpClient
+
+@Qualifier
+@Retention(AnnotationRetention.RUNTIME)
+annotation class WeatherInfoGist
