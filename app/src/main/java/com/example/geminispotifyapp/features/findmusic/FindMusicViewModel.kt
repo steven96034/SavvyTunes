@@ -30,6 +30,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -79,6 +80,10 @@ class FindMusicViewModel @Inject constructor(
 
     private val _showGpsDialog = MutableStateFlow(false)
     val showGpsDialog: StateFlow<Boolean> = _showGpsDialog
+
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing
+
 
     fun fetchLocation() {
         viewModelScope.launch {
@@ -288,10 +293,18 @@ class FindMusicViewModel @Inject constructor(
             _findWeatherMusicUiState.value = UiState.Loading
 
             try {
-                val numOfSearch = 15
-                val language = "English"
-                val genre = "Country"
-                val year = "2010"
+                val numOfShowCaseSearch = spotifyRepository.numOfShowCaseSearchFlow.first()
+                val languageOfShowCaseSearch = spotifyRepository.languageOfShowCaseSearchFlow.first()
+                val genreOfShowCaseSearch = spotifyRepository.genreOfShowCaseSearchFlow.first()
+                val yearOfShowCaseSearch = spotifyRepository.yearOfShowCaseSearchFlow.first()
+                Log.d(tag, "numOfShowCaseSearch: $numOfShowCaseSearch, languageOfShowCaseSearch: $languageOfShowCaseSearch, genreOfShowCaseSearch: $genreOfShowCaseSearch, yearOfShowCaseSearch: $yearOfShowCaseSearch")
+
+                val numOfQuery = "$numOfShowCaseSearch"
+                val languageOfQuery = if (languageOfShowCaseSearch != null)" $languageOfShowCaseSearch" else ""
+                val genreOfQuery = if (genreOfShowCaseSearch != null) " ($genreOfShowCaseSearch related genre)" else ""
+                val yearOfQuery = if (yearOfShowCaseSearch != null) " around A.D. $yearOfShowCaseSearch" else ""
+
+
                 val wmo = _wmo.value!![nearestTimeIndex]!!.toInt()
                 val temperature = _temperature2m.value!![nearestTimeIndex]
 
@@ -300,14 +313,14 @@ class FindMusicViewModel @Inject constructor(
                 withContext(Dispatchers.IO) {
                     // Song name and album name for artists list is redundant for now, more precise for future.
                     responseRelated = GeminiApi().askGemini(
-                        """Rules to respond: List only one related music of $language track around A.D. $year in each row using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,
+                        """Rules to respond: List only one related music of$languageOfQuery track$genreOfQuery$yearOfQuery in each row using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,
                              if there is more than one artist, just separate them with comma, also do not use blank row to separate each track(only use one row for each track).
                              Use one blank row to separate the response of aforementioned weather condition and the response of related emotion of this weather.
 
                              Below is the main query:
                              The current weather represented in WMO weather interpretation code is $wmo, the current temperature is $temperature.
-                             Please recommend $numOfSearch related music tracks of aforementioned weather condition, where the format mentioned is: Song Name##Artists Name.
-                             Also, recommend $numOfSearch related music tracks of the related emotion of this weather, where the format mentioned is: Song Name##Artists Name.
+                             Please recommend $numOfQuery related music tracks of aforementioned weather condition, where the format mentioned is: Song Name##Artists Name.
+                             Also, recommend $numOfQuery related music tracks of the related emotion of this weather, where the format mentioned is: Song Name##Artists Name.
                              Notice: List only one related music track in each row using format: Song Name##Album Name##Artists Name
                                     """
                     )
@@ -330,20 +343,20 @@ class FindMusicViewModel @Inject constructor(
                             relatedTracksOfCondition.addAll(
                                 lines.subList(
                                     0,
-                                    minOf(numOfSearch, blankLineIndex)
+                                    minOf(numOfShowCaseSearch, blankLineIndex)
                                 )
                             )
                             // Last $numOfSearch rows: emotion
                             relatedTracksOfEmotion.addAll(
                                 lines.subList(
                                     blankLineIndex + 1,
-                                    minOf(blankLineIndex + numOfSearch + 1, lines.size)
+                                    minOf(blankLineIndex + numOfShowCaseSearch + 1, lines.size)
                                 )
                             )
                         } else {
                             Log.e(tag, "Response format error")
                             // fallback to all tracks
-                            relatedTracksOfCondition.addAll(lines.subList(0, minOf(numOfSearch, lines.size)))
+                            relatedTracksOfCondition.addAll(lines.subList(0, minOf(numOfShowCaseSearch, lines.size)))
                         }
                         Log.d(tag, "relatedTracks: $relatedTracksOfCondition")
                         Log.d(tag, "relatedArtists: $relatedTracksOfEmotion")

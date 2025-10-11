@@ -32,6 +32,11 @@ class AppDatabase @Inject constructor(
         val SEARCH_SIMILAR_NUM_KEY = intPreferencesKey("search_num")
         val GET_USER_DATA_NUM_KEY = intPreferencesKey("get_item_num")
         val CHECK_MARKET_IF_PLAYABLE_KEY = stringPreferencesKey("check_market_if_playable")
+
+        val SHOW_CASE_SEARCH_NUM_KEY = intPreferencesKey("show_case_search_num")
+        val SHOW_CASE_LANGUAGE_KEY = stringPreferencesKey("show_case_language")
+        val SHOW_CASE_GENRE_KEY = stringPreferencesKey("show_case_genre")
+        val SHOW_CASE_YEAR_KEY = stringPreferencesKey("show_case_year")
     }
 
     suspend fun saveCodeVerifier(codeVerifier: String) {
@@ -173,5 +178,58 @@ class AppDatabase @Inject constructor(
 
     val checkMarketIfPlayableFlow: Flow<String> = dataStore.data.map { preferences ->
         preferences[CHECK_MARKET_IF_PLAYABLE_KEY] ?: "TW"
+    }
+
+    // Showcase Search Settings
+    val numOfShowCaseSearchFlow: Flow<Int> = dataStore.data.map { preferences ->
+        preferences[SHOW_CASE_SEARCH_NUM_KEY] ?: 15
+    }
+
+    suspend fun saveNumOfShowCaseSearch(num: Int) {
+        dataStore.edit { preferences ->
+            preferences[SHOW_CASE_SEARCH_NUM_KEY] = num
+        }
+    }
+
+    val languageOfShowCaseSearchFlow: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[SHOW_CASE_LANGUAGE_KEY]
+    }
+
+    suspend fun saveLanguageOfShowCaseSearch(language: String?) {
+        dataStore.edit { preferences ->
+            if (language == null) {
+                preferences.remove(SHOW_CASE_LANGUAGE_KEY)
+            } else {
+                preferences[SHOW_CASE_LANGUAGE_KEY] = language
+            }
+        }
+    }
+
+    val genreOfShowCaseSearchFlow: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[SHOW_CASE_GENRE_KEY]
+    }
+
+    suspend fun saveGenreOfShowCaseSearch(genre: String?) {
+        dataStore.edit { preferences ->
+            if (genre == null) {
+                preferences.remove(SHOW_CASE_GENRE_KEY)
+            } else {
+                preferences[SHOW_CASE_GENRE_KEY] = genre
+            }
+        }
+    }
+
+    val yearOfShowCaseSearchFlow: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[SHOW_CASE_YEAR_KEY]
+    }
+
+    suspend fun saveYearOfShowCaseSearch(year: String?) {
+        dataStore.edit { preferences ->
+            if (year == null) {
+                preferences.remove(SHOW_CASE_YEAR_KEY)
+            } else {
+                preferences[SHOW_CASE_YEAR_KEY] = year
+            }
+        }
     }
 }

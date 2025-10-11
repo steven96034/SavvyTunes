@@ -39,6 +39,35 @@ class UserSettingsViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = null
         )
+
+    val numOfShowCaseSearch: StateFlow<Int> = spotifyRepository.numOfShowCaseSearchFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = 15
+        )
+
+    val languageOfShowCaseSearch: StateFlow<String?> = spotifyRepository.languageOfShowCaseSearchFlow // <-- 類型改為 String?
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = "English"
+        )
+
+    val genreOfShowCaseSearch: StateFlow<String?> = spotifyRepository.genreOfShowCaseSearchFlow // <-- 類型改為 String?
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = "Country"
+        )
+
+    val yearOfShowCaseSearch: StateFlow<String?> = spotifyRepository.yearOfShowCaseSearchFlow // <-- 類型改為 String?
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = "2015"
+        )
+
     suspend fun setSearchSimilarNum(searchNum: Int) {
         spotifyRepository.setSearchSimilarNum(searchNum)
     }
@@ -49,4 +78,19 @@ class UserSettingsViewModel @Inject constructor(
         spotifyRepository.setCheckMarketIfPlayable(market)
     }
 
+    suspend fun setNumOfShowCaseSearch(num: Int) {
+        spotifyRepository.setNumOfShowCaseSearch(num)
+    }
+
+    suspend fun setLanguageOfShowCaseSearch(language: String?) {
+        spotifyRepository.setLanguageOfShowCaseSearch(language)
+    }
+
+    suspend fun setGenreOfShowCaseSearch(genre: String?) {
+        spotifyRepository.setGenreOfShowCaseSearch(genre)
+    }
+
+    suspend fun setYearOfShowCaseSearch(year: String?) {
+        spotifyRepository.setYearOfShowCaseSearch(year)
+    }
 }

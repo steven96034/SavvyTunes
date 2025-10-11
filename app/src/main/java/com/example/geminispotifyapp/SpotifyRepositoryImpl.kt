@@ -51,6 +51,11 @@ class SpotifyRepositoryImpl @Inject constructor(
 
     override val checkMarketIfPlayableFlow: Flow<String?> = appDatabase.checkMarketIfPlayableFlow
 
+    override val numOfShowCaseSearchFlow: Flow<Int> = appDatabase.numOfShowCaseSearchFlow
+    override val languageOfShowCaseSearchFlow: Flow<String?> = appDatabase.languageOfShowCaseSearchFlow
+    override val genreOfShowCaseSearchFlow: Flow<String?> = appDatabase.genreOfShowCaseSearchFlow
+    override val yearOfShowCaseSearchFlow: Flow<String?> = appDatabase.yearOfShowCaseSearchFlow
+
     init {
         // Launch coroutine in ApplicationScope to collect data from DataStore
         applicationScope.launch {
@@ -376,6 +381,22 @@ class SpotifyRepositoryImpl @Inject constructor(
 
     override suspend fun setCheckMarketIfPlayable(market: String?) {
         appDatabase.saveCheckMarketIfPlayableFlow(market)
+    }
+
+    override suspend fun setNumOfShowCaseSearch(num: Int) {
+        appDatabase.saveNumOfShowCaseSearch(num)
+    }
+
+    override suspend fun setLanguageOfShowCaseSearch(language: String?) {
+        appDatabase.saveLanguageOfShowCaseSearch(language)
+    }
+
+    override suspend fun setGenreOfShowCaseSearch(genre: String?) {
+        appDatabase.saveGenreOfShowCaseSearch(genre)
+    }
+
+    override suspend fun setYearOfShowCaseSearch(year: String?) {
+        appDatabase.saveYearOfShowCaseSearch(year)
     }
 
     companion object {

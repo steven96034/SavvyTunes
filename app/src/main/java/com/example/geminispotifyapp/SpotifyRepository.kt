@@ -19,6 +19,12 @@ interface SpotifyRepository {
     val userDataNumFlow: Flow<Int>
     val checkMarketIfPlayableFlow: Flow<String?>
 
+    val numOfShowCaseSearchFlow: Flow<Int>
+    val languageOfShowCaseSearchFlow: Flow<String?>
+    val genreOfShowCaseSearchFlow: Flow<String?>
+    val yearOfShowCaseSearchFlow: Flow<String?>
+
+
     suspend fun getAccessToken(): String
 
     fun getCurrentAccessToken(): String?
@@ -79,4 +85,9 @@ interface SpotifyRepository {
     suspend fun setUserDataNum(dataNum: Int)
 
     suspend fun setCheckMarketIfPlayable(market: String?)
+
+    suspend fun setNumOfShowCaseSearch(num: Int)
+    suspend fun setLanguageOfShowCaseSearch(language: String?)
+    suspend fun setGenreOfShowCaseSearch(genre: String?)
+    suspend fun setYearOfShowCaseSearch(year: String?)
 }

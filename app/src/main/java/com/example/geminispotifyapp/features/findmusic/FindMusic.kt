@@ -62,6 +62,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
@@ -87,6 +88,8 @@ import coil.request.ImageRequest
 import coil.size.Size
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.geminispotifyapp.R
+import com.example.geminispotifyapp.ui.theme.SpotifyGrey
+import com.example.geminispotifyapp.ui.theme.SpotifyWhite
 import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.shouldShowRationale
@@ -105,6 +108,7 @@ fun FindMusicScreen(
     val showGpsDialog by viewModel.showGpsDialog.collectAsStateWithLifecycle()
 
     val uiState by viewModel.findWeatherMusicUiState.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
 
     // Handle the logic after returning from the settings page
     val settingResultLauncher = rememberLauncherForActivityResult(
@@ -132,9 +136,9 @@ fun FindMusicScreen(
         },
         getWeatherDisplayInfo = { wmoCode: Int, isDay: Boolean -> viewModel.weatherIconRepository.getWeatherDisplayInfo(wmoCode, isDay) },
         // TODO: Real refreshing function
-        onRetry = {  },
-        onRefresh = {  },
-        isRefreshing = false
+        onRetry = { viewModel.fetchLocation() },
+        onRefresh = { viewModel.findRelatedWeatherMusic() },
+        isRefreshing = isRefreshing
     )
 }
 
@@ -357,11 +361,10 @@ fun FindMusicContent(
                     currentWeatherData?.let { data ->
                         val (weatherIconUrl, weatherDescription) = getWeatherDisplayInfo(data.weatherCode, data.isDay)
                         val decimalFormat = DecimalFormat("#.0")
-                        Card {
+                        Card (modifier = Modifier.padding(4.dp)) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(8.dp)
                                     .padding(top = 8.dp),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
@@ -460,6 +463,27 @@ fun TrackShowcase(
 ) {
     var cardColor by remember { mutableStateOf(Color.Gray) }
 
+    val trackTextColor = remember(cardColor, MaterialTheme.colorScheme.onSurface) {
+        val onSurfaceLuminance = SpotifyWhite.luminance()
+        val cardLuminance = cardColor.luminance()
+        if (kotlin.math.abs(onSurfaceLuminance - cardLuminance) < 0.2f) {
+            if (onSurfaceLuminance > 0.5f) Color.Black else Color.White
+        } else {
+            SpotifyWhite
+        }
+    }
+
+    val artistTextColor = remember(cardColor, MaterialTheme.colorScheme.onSurfaceVariant) {
+        val onSurfaceVariantLuminance = SpotifyGrey.luminance()
+        val cardLuminance = cardColor.luminance()
+        // If the luminance difference is small, choose a contrasting color.
+        if (kotlin.math.abs(onSurfaceVariantLuminance - cardLuminance) < 0.2f) {
+            if (cardLuminance > 0.5f) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.7f)
+        } else {
+            SpotifyGrey
+        }
+    }
+
     Card (
         colors = CardDefaults.cardColors(
             containerColor = cardColor
@@ -499,13 +523,14 @@ fun TrackShowcase(
             Text(
                 text = track.name,
                 style = MaterialTheme.typography.titleLarge,
+                color = trackTextColor,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = track.artists.joinToString(", ") { it.name },
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = artistTextColor,
                 textAlign = TextAlign.Center
             )
 
@@ -521,7 +546,11 @@ fun TrackShowcase(
                             context.startActivity(intent)
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    colors = ButtonDefaults.buttonColors(containerColor = artistTextColor.copy(alpha = 0.3f), contentColor = trackTextColor),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 2.dp,
+                        pressedElevation = 0.dp
+                    )
                 ) {
                     Row {
                         Text(text = "Open in Spotify")

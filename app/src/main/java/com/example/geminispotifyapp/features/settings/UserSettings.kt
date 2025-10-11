@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -58,6 +59,10 @@ fun UserSettingsScreen(
     val searchSimilarNum by viewModel.searchSimilarNum.collectAsStateWithLifecycle()
     val userDataNum by viewModel.userDataNum.collectAsStateWithLifecycle()
     val checkMarketIfPlayable by viewModel.checkMarketIfPlayable.collectAsStateWithLifecycle()
+    val numOfShowCaseSearch by viewModel.numOfShowCaseSearch.collectAsStateWithLifecycle()
+    val languageOfShowCaseSearch by viewModel.languageOfShowCaseSearch.collectAsStateWithLifecycle()
+    val genreOfShowCaseSearch by viewModel.genreOfShowCaseSearch.collectAsStateWithLifecycle()
+    val yearOfShowCaseSearch by viewModel.yearOfShowCaseSearch.collectAsStateWithLifecycle()
 
     val searchText by viewModel.searchText.collectAsStateWithLifecycle()
 
@@ -71,7 +76,15 @@ fun UserSettingsScreen(
         onSearchSimilarNumChange = { newValue -> scope.launch { viewModel.setSearchSimilarNum(newValue) } },
         onUserDataNumChange = { newValue -> scope.launch { viewModel.setUserDataNum(newValue) } },
         onSearchForMarketChange = { newValue -> scope.launch { viewModel.setCheckMarketIfPlayable(newValue) } },
-        onSearchTextChange = { newValue -> viewModel.updateSearchText(newValue) }
+        onSearchTextChange = { newValue -> viewModel.updateSearchText(newValue) },
+        numOfShowCaseSearch = numOfShowCaseSearch,
+        languageOfShowCaseSearch = languageOfShowCaseSearch,
+        genreOfShowCaseSearch = genreOfShowCaseSearch,
+        yearOfShowCaseSearch = yearOfShowCaseSearch,
+        onNumOfShowCaseSearchChange = { newValue -> scope.launch { viewModel.setNumOfShowCaseSearch(newValue) } },
+        onLanguageOfShowCaseSearchChange = { newValue -> scope.launch { viewModel.setLanguageOfShowCaseSearch(newValue) } },
+        onGenreOfShowCaseSearchChange = { newValue -> scope.launch { viewModel.setGenreOfShowCaseSearch(newValue) } },
+        onYearOfShowCaseSearchChange = { newValue -> scope.launch { viewModel.setYearOfShowCaseSearch(newValue) } }
     )
 }
 
@@ -85,15 +98,31 @@ fun UserSettingsContent(
     onSearchSimilarNumChange: (Int) -> Unit,
     onUserDataNumChange: (Int) -> Unit,
     onSearchForMarketChange: (String?) -> Unit,
-    onSearchTextChange: (String) -> Unit
+    onSearchTextChange: (String) -> Unit,
+    numOfShowCaseSearch: Int,
+    languageOfShowCaseSearch: String?,
+    genreOfShowCaseSearch: String?,
+    yearOfShowCaseSearch: String?,
+    onNumOfShowCaseSearchChange: (Int) -> Unit,
+    onLanguageOfShowCaseSearchChange: (String?) -> Unit,
+    onGenreOfShowCaseSearchChange: (String?) -> Unit,
+    onYearOfShowCaseSearchChange: (String?) -> Unit
 ) {
     val countryCodes = remember { Locale.getISOCountries() }
     val countries = remember(countryCodes) {
         countryCodes.map { code -> Locale("", code).displayCountry }.sorted()
     }
+    val languages = remember {
+        Locale.getAvailableLocales().map { it.displayLanguage }.distinct().sorted()
+    }
+    val genres = remember {
+        listOf("Pop", "Rock", "Hip Hop", "Jazz", "Classical", "Country", "Electronic", "R&B", "Reggae", "Blues")
+    }
 
     var expanded by remember { mutableStateOf(false) }
     var expandedExpandable by remember { mutableStateOf(false) }
+    var expandedLanguage by remember { mutableStateOf(false) }
+    var expandedGenre by remember { mutableStateOf(false) }
 
     // Store the width of OutlinedTextField in pixels
     var textFieldWidthPx by remember { mutableIntStateOf(0) }
@@ -282,7 +311,7 @@ fun UserSettingsContent(
                                         },
                                         modifier = Modifier.height(assumedDropdownMenuItemHeight) // Keep height consistent
                                     )
-                                }
+                                 }
                             } else {
                                 items(filteredCountries) { countryName ->
                                     val countryCode = countryCodes.find { code -> Locale("", code).displayCountry == countryName }
@@ -303,13 +332,201 @@ fun UserSettingsContent(
                 }
             }
         }
+        item {
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+        item {
+            val annotatedText = buildAnnotatedString {
+                append("Number of showcase tracks to search: ")
+                pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
+                append("$numOfShowCaseSearch")
+                pop()
+            }
+            Text(text = annotatedText, modifier = Modifier.padding(bottom = 8.dp))
+        }
+        item {
+            Slider(
+                value = numOfShowCaseSearch.toFloat(),
+                onValueChange = { newValue ->
+                    onNumOfShowCaseSearchChange(newValue.toInt())
+                },
+                valueRange = 1f..50f,
+                steps = 49,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        item {
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+        // Language Filter
+        item {
+            var useLanguage = languageOfShowCaseSearch != null
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Enable Language Filter")
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(
+                    checked = useLanguage,
+                    onCheckedChange = { isChecked ->
+                        useLanguage = isChecked
+                        if (!isChecked) {
+                            onLanguageOfShowCaseSearchChange(null) // If disabled, set to null
+                        } else {
+                            // If enabled, set to a default value, e.g., "English",
+                            // or keep the previous value if it's not null.
+                            onLanguageOfShowCaseSearchChange(languageOfShowCaseSearch ?: "English")
+                        }
+                    }
+                )
+            }
+
+            AnimatedVisibility(visible = useLanguage) {
+                // We wrap the Dropdown in a Column to ensure proper spacing and layout
+                Column(modifier = Modifier.padding(top = 8.dp)) {
+                    ExposedDropdownMenuBox(
+                        expanded = expandedLanguage,
+                        onExpandedChange = { expandedLanguage = !expandedLanguage },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            // Show the selected language, or a default value if somehow null while enabled
+                            value = languageOfShowCaseSearch ?: "English",
+                            onValueChange = { },
+                            readOnly = true,
+                            label = { Text("Language of showcase tracks to search") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedLanguage) },
+                            modifier = Modifier
+                                .menuAnchor(MenuAnchorType.PrimaryEditable)
+                                .fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expandedLanguage,
+                            onDismissRequest = { expandedLanguage = false },
+                        ) {
+                            languages.forEach { language ->
+                                DropdownMenuItem(
+                                    text = { Text(language) },
+                                    onClick = {
+                                        onLanguageOfShowCaseSearchChange(language)
+                                        expandedLanguage = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        // Genre Filter
+        item {
+            var useGenre = genreOfShowCaseSearch != null
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Enable Genre Filter")
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(
+                    checked = useGenre,
+                    onCheckedChange = { isChecked ->
+                        useGenre = isChecked
+                        if (!isChecked) {
+                            onGenreOfShowCaseSearchChange(null)
+                        } else {
+                            onGenreOfShowCaseSearchChange(genreOfShowCaseSearch ?: "Pop")
+                        }
+                    }
+                )
+            }
+
+            AnimatedVisibility(visible = useGenre) {
+                Column(modifier = Modifier.padding(top = 8.dp)) {
+                    ExposedDropdownMenuBox(
+                        expanded = expandedGenre,
+                        onExpandedChange = { expandedGenre = !expandedGenre },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = genreOfShowCaseSearch ?: "Pop",
+                            onValueChange = { },
+                            readOnly = true,
+                            label = { Text("Genre of showcase tracks to search") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedGenre) },
+                            modifier = Modifier
+                                .menuAnchor(MenuAnchorType.PrimaryEditable)
+                                .fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expandedGenre,
+                            onDismissRequest = { expandedGenre = false },
+                        ) {
+                            genres.forEach { genre ->
+                                DropdownMenuItem(
+                                    text = { Text(genre) },
+                                    onClick = {
+                                        onGenreOfShowCaseSearchChange(genre)
+                                        expandedGenre = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
+        // MARK: Year Filter (remains the same)
+        item {
+            var useYear = yearOfShowCaseSearch != null
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Enable Year Filter")
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(
+                    checked = useYear,
+                    onCheckedChange = { isChecked ->
+                        useYear = isChecked
+                        if (!isChecked) {
+                            onYearOfShowCaseSearchChange(null)
+                        } else {
+                            onYearOfShowCaseSearchChange(yearOfShowCaseSearch ?: "2015")
+                        }
+                    }
+                )
+            }
+
+            AnimatedVisibility(visible = useYear) {
+                Column(modifier = Modifier.padding(top = 8.dp)) {
+                    val annotatedText = buildAnnotatedString {
+                        append("Year of showcase tracks to search: ")
+                        pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
+                        append(yearOfShowCaseSearch ?: "Any")
+                        pop()
+                    }
+                    Text(text = annotatedText, modifier = Modifier.padding(bottom = 8.dp))
+                    Slider(
+                        value = yearOfShowCaseSearch?.toFloat() ?: 2015f,
+                        onValueChange = { newValue ->
+                            onYearOfShowCaseSearchChange(newValue.toInt().toString())
+                        },
+                        valueRange = 1900f..2024f,
+                        steps = 123,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
     }
 }
 
 @Composable
 @Preview
 fun UserSettingsScreenPreview() {
-    // You can provide a mock ViewModel or use default values for preview
     UserSettingsContent(
         searchSimilarNum = 10,
         userDataNum = 20,
@@ -318,6 +535,14 @@ fun UserSettingsScreenPreview() {
         onSearchSimilarNumChange = {},
         onUserDataNumChange = {},
         onSearchForMarketChange = {},
-        onSearchTextChange = {}
+        onSearchTextChange = {},
+        numOfShowCaseSearch = 15,
+        languageOfShowCaseSearch = "English",
+        genreOfShowCaseSearch = "Country",
+        yearOfShowCaseSearch = "2015",
+        onNumOfShowCaseSearchChange = {},
+        onLanguageOfShowCaseSearchChange = {},
+        onGenreOfShowCaseSearchChange = {},
+        onYearOfShowCaseSearchChange = {}
     )
 }
