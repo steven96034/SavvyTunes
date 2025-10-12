@@ -84,6 +84,14 @@ class FindMusicViewModel @Inject constructor(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing
 
+    fun refreshFindMusic() {
+        if (_isRefreshing.value) {
+            return
+        }
+        _isRefreshing.value = true
+        findRelatedWeatherMusic()
+    }
+
 
     fun fetchLocation() {
         viewModelScope.launch {
@@ -316,6 +324,7 @@ class FindMusicViewModel @Inject constructor(
                         """Rules to respond: List only one related music of$languageOfQuery track$genreOfQuery$yearOfQuery in each row using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,
                              if there is more than one artist, just separate them with comma, also do not use blank row to separate each track(only use one row for each track).
                              Use one blank row to separate the response of aforementioned weather condition and the response of related emotion of this weather.
+                             Other response rule: Do not use No., and do not respond any other statement, neither.
 
                              Below is the main query:
                              The current weather represented in WMO weather interpretation code is $wmo, the current temperature is $temperature.
@@ -468,7 +477,7 @@ class FindMusicViewModel @Inject constructor(
                         UiState.Error(e.localizedMessage ?: "Some Error Happened...")
                     uiEventManager.sendEvent(
                         UiEvent.ShowSnackbarDetail(
-                            "Some error occurred when searching similar tracks and artists, please try again later.", e.stackTraceToString()
+                            "Some error occurred when finding recommendations, please try again later.", e.stackTraceToString()
                         )
                     )
                     Log.d(tag, "Error: $e")
@@ -484,6 +493,10 @@ class FindMusicViewModel @Inject constructor(
                         tag,
                         "Search was cancelled and UI state reset to Initial in finally."
                     )
+                }
+                if (_isRefreshing.value) {
+                    _isRefreshing.value = false
+                    Log.d("FindMusicViewModel", "Refresh finished, isRefreshing set to false in finally.")
                 }
             }
             Log.d(tag, "Spotify API takes time: ${System.currentTimeMillis() - geminiFinishedTime}ms")

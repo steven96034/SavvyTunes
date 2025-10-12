@@ -1,10 +1,12 @@
 package com.example.geminispotifyapp.features.settings
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -12,6 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.DropdownMenuItem
@@ -25,6 +29,8 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,8 +39,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -88,7 +94,7 @@ fun UserSettingsScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun UserSettingsContent(
     searchSimilarNum: Int,
@@ -112,9 +118,23 @@ fun UserSettingsContent(
     val countries = remember(countryCodes) {
         countryCodes.map { code -> Locale("", code).displayCountry }.sorted()
     }
-    val languages = remember {
-        Locale.getAvailableLocales().map { it.displayLanguage }.distinct().sorted()
+    val languageLocales = remember {
+        Locale.getAvailableLocales()
+            .filter { it.language.isNotEmpty() && it.displayLanguage.isNotEmpty() }
+            .distinctBy { it.language }
     }
+    val languagePairs = remember(languageLocales) {
+        languageLocales.map { locale ->
+            // For each locale, get its display name in the device's language and in English
+            Pair(locale.getDisplayLanguage(Locale.getDefault()), locale.getDisplayLanguage(Locale.ENGLISH))
+        }
+            .distinct() // Remove duplicates that may arise from identical display names
+            .sortedBy { it.first } // Sort by the display name that the user sees
+    }
+
+    var languageSearchText by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+
     val genres = remember {
         listOf("Pop", "Rock", "Hip Hop", "Jazz", "Classical", "Country", "Electronic", "R&B", "Reggae", "Blues")
     }
@@ -142,382 +162,451 @@ fun UserSettingsContent(
     // Max height of the DropdownMenu is 300.dp or half of the screen height
     val maxDropdownHeight = remember { min(300.dp, screenHeightDp / 2) }
 
-    LazyColumn(modifier = Modifier.padding(16.dp)) {
-        item {
-            val annotatedText = buildAnnotatedString {
-                append("Number of similar tracks and artists to search: ")
-                pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
-                append("$searchSimilarNum")
-                pop()
-            }
-            Text(text = annotatedText, modifier = Modifier.padding(bottom = 8.dp))
-        }
-        item {
-            Slider(
-                value = searchSimilarNum.toFloat(),
-                onValueChange = { newValue ->
-                    onSearchSimilarNumChange(newValue.toInt())
-                },
-                valueRange = 1f..50f,
-                steps = 49,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-        item {
-            val annotatedText = buildAnnotatedString {
-                append("Number of user data to retrieve ")
-                pushStyle(SpanStyle(textDecoration = TextDecoration.None, color = MaterialTheme.colorScheme.onSurfaceVariant))
-                append("(for your Top Tracks/Top Artists/Recently Played data): ")
-                pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
-                append("$userDataNum")
-                pop()
-            }
-            Text(
-                text = annotatedText,
-                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-            )
-        }
-        item {
-            Slider(
-                value = userDataNum.toFloat(),
-                onValueChange = { newValue ->
-                    onUserDataNumChange(newValue.toInt())
-                },
-                valueRange = 1f..50f,
-                steps = 49,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val marketText = checkMarketIfPlayable?.let { Locale("", it).displayCountry } ?: "None selected"
-                val annotatedText = buildAnnotatedString {
-                    append("Quickly check if the selected track is playable in the specified market: ")
-                    pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
-                    append(marketText)
-                    pushStyle(SpanStyle(textDecoration = TextDecoration.None, color = MaterialTheme.colorScheme.onSurfaceVariant))
-                    append("\n(You can see the result in each track detail page.)\n")
-                    pop()
-                }
-                Text(
-                    text = annotatedText,
-                    modifier = Modifier.weight(1f)
-                )
+    val tabTitles = listOf("Showcase", "Search", "Market")
+    val pagerState = rememberPagerState(pageCount = { tabTitles.size })
+    val coroutineScope = rememberCoroutineScope()
 
-                IconButton(onClick = { expandedExpandable = !expandedExpandable }) {
-                    Icon(
-                        imageVector = Icons.Filled.Info,
-                        contentDescription = "More Info",
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-            AnimatedVisibility(visible = expandedExpandable) {
-                Column(modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)) {
-                    Text("Track may have multiple versions for different markets/regions according to each regional agency. " +
-                            "You may not be able to check the track in the selected market by only checking the selected track ISRC/ID.",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
 
-        item {
-            val focusManager = LocalFocusManager.current
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = !expanded },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = searchText,
-                    onValueChange = { newValue ->
-                        onSearchTextChange(newValue)
-                        if (newValue.isEmpty()) {
-                            onSearchForMarketChange(null)
+    Column(modifier = Modifier.fillMaxSize()) { // Let Column occupy the whole layout to take effect the gesture of HorizontalPager
+        TabRow(selectedTabIndex = pagerState.currentPage) {
+            tabTitles.forEachIndexed { index, title ->
+                Tab(
+                    selected = pagerState.currentPage == index,
+                    onClick = {
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(index)
                         }
-                        if (!expanded) expanded = true
                     },
-                    label = { Text("Select/Search For Market") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier
-                        .menuAnchor(MenuAnchorType.PrimaryEditable)
-                        .fillMaxWidth()
-                        // Monitor the layout of OutlinedTextField and get its width for anchor point
-                        .onGloballyPositioned { coordinates ->
-                            textFieldWidthPx = coordinates.size.width
-                        },
-                    placeholder = { Text(checkMarketIfPlayable?.let { Locale("", it).displayCountry } ?: "Market") }
+                    text = { Text(title) }
                 )
+            }
+        }
 
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                ) {
-                    val filteredCountries = remember(countries, searchText) {
-                        countries.filter { it.contains(searchText, ignoreCase = true) }
-                    }
-
-                    // Calculate the height of LazyColumn based on the number of filtered countries
-                    val calculatedLazyColumnHeight = remember(filteredCountries.size, searchText) {
-                        if (filteredCountries.isEmpty() && searchText.isNotEmpty()) {
-                            // If there's no matching countries, give a height for at least one item
-                            assumedDropdownMenuItemHeight
-                        } else if (searchText.isEmpty() && countries.isNotEmpty()) {
-                            // If there's no search text, show all countries
-                            min(assumedDropdownMenuItemHeight * countries.size, maxDropdownHeight)
-                        } else {
-                            // Display the filtered countries
-                            min(assumedDropdownMenuItemHeight * filteredCountries.size, maxDropdownHeight)
-                        }
-                    }
-
-                    Box(modifier = Modifier
-                        .width(textFieldWidthDp) // Use measured width of TextField
-                        .height(calculatedLazyColumnHeight) // Use calculated height of LazyColumn
-                    ) {
-                        LazyColumn {
-                            if (filteredCountries.isEmpty() && searchText.isNotEmpty()) {
-                                item {
-                                    DropdownMenuItem(
-                                        text = { Text("No matching countries found") },
-                                        onClick = { /* No operation */ },
-                                        enabled = false,
-                                        modifier = Modifier.height(assumedDropdownMenuItemHeight) // Keep height consistent
-                                    )
-                                }
-                            } else if (searchText.isEmpty() && countries.isNotEmpty()) {
-                                items(countries) { countryName ->
-                                    val countryCode = countryCodes.find { code -> Locale("", code).displayCountry == countryName }
-                                    DropdownMenuItem(
-                                        text = { Text(countryName) },
-                                        onClick = {
-                                            onSearchForMarketChange(countryCode)
-                                            onSearchTextChange(countryName)
-                                            expanded = false
-                                            focusManager.clearFocus()
-                                        },
-                                        modifier = Modifier.height(assumedDropdownMenuItemHeight) // Keep height consistent
-                                    )
-                                 }
-                            } else {
-                                items(filteredCountries) { countryName ->
-                                    val countryCode = countryCodes.find { code -> Locale("", code).displayCountry == countryName }
-                                    DropdownMenuItem(
-                                        text = { Text(countryName) },
-                                        onClick = {
-                                            onSearchForMarketChange(countryCode)
-                                            onSearchTextChange(countryName)
-                                            expanded = false
-                                            focusManager.clearFocus()
-                                        },
-                                        modifier = Modifier.height(assumedDropdownMenuItemHeight) // Keep height consistent
-                                    )
-                                }
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.weight(1f) // Let HorizontalPager occupy all remaining vertical space
+        ) { page ->
+            LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) { // Let LazyColumn occupy its parent space
+                when (page) {
+                    0 -> {
+                        item {
+                            val annotatedText = buildAnnotatedString {
+                                append("Number of showcase tracks to search: ")
+                                pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
+                                append("$numOfShowCaseSearch")
+                                pop()
                             }
+                            Text(text = annotatedText, modifier = Modifier.padding(bottom = 8.dp))
                         }
-                    }
-                }
-            }
-        }
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-        item {
-            val annotatedText = buildAnnotatedString {
-                append("Number of showcase tracks to search: ")
-                pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
-                append("$numOfShowCaseSearch")
-                pop()
-            }
-            Text(text = annotatedText, modifier = Modifier.padding(bottom = 8.dp))
-        }
-        item {
-            Slider(
-                value = numOfShowCaseSearch.toFloat(),
-                onValueChange = { newValue ->
-                    onNumOfShowCaseSearchChange(newValue.toInt())
-                },
-                valueRange = 1f..50f,
-                steps = 49,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-        // Language Filter
-        item {
-            var useLanguage = languageOfShowCaseSearch != null
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Enable Language Filter")
-                Spacer(modifier = Modifier.width(8.dp))
-                Switch(
-                    checked = useLanguage,
-                    onCheckedChange = { isChecked ->
-                        useLanguage = isChecked
-                        if (!isChecked) {
-                            onLanguageOfShowCaseSearchChange(null) // If disabled, set to null
-                        } else {
-                            // If enabled, set to a default value, e.g., "English",
-                            // or keep the previous value if it's not null.
-                            onLanguageOfShowCaseSearchChange(languageOfShowCaseSearch ?: "English")
+                        item {
+                            Slider(
+                                value = numOfShowCaseSearch.toFloat(),
+                                onValueChange = { newValue ->
+                                    onNumOfShowCaseSearchChange(newValue.toInt())
+                                },
+                                valueRange = 1f..50f,
+                                steps = 49,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
-                    }
-                )
-            }
+                        item {
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
+                        // Language Filter
+                        item {
+                            var useLanguage by remember { mutableStateOf(languageOfShowCaseSearch != null) }
 
-            AnimatedVisibility(visible = useLanguage) {
-                // We wrap the Dropdown in a Column to ensure proper spacing and layout
-                Column(modifier = Modifier.padding(top = 8.dp)) {
-                    ExposedDropdownMenuBox(
-                        expanded = expandedLanguage,
-                        onExpandedChange = { expandedLanguage = !expandedLanguage },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            // Show the selected language, or a default value if somehow null while enabled
-                            value = languageOfShowCaseSearch ?: "English",
-                            onValueChange = { },
-                            readOnly = true,
-                            label = { Text("Language of showcase tracks to search") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedLanguage) },
-                            modifier = Modifier
-                                .menuAnchor(MenuAnchorType.PrimaryEditable)
-                                .fillMaxWidth()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = expandedLanguage,
-                            onDismissRequest = { expandedLanguage = false },
-                        ) {
-                            languages.forEach { language ->
-                                DropdownMenuItem(
-                                    text = { Text(language) },
-                                    onClick = {
-                                        onLanguageOfShowCaseSearchChange(language)
-                                        expandedLanguage = false
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Enable Language Filter")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Switch(
+                                    checked = useLanguage,
+                                    onCheckedChange = { isChecked ->
+                                        useLanguage = isChecked
+                                        if (!isChecked) {
+                                            onLanguageOfShowCaseSearchChange(null)
+                                            languageSearchText = "" // Clear search text when turned off
+                                        } else {
+                                            val selectedLanguage = languageOfShowCaseSearch ?: "English"
+                                            onLanguageOfShowCaseSearchChange(selectedLanguage)
+                                            // When turned on, set the search box text to the currently selected language
+                                            languageSearchText = languagePairs.find { it.second == selectedLanguage }?.first ?: selectedLanguage
+                                        }
                                     }
                                 )
                             }
+
+                            AnimatedVisibility(visible = useLanguage) {
+                                Column(modifier = Modifier.padding(top = 8.dp)) {
+                                    ExposedDropdownMenuBox(
+                                        expanded = expandedLanguage,
+                                        onExpandedChange = {
+                                            expandedLanguage = !expandedLanguage
+                                            if (!expandedLanguage) {
+                                                focusManager.clearFocus() // Clear focus when the menu is closed
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        OutlinedTextField(
+                                            // value is now controlled by languageSearchText
+                                            value = languageSearchText,
+                                            onValueChange = { newValue ->
+                                                languageSearchText = newValue
+                                                if (!expandedLanguage) expandedLanguage = true
+                                            },
+                                            label = {
+                                                val currentDisplayName = languageOfShowCaseSearch?.let { englishName ->
+                                                    languagePairs.find { it.second == englishName }?.first
+                                                }
+                                                Text(currentDisplayName ?: "Select a language")
+                                            },
+                                            placeholder = {
+                                                val currentDisplayName = languageOfShowCaseSearch?.let { englishName ->
+                                                    languagePairs.find { it.second == englishName }?.first
+                                                }
+                                                Text(currentDisplayName ?: "Select a language")
+                                            },
+                                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedLanguage) },
+                                            modifier = Modifier
+                                                .menuAnchor(MenuAnchorType.PrimaryEditable)
+                                                .fillMaxWidth()
+                                        )
+                                        ExposedDropdownMenu(
+                                            expanded = expandedLanguage,
+                                            onDismissRequest = { expandedLanguage = false },
+                                        ) {
+                                            // Filter the list based on the search text
+                                            val filteredLanguages = remember(languagePairs, languageSearchText) {
+                                                if (languageSearchText.isEmpty()) {
+                                                    languagePairs
+                                                } else {
+                                                    languagePairs.filter { (display, english) ->
+                                                        display.contains(languageSearchText, ignoreCase = true) ||
+                                                                english.contains(languageSearchText, ignoreCase = true)
+                                                    }
+                                                }
+                                            }
+
+                                            if (filteredLanguages.isNotEmpty()) {
+                                                filteredLanguages.forEach { (displayLanguage, englishLanguage) ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(displayLanguage) },
+                                                        onClick = {
+                                                            onLanguageOfShowCaseSearchChange(englishLanguage) // Update search box text
+                                                            languageSearchText = displayLanguage
+                                                            expandedLanguage = false
+                                                            focusManager.clearFocus()
+                                                        },
+                                                    )
+                                                }
+                                            } else {
+                                                DropdownMenuItem(
+                                                    text = { Text("No matching languages found") },
+                                                    onClick = { },
+                                                    enabled = false
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
-                    }
-                }
-            }
-        }
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        // Genre Filter
-        item {
-            var useGenre = genreOfShowCaseSearch != null
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Enable Genre Filter")
-                Spacer(modifier = Modifier.width(8.dp))
-                Switch(
-                    checked = useGenre,
-                    onCheckedChange = { isChecked ->
-                        useGenre = isChecked
-                        if (!isChecked) {
-                            onGenreOfShowCaseSearchChange(null)
-                        } else {
-                            onGenreOfShowCaseSearchChange(genreOfShowCaseSearch ?: "Pop")
+                        item {
+                            Spacer(modifier = Modifier.height(24.dp))
                         }
-                    }
-                )
-            }
 
-            AnimatedVisibility(visible = useGenre) {
-                Column(modifier = Modifier.padding(top = 8.dp)) {
-                    ExposedDropdownMenuBox(
-                        expanded = expandedGenre,
-                        onExpandedChange = { expandedGenre = !expandedGenre },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            value = genreOfShowCaseSearch ?: "Pop",
-                            onValueChange = { },
-                            readOnly = true,
-                            label = { Text("Genre of showcase tracks to search") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedGenre) },
-                            modifier = Modifier
-                                .menuAnchor(MenuAnchorType.PrimaryEditable)
-                                .fillMaxWidth()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = expandedGenre,
-                            onDismissRequest = { expandedGenre = false },
-                        ) {
-                            genres.forEach { genre ->
-                                DropdownMenuItem(
-                                    text = { Text(genre) },
-                                    onClick = {
-                                        onGenreOfShowCaseSearchChange(genre)
-                                        expandedGenre = false
+                        // Genre Filter
+                        item {
+                            var useGenre = genreOfShowCaseSearch != null
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Enable Genre Filter")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Switch(
+                                    checked = useGenre,
+                                    onCheckedChange = { isChecked ->
+                                        useGenre = isChecked
+                                        if (!isChecked) {
+                                            onGenreOfShowCaseSearchChange(null)
+                                        } else {
+                                            onGenreOfShowCaseSearchChange(genreOfShowCaseSearch ?: "Pop")
+                                        }
                                     }
                                 )
                             }
+
+                            AnimatedVisibility(visible = useGenre) {
+                                Column(modifier = Modifier.padding(top = 8.dp)) {
+                                    ExposedDropdownMenuBox(
+                                        expanded = expandedGenre,
+                                        onExpandedChange = { expandedGenre = !expandedGenre },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        OutlinedTextField(
+                                            value = genreOfShowCaseSearch ?: "Pop",
+                                            onValueChange = { },
+                                            readOnly = true,
+                                            label = { Text("Genre of showcase tracks to search") },
+                                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedGenre) },
+                                            modifier = Modifier
+                                                .menuAnchor(MenuAnchorType.PrimaryEditable)
+                                                .fillMaxWidth()
+                                        )
+                                        ExposedDropdownMenu(
+                                            expanded = expandedGenre,
+                                            onDismissRequest = { expandedGenre = false },
+                                        ) {
+                                            genres.forEach { genre ->
+                                                DropdownMenuItem(
+                                                    text = { Text(genre) },
+                                                    onClick = {
+                                                        onGenreOfShowCaseSearchChange(genre)
+                                                        expandedGenre = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        item {
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
+
+                        // MARK: Year Filter (remains the same)
+                        item {
+                            var useYear = yearOfShowCaseSearch != null
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Enable Year Filter")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Switch(
+                                    checked = useYear,
+                                    onCheckedChange = { isChecked ->
+                                        useYear = isChecked
+                                        if (!isChecked) {
+                                            onYearOfShowCaseSearchChange(null)
+                                        } else {
+                                            onYearOfShowCaseSearchChange(yearOfShowCaseSearch ?: "2015")
+                                        }
+                                    }
+                                )
+                            }
+
+                            AnimatedVisibility(visible = useYear) {
+                                Column(modifier = Modifier.padding(top = 8.dp)) {
+                                    val annotatedText = buildAnnotatedString {
+                                        append("Year of showcase tracks to search: ")
+                                        pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
+                                        append(yearOfShowCaseSearch ?: "Any")
+                                        pop()
+                                    }
+                                    Text(text = annotatedText, modifier = Modifier.padding(bottom = 8.dp))
+                                    Slider(
+                                        value = yearOfShowCaseSearch?.toFloat() ?: 2015f,
+                                        onValueChange = { newValue ->
+                                            onYearOfShowCaseSearchChange(newValue.toInt().toString())
+                                        },
+                                        valueRange = 1900f..2024f,
+                                        steps = 123,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
                         }
                     }
-                }
-            }
-        }
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        // MARK: Year Filter (remains the same)
-        item {
-            var useYear = yearOfShowCaseSearch != null
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Enable Year Filter")
-                Spacer(modifier = Modifier.width(8.dp))
-                Switch(
-                    checked = useYear,
-                    onCheckedChange = { isChecked ->
-                        useYear = isChecked
-                        if (!isChecked) {
-                            onYearOfShowCaseSearchChange(null)
-                        } else {
-                            onYearOfShowCaseSearchChange(yearOfShowCaseSearch ?: "2015")
+                    1 -> {
+                        item {
+                            val annotatedText = buildAnnotatedString {
+                                append("Number of similar tracks and artists to search: ")
+                                pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
+                                append("$searchSimilarNum")
+                                pop()
+                            }
+                            Text(text = annotatedText, modifier = Modifier.padding(bottom = 8.dp))
+                        }
+                        item {
+                            Slider(
+                                value = searchSimilarNum.toFloat(),
+                                onValueChange = { newValue ->
+                                    onSearchSimilarNumChange(newValue.toInt())
+                                },
+                                valueRange = 1f..50f,
+                                steps = 49,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        item {
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
+                        item {
+                            val annotatedText = buildAnnotatedString {
+                                append("Number of user data to retrieve ")
+                                pushStyle(SpanStyle(textDecoration = TextDecoration.None, color = MaterialTheme.colorScheme.onSurfaceVariant))
+                                append("(for your Top Tracks/Top Artists/Recently Played data): ")
+                                pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
+                                append("$userDataNum")
+                                pop()
+                            }
+                            Text(
+                                text = annotatedText,
+                                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                            )
+                        }
+                        item {
+                            Slider(
+                                value = userDataNum.toFloat(),
+                                onValueChange = { newValue ->
+                                    onUserDataNumChange(newValue.toInt())
+                                },
+                                valueRange = 1f..50f,
+                                steps = 49,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                     }
-                )
-            }
+                    2 -> {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val marketText = checkMarketIfPlayable?.let { Locale("", it).displayCountry } ?: "None selected"
+                                val annotatedText = buildAnnotatedString {
+                                    append("Quickly check if the selected track is playable in the specified market: ")
+                                    pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
+                                    append(marketText)
+                                    pushStyle(SpanStyle(textDecoration = TextDecoration.None, color = MaterialTheme.colorScheme.onSurfaceVariant))
+                                    append("\n(You can see the result in each track detail page.)\n")
+                                    pop()
+                                }
+                                Text(
+                                    text = annotatedText,
+                                    modifier = Modifier.weight(1f)
+                                )
 
-            AnimatedVisibility(visible = useYear) {
-                Column(modifier = Modifier.padding(top = 8.dp)) {
-                    val annotatedText = buildAnnotatedString {
-                        append("Year of showcase tracks to search: ")
-                        pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
-                        append(yearOfShowCaseSearch ?: "Any")
-                        pop()
+                                IconButton(onClick = { expandedExpandable = !expandedExpandable }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Info,
+                                        contentDescription = "More Info",
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                            AnimatedVisibility(visible = expandedExpandable) {
+                                Column(modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)) {
+                                    Text("Track may have multiple versions for different markets/regions according to each regional agency. " +
+                                            "You may not be able to check the track in the selected market by only checking the selected track ISRC/ID.",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        item {
+                            val focusManager = LocalFocusManager.current
+                            ExposedDropdownMenuBox(
+                                expanded = expanded,
+                                onExpandedChange = { expanded = !expanded },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                OutlinedTextField(
+                                    value = searchText,
+                                    onValueChange = { newValue ->
+                                        onSearchTextChange(newValue)
+                                        if (newValue.isEmpty()) {
+                                            onSearchForMarketChange(null)
+                                        }
+                                        if (!expanded) expanded = true
+                                    },
+                                    label = { Text("Select/Search For Market") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                    modifier = Modifier
+                                        .menuAnchor(MenuAnchorType.PrimaryEditable)
+                                        .fillMaxWidth()
+                                        // Monitor the layout of OutlinedTextField and get its width for anchor point
+                                        .onGloballyPositioned { coordinates ->
+                                            textFieldWidthPx = coordinates.size.width
+                                        },
+                                    placeholder = { Text(checkMarketIfPlayable?.let { Locale("", it).displayCountry } ?: "Market") }
+                                )
+
+                                ExposedDropdownMenu(
+                                    expanded = expanded,
+                                    onDismissRequest = { expanded = false },
+                                ) {
+                                    val filteredCountries = remember(countries, searchText) {
+                                        countries.filter { it.contains(searchText, ignoreCase = true) }
+                                    }
+
+                                    // Calculate the height of LazyColumn based on the number of filtered countries
+                                    val calculatedLazyColumnHeight = remember(filteredCountries.size, searchText) {
+                                        if (filteredCountries.isEmpty() && searchText.isNotEmpty()) {
+                                            // If there's no matching countries, give a height for at least one item
+                                            assumedDropdownMenuItemHeight
+                                        } else if (searchText.isEmpty() && countries.isNotEmpty()) {
+                                            // If there's no search text, show all countries
+                                            min(assumedDropdownMenuItemHeight * countries.size, maxDropdownHeight)
+                                        } else {
+                                            // Display the filtered countries
+                                            min(assumedDropdownMenuItemHeight * filteredCountries.size, maxDropdownHeight)
+                                        }
+                                    }
+
+                                    Box(modifier = Modifier
+                                        .width(textFieldWidthDp) // Use measured width of TextField
+                                        .height(calculatedLazyColumnHeight) // Use calculated height of LazyColumn
+                                    ) {
+                                        LazyColumn {
+                                            if (filteredCountries.isEmpty() && searchText.isNotEmpty()) {
+                                                item {
+                                                    DropdownMenuItem(
+                                                        text = { Text("No matching countries found") },
+                                                        onClick = { /* No operation */ },
+                                                        enabled = false,
+                                                        modifier = Modifier.height(assumedDropdownMenuItemHeight) // Keep height consistent
+                                                    )
+                                                }
+                                            } else if (searchText.isEmpty() && countries.isNotEmpty()) {
+                                                items(countries) { countryName ->
+                                                    val countryCode = countryCodes.find { code -> Locale("", code).displayCountry == countryName }
+                                                    DropdownMenuItem(
+                                                        text = { Text(countryName) },
+                                                        onClick = {
+                                                            onSearchForMarketChange(countryCode)
+                                                            onSearchTextChange(countryName)
+                                                            expanded = false
+                                                            focusManager.clearFocus()
+                                                        },
+                                                        modifier = Modifier.height(assumedDropdownMenuItemHeight) // Keep height consistent
+                                                    )
+                                                }
+                                            } else {
+                                                items(filteredCountries) { countryName ->
+                                                    val countryCode = countryCodes.find { code -> Locale("", code).displayCountry == countryName }
+                                                    DropdownMenuItem(
+                                                        text = { Text(countryName) },
+                                                        onClick = {
+                                                            onSearchForMarketChange(countryCode)
+                                                            onSearchTextChange(countryName)
+                                                            expanded = false
+                                                            focusManager.clearFocus()
+                                                        },
+                                                        modifier = Modifier.height(assumedDropdownMenuItemHeight) // Keep height consistent
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-                    Text(text = annotatedText, modifier = Modifier.padding(bottom = 8.dp))
-                    Slider(
-                        value = yearOfShowCaseSearch?.toFloat() ?: 2015f,
-                        onValueChange = { newValue ->
-                            onYearOfShowCaseSearchChange(newValue.toInt().toString())
-                        },
-                        valueRange = 1900f..2024f,
-                        steps = 123,
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
             }
         }

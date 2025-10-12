@@ -135,9 +135,8 @@ fun FindMusicScreen(
             settingResultLauncher.launch(intent)
         },
         getWeatherDisplayInfo = { wmoCode: Int, isDay: Boolean -> viewModel.weatherIconRepository.getWeatherDisplayInfo(wmoCode, isDay) },
-        // TODO: Real refreshing function
         onRetry = { viewModel.fetchLocation() },
-        onRefresh = { viewModel.findRelatedWeatherMusic() },
+        onRefresh = { viewModel.refreshFindMusic() },
         isRefreshing = isRefreshing
     )
 }
