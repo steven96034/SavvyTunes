@@ -6,20 +6,16 @@ object StringSimilarityCalculator {
     fun calculateSimilarity(str1: String, str2: String): Double {
         val s1 = str1.lowercase()
         val s2 = str2.lowercase()
+
+        // If either string is empty, they are considered completely dissimilar.
         if (s1.isEmpty() || s2.isEmpty()) {
             return 0.0
         }
         // Use Levenshtein Distance to calculate the edit distance between the two strings.
         val editDistance = LevenshteinDistance.getDefaultInstance().apply(s1, s2)
+        val maxLength = maxOf(s1.length, s2.length)
 
         // Calculate the similarity as 1 - (edit distance / max length of the two strings).
-        val maxLength = maxOf(s1.length, s2.length)
-        val similarity = if (maxLength > 0) {
-            1.0 - (editDistance.toDouble() / maxLength)
-        } else {
-            1.0 // If both strings are empty, similarity is 1.0.
-        }
-
-        return similarity
+        return 1.0 - (editDistance.toDouble() / maxLength)
     }
 }

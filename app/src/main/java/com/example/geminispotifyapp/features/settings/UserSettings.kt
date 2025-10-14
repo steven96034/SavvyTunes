@@ -509,7 +509,6 @@ fun UserSettingsContent(
                         }
 
                         item {
-                            val focusManager = LocalFocusManager.current
                             ExposedDropdownMenuBox(
                                 expanded = expanded,
                                 onExpandedChange = { expanded = !expanded },
