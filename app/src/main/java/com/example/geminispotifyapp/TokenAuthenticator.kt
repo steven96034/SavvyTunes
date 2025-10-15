@@ -12,7 +12,7 @@ import javax.inject.Singleton
 // Only handle under circumstances: HTTP 401 Unauthorized(Main) or 407 Proxy Authentication Required. (Authentication Failed)
 @Singleton
 class TokenAuthenticator @Inject constructor(
-    private val spotifyRepositoryImplProvider: Provider<SpotifyRepositoryImpl> // Use Provider to prevent dependency cycle
+    private val spotifyRepositoryProvider: Provider<SpotifyRepository> // Use Provider to prevent dependency cycle
 ) : Authenticator {
     override fun authenticate(route: Route?, response: Response): Request? {
 
@@ -34,7 +34,7 @@ class TokenAuthenticator @Inject constructor(
         // Try to get new access token
         val newAccessToken = runCatching {
             runBlocking { // authenticate method is not suspend function, so we need to call it in runBlocking
-                spotifyRepositoryImplProvider.get().getAccessToken() // the method will handle Mutex and actual refresh
+                spotifyRepositoryProvider.get().getAccessToken() // the method will handle Mutex and actual refresh
             }
         }.getOrNull()
 

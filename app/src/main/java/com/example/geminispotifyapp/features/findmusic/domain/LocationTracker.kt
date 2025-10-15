@@ -8,6 +8,8 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
 import androidx.core.content.ContextCompat
+import com.google.android.gms.location.CurrentLocationRequest
+import com.google.android.gms.location.Priority
 import com.google.android.gms.location.FusedLocationProviderClient
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
@@ -18,7 +20,7 @@ sealed class LocationResult {
     data class Success(val location: Location) : LocationResult()
     object GpsDisabled : LocationResult()
     object MissingPermission : LocationResult()
-    object Error : LocationResult()
+    data class Error(val exception: Exception? = null) : LocationResult()
 }
 
 class LocationTracker @Inject constructor(
@@ -50,17 +52,29 @@ class LocationTracker @Inject constructor(
             return LocationResult.GpsDisabled
         }
 
+        val currentLocationRequest = CurrentLocationRequest.Builder()
+            .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+            .build()
+
         return suspendCancellableCoroutine { cont ->
             locationClient.lastLocation.addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     val location = task.result
                     if (location != null) {
                         cont.resume(LocationResult.Success(location))
-                    } else {
-                        cont.resume(LocationResult.Error)
+                    } else { // Location is null, try to get current location
+                        cont.context.let {
+                            locationClient.getCurrentLocation(currentLocationRequest, cont.context.let { null }).addOnCompleteListener { currentTask ->
+                                if(currentTask.isSuccessful && currentTask.result != null){
+                                    cont.resume(LocationResult.Success(currentTask.result))
+                                } else {
+                                    cont.resume(LocationResult.Error(currentTask.exception ?: Exception("Failed to get current location.")))
+                                }
+                            }
+                        }
                     }
-                } else {
-                    cont.resume(LocationResult.Error)
+                } else { // Task failed
+                    cont.resume(LocationResult.Error(task.exception))
                 }
             }.addOnCanceledListener {
                 cont.cancel()

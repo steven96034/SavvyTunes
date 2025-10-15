@@ -18,6 +18,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.example.geminispotifyapp.HiltTestRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -109,9 +110,11 @@ dependencies {
     implementation(libs.accompanist.navigation.animation)
     implementation(libs.openmeteo)
     implementation(libs.accompanist.permissions)
+    implementation(libs.kotlin.test)
 
 
     testImplementation(libs.junit)
+    testImplementation(libs.junit.jupiter)
     androidTestImplementation(libs.androidx.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
@@ -120,6 +123,10 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+    androidTestImplementation(libs.hilt.android.testing)
+    androidTestImplementation (libs.truth)
+    kspAndroidTest (libs.hilt.android.compiler)
+
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     testImplementation(kotlin("test"))

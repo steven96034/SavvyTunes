@@ -80,7 +80,6 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.geminispotifyapp.ApiError
-import com.example.geminispotifyapp.TwoTracksList
 import com.example.geminispotifyapp.UiState
 import com.example.geminispotifyapp.data.SpotifyTrack
 import coil.compose.AsyncImage

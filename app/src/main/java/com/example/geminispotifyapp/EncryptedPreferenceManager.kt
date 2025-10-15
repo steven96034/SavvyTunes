@@ -10,8 +10,6 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import javax.inject.Inject
 
-//private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "encrypted_settings")
-
 class EncryptedPreferenceManager @Inject constructor() {
 
     private companion object {
@@ -136,20 +134,4 @@ class EncryptedPreferenceManager @Inject constructor() {
         cipher.init(Cipher.DECRYPT_MODE, getSecretKey(), spec)
         return String(cipher.doFinal(encryptedData), Charsets.UTF_8)
     }
-
-//    suspend fun saveData(context: Context, key: String, value: String) {
-//        val preferenceKey = stringPreferencesKey(key)
-//        context.dataStore.edit { settings ->
-//            settings[preferenceKey] = encrypt(value)
-//        }
-//        Log.d("EncryptedPreferenceManager", "Data saved successfully")
-//    }
-//
-//    fun readData(context: Context, key: String): Flow<String?> {
-//        val preferenceKey = stringPreferencesKey(key)
-//        Log.d("EncryptedPreferenceManager", "Data read successfully")
-//        return context.dataStore.data.map { preferences ->
-//            preferences[preferenceKey]?.let { decrypt(it) }
-//        }
-//    }
 }

@@ -5,11 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.ApiError
 import com.example.geminispotifyapp.UiState
-import com.example.geminispotifyapp.SpotifyDataList
 import com.example.geminispotifyapp.SpotifyRepository
 import com.example.geminispotifyapp.data.SpotifyAlbum
 import com.example.geminispotifyapp.data.SpotifyArtist
 import com.example.geminispotifyapp.data.SpotifyTrack
+import com.example.geminispotifyapp.data.TrackInformation
 import com.example.geminispotifyapp.features.UiEvent
 import com.example.geminispotifyapp.features.UiEventManager
 import com.example.geminispotifyapp.features.domain.GeminiApi
@@ -36,6 +36,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.CancellationException
 import javax.inject.Inject
+
+data class SpotifyDataList(
+    val tracks: List<SpotifyTrack>?,
+    val artists: List<SpotifyArtist>?,
+    val albums: List<SpotifyAlbum>?,
+    val trackInformation: List<TrackInformation>?
+)
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(

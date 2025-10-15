@@ -66,7 +66,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.geminispotifyapp.UiState
-import com.example.geminispotifyapp.SpotifyDataList
 import com.example.geminispotifyapp.data.SimplifiedTrack
 import com.example.geminispotifyapp.data.SpotifyAlbum
 import com.example.geminispotifyapp.data.SpotifyArtist

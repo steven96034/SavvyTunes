@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.UiState
 import com.example.geminispotifyapp.SpotifyRepository
-import com.example.geminispotifyapp.TwoTracksList
 import com.example.geminispotifyapp.data.SpotifyTrack
 import com.example.geminispotifyapp.features.UiEvent
 import com.example.geminispotifyapp.features.UiEventManager
@@ -52,6 +51,11 @@ import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 import kotlin.math.abs
 import kotlin.text.split
+
+data class TwoTracksList(
+    val tracksA: List<SpotifyTrack>?,
+    val tracksB: List<SpotifyTrack>?
+)
 
 @HiltViewModel
 class FindMusicViewModel @Inject constructor(
@@ -108,7 +112,7 @@ class FindMusicViewModel @Inject constructor(
                     Log.d("LocationTracker", "Missing location permission")
                 }
                 is LocationResult.Error -> {
-                    Log.d("LocationTracker", "Error getting location")
+                    Log.d("LocationTracker", "Error getting location: ${result.exception}")
                     uiEventManager.sendEvent(UiEvent.ShowSnackbar("Error getting location. Please try again."))
                 }
             }

@@ -218,7 +218,7 @@ fun MainScreenWithPager(
                             is SpotifyTrack -> TrackDetail(item, checkMarketIfPlayable)
                             is UiPlayHistoryObject -> TrackHistoryDetail(item, checkMarketIfPlayable)
                         }
-                        if ((item is SpotifyTrack || item is UiPlayHistoryObject) && currentScreenIndex != 0) {
+                        if ((item is SpotifyTrack || item is UiPlayHistoryObject) && currentScreenIndex != 4) { // Not display at home page
                             Spacer(modifier = Modifier.height(4.dp))
                             Button(onClick = {
                                 viewModel.dismissItemDetail()
