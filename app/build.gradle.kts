@@ -126,6 +126,7 @@ dependencies {
     androidTestImplementation(libs.hilt.android.testing)
     androidTestImplementation (libs.truth)
     kspAndroidTest (libs.hilt.android.compiler)
+    testImplementation(libs.turbine)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

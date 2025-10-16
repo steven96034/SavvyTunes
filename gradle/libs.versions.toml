@@ -44,6 +44,7 @@ playServicesLocation = "21.3.0"
 paletteKtx = "1.0.0"
 junitJupiter = "5.8.1"
 truth = "1.4.5"
+turbine = "1.0.0"
 
 [libraries]
 accompanist-navigation-animation = { module = "com.google.accompanist:accompanist-navigation-animation", version.ref = "accompanistNavigationAnimation" }
@@ -96,6 +97,7 @@ play-services-location = { group = "com.google.android.gms", name = "play-servic
 androidx-palette-ktx = { group = "androidx.palette", name = "palette-ktx", version.ref = "paletteKtx" }
 junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junitJupiter" }
 truth = { module = "com.google.truth:truth", version.ref = "truth" }
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
