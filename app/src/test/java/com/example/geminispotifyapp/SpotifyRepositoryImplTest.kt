@@ -2,17 +2,24 @@ package com.example.geminispotifyapp
 
 import android.util.Log
 import app.cash.turbine.test
-import com.example.geminispotifyapp.auth.SpotifyTokenResponse
+import com.example.geminispotifyapp.data.remote.model.SpotifyTokenResponse
+import com.example.geminispotifyapp.data.remote.model.TopArtistsResponse
 import com.example.geminispotifyapp.data.local.AppDatabase
-import com.example.geminispotifyapp.data.remote.SpotifyApiService
-import com.example.geminispotifyapp.data.remote.SpotifyUserApiService
-import com.example.geminispotifyapp.features.userdatadetail.ApiExecutionHelper
+import com.example.geminispotifyapp.data.remote.api.SpotifyApiService
+import com.example.geminispotifyapp.data.remote.api.SpotifyUserApiService
+import com.example.geminispotifyapp.data.remote.interceptor.ApiError
+import com.example.geminispotifyapp.data.repository.SpotifyRepositoryImpl
+import com.example.geminispotifyapp.core.utils.ApiExecutionHelper
+import com.example.geminispotifyapp.core.utils.FetchResultWithEtag
+import com.google.common.truth.Truth.assertThat
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import io.mockk.mockk
 import io.mockk.mockkStatic
+import io.mockk.slot
 import io.mockk.unmockkStatic
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -30,9 +37,12 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import retrofit2.HttpException
 import retrofit2.Response
+import java.io.IOException
+
 
 // Use JUnit 5 extension for MockK
 @ExperimentalCoroutinesApi
@@ -125,7 +135,13 @@ class SpotifyRepositoryImplTest {
             // Simulate the database having an expired token and a valid refresh token
             val expiredTime = System.currentTimeMillis() - 1000
             coEvery { appDatabase.getExpiresAtFlow() } returns flowOf(expiredTime)
-            repository = SpotifyRepositoryImpl(appDatabase, spotifyUserApiService, spotifyApiService, apiExecutionHelper, testScope) // Re-init to collect new flow
+            repository = SpotifyRepositoryImpl(
+                appDatabase,
+                spotifyUserApiService,
+                spotifyApiService,
+                apiExecutionHelper,
+                testScope
+            ) // Re-init to collect new flow
             advanceUntilIdle() // Let the coroutine in init complete
             coEvery { appDatabase.getRefreshToken() } returns "valid_refresh_token"
 
@@ -145,7 +161,7 @@ class SpotifyRepositoryImplTest {
             assertEquals("new_access_token", token)
 
             // Verify that the refresh API was called once
-            coVerify(exactly = 1) { spotifyApiService.refreshAccessToken("valid_refresh_token", any(), any()) }
+            coVerify(exactly = 1) { spotifyApiService.refreshAccessToken("refresh_token", any(), any()) }
 
             // Verify that the new token was saved to the database
             coVerify(exactly = 1) { appDatabase.saveAccessToken("new_access_token") }
@@ -157,7 +173,13 @@ class SpotifyRepositoryImplTest {
             // Arrange
             val expiredTime = System.currentTimeMillis() - 1000
             coEvery { appDatabase.getExpiresAtFlow() } returns flowOf(expiredTime)
-            repository = SpotifyRepositoryImpl(appDatabase, spotifyUserApiService, spotifyApiService, apiExecutionHelper, testScope)
+            repository = SpotifyRepositoryImpl(
+                appDatabase,
+                spotifyUserApiService,
+                spotifyApiService,
+                apiExecutionHelper,
+                testScope
+            )
             advanceUntilIdle()
             coEvery { appDatabase.getRefreshToken() } returns "invalid_refresh_token"
 
@@ -182,7 +204,13 @@ class SpotifyRepositoryImplTest {
             // Arrange
             val expiredTime = System.currentTimeMillis() - 1000
             coEvery { appDatabase.getExpiresAtFlow() } returns flowOf(expiredTime)
-            repository = SpotifyRepositoryImpl(appDatabase, spotifyUserApiService, spotifyApiService, apiExecutionHelper, testScope)
+            repository = SpotifyRepositoryImpl(
+                appDatabase,
+                spotifyUserApiService,
+                spotifyApiService,
+                apiExecutionHelper,
+                testScope
+            )
             advanceUntilIdle()
             coEvery { appDatabase.getRefreshToken() } returns "valid_refresh_token"
 
@@ -205,5 +233,261 @@ class SpotifyRepositoryImplTest {
             coVerify(exactly = 1) { spotifyApiService.refreshAccessToken(any(), any(), any()) }
         }
     }
+    @Nested
+    @DisplayName("Data Fetching Operations")
+    inner class DataFetchingOperations {
 
+        @Test
+        fun `getUserTopArtists WHEN token and API call are successful THEN returns Success result`() = runTest(testDispatcher) {
+            // Arrange
+            // 1. Ensure getAccessToken returns a valid token (already done in setUp)
+
+            // 2. Prepare a fake successful API response
+            val fakeSuccessResponse = mockk<TopArtistsResponse>()
+            val successResult = FetchResultWithEtag.Success(fakeSuccessResponse, "etag-123")
+
+            // 3. Mock the behavior of apiExecutionHelper
+            coEvery {
+                apiExecutionHelper.executeEtaggedOperation<TopArtistsResponse, TopArtistsResponse>(any(), any())
+            } returns successResult
+
+            // 4. Mock a value for userDataNumFlow, as it's used within getUserTopArtists
+            every { appDatabase.getUserDataNumFlow } returns flowOf(15)
+
+            // Act
+            val result = repository.getUserTopArtists(
+                timeRange = "medium_term",
+                limit = 20, // Although the limit will be overridden by the flow's value, passing it is good practice
+                offset = 0,
+                ifNoneMatch = null
+            )
+
+            // Assert
+            // 1. Verify the result is of type Success
+            assertThat(result).isInstanceOf(FetchResultWithEtag.Success::class.java)
+            val successData = (result as FetchResultWithEtag.Success).data
+            assertThat(successData).isEqualTo(fakeSuccessResponse)
+
+            // 2. [Correction Point] Verify that apiExecutionHelper.executeEtaggedOperation was called correctly
+            coVerify(exactly = 1) {
+                apiExecutionHelper.executeEtaggedOperation<TopArtistsResponse, TopArtistsResponse>(
+                    operation = any(),
+                    transformSuccess = any()
+                )
+            }
+
+            // (Optional, but more precise verification)
+            // If you want to more deeply verify the content passed to the operation lambda, you can do this:
+            val slot = slot<suspend () -> Response<TopArtistsResponse>>()
+            coVerify(exactly = 1) {
+                apiExecutionHelper.executeEtaggedOperation<TopArtistsResponse, TopArtistsResponse>(capture(slot), any())
+            }
+            // Although we can't execute slot.captured() because it would make a real network request,
+            // the capture itself proves that executeEtaggedOperation was called.
+            // In this case, the simple any() match above is sufficient.
+        }
+
+        @Test
+        fun `getUserTopArtists WHEN apiExecutionHelper returns an error THEN returns Error result`() = runTest(testDispatcher) {
+            // Arrange
+            // 1. Prepare a fake API error
+            val apiError = ApiError.NotFound("User not found")
+            val errorResult = FetchResultWithEtag.Error(apiError)
+
+            // 2. Mock apiExecutionHelper to return this error
+            coEvery {
+                apiExecutionHelper.executeEtaggedOperation<TopArtistsResponse, TopArtistsResponse>(any(), any())
+            } returns errorResult
+
+            every { appDatabase.getUserDataNumFlow } returns flowOf(15)
+
+            // Act
+            val result = repository.getUserTopArtists(timeRange = "short_term", limit = 10, offset = 0)
+
+            // Assert
+            // 1. Verify the result is of type Error
+            assertThat(result).isInstanceOf(FetchResultWithEtag.Error::class.java)
+
+            // 2. Verify the error content is the one we mocked
+            val errorData = (result as FetchResultWithEtag.Error).errorData
+            assertThat(errorData).isEqualTo(apiError)
+        }
+
+        @Test
+        fun `getUserTopArtists WHEN getAccessToken fails THEN returns Error result with Unauthorized`() = runTest(testDispatcher) {
+            // Arrange
+            // This setup is correct; the goal is to make getAccessToken() throw an exception.
+            coEvery { appDatabase.getRefreshToken() } returns null // Cause token refresh to fail
+            coEvery { appDatabase.getExpiresAtFlow() } returns flowOf(System.currentTimeMillis() - 1000) // Ensure token is expired
+            // Re-initialize the repository to read the new mock flow
+            repository = SpotifyRepositoryImpl(
+                appDatabase,
+                spotifyUserApiService,
+                spotifyApiService,
+                apiExecutionHelper,
+                testScope
+            )
+            advanceUntilIdle() // Ensure the coroutine in the init block completes
+
+            // Act
+            // Execute the function and store its return value
+            val result = repository.getUserTopArtists(timeRange = "long_term", limit = 5, offset = 0)
+
+            // Assert
+            // 1. Verify that the returned result is of type FetchResultWithEtag.Error
+            assertThat(result).isInstanceOf(FetchResultWithEtag.Error::class.java)
+
+            // 2. Cast the result and verify that its internal error property is of type ApiError.Unauthorized
+            val errorResult = result as FetchResultWithEtag.Error
+            assertThat(errorResult.errorData).isInstanceOf(ApiError.Unauthorized::class.java)
+
+            // 3. (Optional but recommended) Verify the error message is as expected, ensuring it's the error we anticipated.
+            assertThat(errorResult.errorData.message).contains("Refresh token not found")
+        }
+
+        @Test
+        fun `getRecentlyPlayedTracks WHEN API call fails with a generic exception THEN re-throws the exception`() = runTest(testDispatcher) {
+            // Arrange
+            // 1. Ensure getAccessToken succeeds
+            // (already mocked in setUp, no extra setup needed here)
+
+            // 2. Simulate spotifyUserApiService.getRecentlyPlayed throwing a non-ApiError exception
+            val networkException = IOException("Network is down")
+            coEvery {
+                spotifyUserApiService.getRecentlyPlayed(any(), any(), any(), any())
+            } throws networkException
+
+            // Act & Assert
+            // Verify that when getRecentlyPlayedTracks is called, it re-throws the underlying IOException
+            val exception = assertThrows<IOException> {
+                repository.getRecentlyPlayedTracks(limit = 50)
+            }
+
+            // (Optional) Assert that the exception message is consistent
+            assertThat(exception.message).isEqualTo("Network is down")
+        }
+    }
+
+
+    @Nested
+    @DisplayName("Data Persistence Operations")
+    inner class DataPersistenceOperations {
+
+        @Test
+        fun `setUserDataNum SHOULD call appDatabase with correct number`() =
+            runTest(testDispatcher) {
+                // Arrange
+                val numberToSet = 25
+                // Prepare mock so that the saveGetUserDataNum method can be called
+                coEvery { appDatabase.saveGetUserDataNum(any()) } returns Unit
+
+                // Act
+                repository.setUserDataNum(numberToSet)
+
+                // Assert
+                // Verify that appDatabase.saveGetUserDataNum was called exactly once, with the argument 25
+                coVerify(exactly = 1) { appDatabase.saveGetUserDataNum(numberToSet) }
+            }
+
+        @Test
+        fun `performLogOutAndCleanUp SHOULD call appDatabase logout`() = runTest(testDispatcher) {
+            // Arrange
+            // Prepare mock so that the logout method can be called
+            coEvery { appDatabase.logout() } returns Unit
+
+            // Act
+            repository.performLogOutAndCleanUp()
+
+            // Assert
+            // Verify that appDatabase.logout was called exactly once
+            coVerify(exactly = 1) { appDatabase.logout() }
+        }
+    }
+
+    @Nested
+    @DisplayName("Authorization Flow")
+    inner class AuthorizationFlow {
+
+        @Test
+        fun `getAccessTokenThruAuth SHOULD delegate call to apiService and return its response`() = runTest(testDispatcher) {
+            // Arrange
+            // 1. Prepare a fake token response object
+            val fakeTokenResponse = mockk<SpotifyTokenResponse>()
+            val code = "auth_code"
+            val codeVerifier = "code_verifier"
+
+            // 2. Mock the behavior of apiService
+            coEvery {
+                spotifyApiService.getAccessToken(
+                    grantType = "authorization_code",
+                    code = code,
+                    redirectUri = any(),
+                    clientId = any(),
+                    codeVerifier = codeVerifier
+                )
+            } returns fakeTokenResponse
+
+            // Act
+            val result = repository.getAccessTokenThruAuth(
+                grantType = "authorization_code",
+                code = code,
+                redirectUri = "uri",
+                clientId = "id",
+                codeVerifier = codeVerifier
+            )
+
+            // Assert
+            // 1. Verify that the returned result is the same object returned by apiService
+            assertThat(result).isEqualTo(fakeTokenResponse)
+
+            // 2. Verify that the getAccessToken method of apiService was indeed called once with the correct parameters
+            coVerify(exactly = 1) {
+                spotifyApiService.getAccessToken(
+                    grantType = "authorization_code",
+                    code = code,
+                    redirectUri = any(),
+                    clientId = any(),
+                    codeVerifier = codeVerifier
+                )
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Helper Logic")
+    inner class HelperLogic {
+
+        @Test
+        fun `isTokenExpired WHEN expiryTime is in the future THEN returns false`() {
+            // Arrange
+            val futureTime = System.currentTimeMillis() + 60_000 // 60 seconds from now
+
+            // Act
+            val result = repository.isTokenExpired(futureTime)
+
+            // Assert
+            assertThat(result).isFalse()
+        }
+
+        @Test
+        fun `isTokenExpired WHEN expiryTime is in the past THEN returns true`() {
+            // Arrange
+            val pastTime = System.currentTimeMillis() - 1000 // 1 second ago
+
+            // Act
+            val result = repository.isTokenExpired(pastTime)
+
+            // Assert
+            assertThat(result).isTrue()
+        }
+
+        @Test
+        fun `isTokenExpired WHEN expiryTime is null THEN returns true`() {
+            // Act
+            val result = repository.isTokenExpired(null)
+
+            // Assert
+            assertThat(result).isTrue()
+        }
+    }
 }

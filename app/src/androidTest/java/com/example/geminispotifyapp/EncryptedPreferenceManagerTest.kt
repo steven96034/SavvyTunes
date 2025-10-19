@@ -13,6 +13,7 @@ import java.security.KeyStore
 import javax.inject.Inject
 import kotlin.test.assertFailsWith
 import android.util.Base64
+import com.example.geminispotifyapp.data.local.EncryptedPreferenceManager
 
 @RunWith(AndroidJUnit4::class)
 @HiltAndroidTest

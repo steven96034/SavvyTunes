@@ -1,6 +1,8 @@
 package com.example.geminispotifyapp
 
 import android.util.Log
+import com.example.geminispotifyapp.data.remote.interceptor.ApiError
+import com.example.geminispotifyapp.data.remote.interceptor.ErrorHandlingInterceptor
 import com.google.gson.Gson
 import io.mockk.*
 import okhttp3.*

@@ -1,5 +1,6 @@
 package com.example.geminispotifyapp.utils
 
+import com.example.geminispotifyapp.core.utils.safeLet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import kotlin.test.Test
