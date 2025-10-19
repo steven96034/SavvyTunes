@@ -1,5 +1,6 @@
 package com.example.geminispotifyapp.utils
 
+import com.example.geminispotifyapp.core.utils.StringSimilarityCalculator
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

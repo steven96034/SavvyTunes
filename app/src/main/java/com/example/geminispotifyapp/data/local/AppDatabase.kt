@@ -7,8 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.example.geminispotifyapp.EncryptedPreferenceManager
-import com.example.geminispotifyapp.auth.SpotifyTokenResponse
+import com.example.geminispotifyapp.data.remote.model.SpotifyTokenResponse
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map

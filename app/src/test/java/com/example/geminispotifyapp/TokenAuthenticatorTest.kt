@@ -1,5 +1,7 @@
 package com.example.geminispotifyapp
 
+import com.example.geminispotifyapp.data.remote.interceptor.TokenAuthenticator
+import com.example.geminispotifyapp.domain.repository.SpotifyRepository
 import io.mockk.*
 import okhttp3.Request
 import okhttp3.Response

@@ -1,9 +1,10 @@
 package com.example.geminispotifyapp.utils
 
 import android.util.Log
-import com.example.geminispotifyapp.ApiError
-import com.example.geminispotifyapp.SpotifyRepository
-import com.example.geminispotifyapp.features.UiEvent
+import com.example.geminispotifyapp.data.remote.interceptor.ApiError
+import com.example.geminispotifyapp.core.utils.GlobalErrorHandler
+import com.example.geminispotifyapp.domain.repository.SpotifyRepository
+import com.example.geminispotifyapp.core.utils.UiEvent
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every

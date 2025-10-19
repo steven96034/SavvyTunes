@@ -4,7 +4,7 @@
      <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <application
-        android:name=".di.MyApplication"
+        android:name=".MyApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -14,7 +14,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.GeminiSpotifyApp">
         <activity
-            android:name=".ui.MainActivity"
+            android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:enableOnBackInvokedCallback="true">
@@ -27,7 +27,7 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".auth.AuthCallbackActivity"
+        <activity android:name=".presentation.features.login.AuthCallbackActivity"
             android:launchMode="singleTop" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

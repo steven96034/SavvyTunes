@@ -1,5 +1,8 @@
 package com.example.geminispotifyapp
 
+import com.example.geminispotifyapp.data.remote.interceptor.TokenInterceptor
+import com.example.geminispotifyapp.data.repository.SpotifyRepositoryImpl
+import com.example.geminispotifyapp.domain.repository.SpotifyRepository
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
