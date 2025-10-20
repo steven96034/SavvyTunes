@@ -65,7 +65,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.geminispotifyapp.data.remote.interceptor.ApiError
 import com.example.geminispotifyapp.R
@@ -85,7 +84,7 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.DurationUnit
 
 @Composable
-fun RecentlyPlayedScreen(onHistoryClick: (UiPlayHistoryObject) -> Unit, viewModel: RecentlyPlayedViewModel = hiltViewModel()) {
+fun RecentlyPlayedScreen(onHistoryClick: (UiPlayHistoryObject) -> Unit, viewModel: RecentlyPlayedViewModel) {
     val uiState by viewModel.downLoadState.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val displayedRecentlyPlayed by viewModel.displayedRecentlyPlayed.collectAsState()

@@ -1,1096 +1,696 @@
 package com.example.geminispotifyapp.presentation.features.main.home
 
-import android.app.Activity
-import androidx.activity.OnBackPressedCallback
-import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
-import androidx.compose.animation.animateColorAsState
+import android.Manifest
+import android.content.Intent
+import android.location.Location
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.VerticalPager
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Album
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalFocusManager
-import com.example.geminispotifyapp.R
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.platform.LocalContext
+import androidx.palette.graphics.Palette
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberPermissionState
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.core.graphics.drawable.toBitmap
+import androidx.core.net.toUri
+import com.example.geminispotifyapp.data.remote.interceptor.ApiError
+import com.example.geminispotifyapp.core.utils.UiState
+import com.example.geminispotifyapp.data.remote.model.SpotifyTrack
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.geminispotifyapp.core.utils.UiState
-import com.example.geminispotifyapp.data.remote.model.SimplifiedTrack
-import com.example.geminispotifyapp.data.remote.model.SpotifyAlbum
-import com.example.geminispotifyapp.data.remote.model.SpotifyArtist
-import com.example.geminispotifyapp.data.remote.model.SpotifyTrack
-import com.example.geminispotifyapp.data.remote.model.TrackInformation
-import com.example.geminispotifyapp.presentation.features.main.userdatadetail.topartists.ArtistItem
-import com.example.geminispotifyapp.presentation.features.main.userdatadetail.toptracks.TrackItem
-import com.example.geminispotifyapp.presentation.ui.theme.SpotifyGreen
+import coil.size.Size
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.geminispotifyapp.R
+import com.example.geminispotifyapp.presentation.ui.theme.SpotifyGrey
 import com.example.geminispotifyapp.presentation.ui.theme.SpotifyWhite
-import kotlinx.coroutines.delay
+import com.google.accompanist.permissions.PermissionStatus
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.shouldShowRationale
 import kotlinx.coroutines.launch
+import java.text.DecimalFormat
+import kotlin.math.abs
 
+
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun HomeScreen(
-    onArtistClick: (SpotifyArtist) -> Unit, 
-    onTrackClick: (SpotifyTrack) -> Unit, 
-    viewModel: HomeViewModel = hiltViewModel()
-) { 
-    val similarUiState by viewModel.searchSimilarUiState.collectAsState()
-    val trackInput by viewModel.trackInput.collectAsState()
-    val artistInput by viewModel.artistInput.collectAsState()
-    val dataInput by viewModel.dataInput.collectAsState()
+    viewModel: HomeViewModel
+) {
+    val currentWeatherData by viewModel.currentWeatherData.collectAsStateWithLifecycle()
 
-    val suggestedUiState by viewModel.searchDataUiState.collectAsState()
-    val selectedSuggestedTrack by viewModel.selectedSuggestedTrack.collectAsState()
-    val hasSelectedTrackAndInputDoesNotChange by viewModel.hasSelectedTrackAndInputDoesNotChange.collectAsState()
-    val hasSelectedArtistAndInputDoesNotChange by viewModel.hasSelectedArtistAndInputDoesNotChange.collectAsState()
-    val hasSelectedDataAndInputDoesNotChange by viewModel.hasSelectedDataAndInputDoesNotChange.collectAsState()
-    val hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange by viewModel.hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange.collectAsState()
+    val location by viewModel.location.collectAsStateWithLifecycle()
+    val showGpsDialog by viewModel.showGpsDialog.collectAsStateWithLifecycle()
 
-    val searchByIdUiState by viewModel.searchByIdUiState.collectAsState()
-    val selectedAlbum by viewModel.selectedAlbum.collectAsState()
+    val uiState by viewModel.findWeatherMusicUiState.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
 
-    val searchButtonAnimationTrigger by viewModel.searchButtonAnimationTrigger.collectAsState()
+    // Handle the logic after returning from the settings page
+    val settingResultLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        viewModel.fetchLocation()
+    }
+    val locationPermissionState = rememberPermissionState(
+        Manifest.permission.ACCESS_COARSE_LOCATION
+    )
 
-
-    HomePage(
-        similarUiState,
-        suggestedUiState,
-        searchByIdUiState,
-        trackInput,
-        artistInput,
-        dataInput,
-        onArtistClick,
-        onTrackClick,
-        { newTrack ->
-            viewModel.onTrackInputChange(newTrack)
-            viewModel.searchTrack(newTrack, HomeViewModel.Type.TRACK, HomeViewModel.Type.TRACK) },
-        { newArtist ->
-            viewModel.onArtistInputChange(newArtist)
-            viewModel.searchTrack(newArtist, HomeViewModel.Type.ARTIST, HomeViewModel.Type.TRACK) }, //TODO: more search for artist
-        { newData ->
-            viewModel.onDataInputChange(newData)
-            viewModel.searchTrack(newData, HomeViewModel.Type.ALLMENTIONED, HomeViewModel.Type.ALLMENTIONED)},
-        selectedSuggestedTrack,
-        { track -> viewModel.onSelectedSuggestedTrackChange(track) },
-        hasSelectedTrackAndInputDoesNotChange,
-        { set -> viewModel.onHasSelectedTrackAndInputDoesNotChangeSet(set) },
-        hasSelectedArtistAndInputDoesNotChange,
-        { set -> viewModel.onHasSelectedArtistAndInputDoesNotChangeSet(set) },
-        hasSelectedDataAndInputDoesNotChange,
-        { set -> viewModel.onHasSelectedDataAndInputDoesNotChangeSet(set) },
-        hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange,
-        { newValue -> viewModel.setHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange(newValue) },
-        { track, artist -> viewModel.searchSimilarTracksAndArtists(track, artist) },
-        { artistId -> viewModel.getTopTracksOfArtist(artistId) },
-        selectedAlbum,
-        { album -> viewModel.onSetSelectedAlbum(album) },
-        { albumId -> viewModel.getAlbumTracks(albumId) },
-        { trackId -> viewModel.getTrackAndSelectedTrack(trackId) },
-        searchButtonAnimationTrigger,
-        { viewModel.setSearchButtonAnimationTriggerToInitial() },
-        { viewModel.checkIfFullyInput() }
+    HomeContent(
+        currentWeatherData = currentWeatherData,
+        uiState = uiState,
+        permissionStatus = locationPermissionState.status,
+        location = location,
+        showGpsDialog = showGpsDialog,
+        onFetchLocationClick = { viewModel.fetchLocation() },
+        onRequestPermissionClick = { locationPermissionState.launchPermissionRequest() },
+        onGpsDialogDismiss = { viewModel.onGpsDialogDismiss() },
+        onOpenLocationSettingsClick = {
+            viewModel.onGpsDialogDismiss()
+            val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+            settingResultLauncher.launch(intent)
+        },
+        getWeatherDisplayInfo = { wmoCode: Int, isDay: Boolean -> viewModel.weatherIconRepository.getWeatherDisplayInfo(wmoCode, isDay) },
+        onRetry = { viewModel.fetchLocation() },
+        onRefresh = { viewModel.refreshHome() },
+        isRefreshing = isRefreshing
     )
 }
 
+@OptIn(
+    ExperimentalPermissionsApi::class,
+    ExperimentalMaterial3Api::class,
+    ExperimentalFoundationApi::class
+)
 @Composable
-fun HomePage(
-    uiState: UiState<SpotifyDataList>,
-    suggestedUiState: UiState<SpotifyDataList>,
-    searchByIdUiState: UiState<SpotifyDataList>,
-    trackInput: String,
-    artistInput: String,
-    dataInput: String,
-    onArtistClick: (SpotifyArtist) -> Unit,
-    onTrackClick: (SpotifyTrack) -> Unit,
-    onTrackInputChange: (String) -> Unit,
-    onArtistInputChange: (String) -> Unit,
-    onDataInputChange: (String) -> Unit,
-    selectedSuggestedTrack: SpotifyTrack?,
-    onSelectedSuggestedTrackChange: (SpotifyTrack?) -> Unit,
-    hasSelectedTrackAndInputDoesNotChange: Boolean,
-    onHasSelectedTrackAndInputDoesNotChangeSet: (Boolean) -> Unit,
-    hasSelectedArtistAndInputDoesNotChange: Boolean,
-    onHasSelectedArtistAndInputDoesNotChangeSet: (Boolean) -> Unit,
-    hasSelectedDataAndInputDoesNotChange: Boolean,
-    onHasSelectedDataAndInputDoesNotChangeSet: (Boolean) -> Unit,
-    hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange: Boolean,
-    onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet: (Boolean) -> Unit,
-    searchSimilarTracksAndArtists: (String, String) -> Unit,
-    getTopTracksOfArtist: (String) -> Unit,
-    selectedAlbum: SpotifyAlbum?,
-    onSetSelectedAlbum: (SpotifyAlbum?) -> Unit,
-    getAlbumTracks: (String) -> Unit,
-    getTrackAndSelectedTrack: (String) -> Unit,
-    searchButtonAnimationTrigger: Int,
-    onAnimationComplete: () -> Unit,
-    checkIfFullyInput: () -> Boolean
+fun HomeContent(
+    currentWeatherData: CurrentWeatherDisplayData?,
+    uiState: UiState<TwoTracksList?>,
+    permissionStatus: PermissionStatus,
+    location: Location?,
+    showGpsDialog: Boolean,
+    onFetchLocationClick: () -> Unit,
+    onRequestPermissionClick: () -> Unit,
+    onGpsDialogDismiss: () -> Unit,
+    onOpenLocationSettingsClick: () -> Unit,
+    getWeatherDisplayInfo: (wmoCode: Int, isDay: Boolean) -> Pair<String?, String?>,
+    onRetry: () -> Unit,
+    onRefresh: () -> Unit,
+    isRefreshing: Boolean
 ) {
-    val scope = rememberCoroutineScope()
-    val focusManager = LocalFocusManager.current
-
-    HomeNavigation()
-
-    var isSearchButtonHighlighted by remember { mutableStateOf(false) }
-
-    LaunchedEffect(searchButtonAnimationTrigger) {
-        if (searchButtonAnimationTrigger > 0) {
-            isSearchButtonHighlighted = true
-            delay(1000L)
-            isSearchButtonHighlighted = false
-            onAnimationComplete()
-        }
+    if (showGpsDialog) {
+        AlertDialog(
+            onDismissRequest = onGpsDialogDismiss,
+            title = { Text("Location services disabled") },
+            text = { Text("To get your location, please turn on your device's location service.") },
+            confirmButton = {
+                TextButton(onClick = onOpenLocationSettingsClick) {
+                    Text("Go to Settings")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onGpsDialogDismiss) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
-    val animatedButtonBackgroundColor by animateColorAsState(
-        targetValue = if (isSearchButtonHighlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-        animationSpec = tween(durationMillis = 300),
-        label = "Button Background Color Animation"
-    )
-    val animatedButtonScale by animateFloatAsState(
-        targetValue = if (isSearchButtonHighlighted) 1.05f else 1.0f,
-        animationSpec = tween(durationMillis = 300),
-        label = "Button Scale Animation"
-    )
-    val animatedButtonTextColor by animateColorAsState(
-        targetValue = if (isSearchButtonHighlighted) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.surfaceVariant,
-        animationSpec = tween(durationMillis = 300),
-        label = "Button Text Color Animation"
-    )
-
-    val textStyleWithShadow = MaterialTheme.typography.headlineSmall.copy(
-        shadow = Shadow(
-            color = Color.LightGray.copy(alpha = 0.5f),
-            blurRadius = 20f
-        )
-    )
-    val textStyleWithShadowLabel = MaterialTheme.typography.labelLarge.copy(
-        shadow = Shadow(
-            color = Color.LightGray.copy(alpha = 0.5f),
-            blurRadius = 20f
-        )
-    )
-
-    LazyColumn(
-        verticalArrangement = Arrangement.Top,
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(6.dp, 0.dp, 6.dp, 12.dp),
-        contentPadding = PaddingValues(bottom = 80.dp) // For the bottom navigation bar
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
     ) {
-        item {
-            Image(
-                painterResource(R.drawable.full_logo_green_rgb),
-                contentDescription = "Spotify Logo"
-            )
-        }
-        item {
-            Spacer(modifier = Modifier.padding(4.dp))
-        }
-        item {
-            Text(
-                text = "This demo App takes usage of user data from Spotify,\n" +
-                        "there may be some places that haven't satisfied Spotify Design Guidelines or Spotify Developer Terms!",
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(4.dp)
-            )
-        }
-        item {
-            HorizontalDivider(modifier = Modifier.padding(8.dp))
-        }
-        item {
-            OutlinedTextField(
-                value = dataInput,
-                onValueChange = {
-                    onDataInputChange(it)
-                    onHasSelectedDataAndInputDoesNotChangeSet(false)
-                    onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(false)
-                },
-                trailingIcon = {
-                    if (dataInput.isNotEmpty()) {
-                        Icon(
-                            Icons.Filled.Clear,
-                            contentDescription = "Clear text",
-                            modifier = Modifier.clickable { onDataInputChange("") }
-                        )
-                    }
-                },
-                label = { Text("Input Any Name (of track, artist, or album)") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp)
-            )
-        }
-        item {
-            Row(
-                horizontalArrangement = Arrangement.SpaceAround,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = trackInput,
-                    onValueChange = {
-                        onTrackInputChange(it)
-                        onHasSelectedTrackAndInputDoesNotChangeSet(false)
-                        onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(false) // Use the new function
-                    },
-                    trailingIcon = {
-                        if (trackInput.isNotEmpty()) {
-                            Icon(
-                                Icons.Filled.Clear,
-                                contentDescription = "Clear text",
-                                modifier = Modifier.clickable { onTrackInputChange("") }
-                            )
-                        }
-                    },
-                    label = { Text("Track Name") },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 4.dp)
-                )
-
-                OutlinedTextField(
-                    value = artistInput,
-                    onValueChange = {
-                        onArtistInputChange(it)
-                        onHasSelectedArtistAndInputDoesNotChangeSet(false)
-                        onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(false) // Use the new function
-                    },
-                    trailingIcon = {
-                        if (artistInput.isNotEmpty()) {
-                            Icon(
-                                Icons.Filled.Clear,
-                                contentDescription = "Clear text",
-                                modifier = Modifier.clickable { onArtistInputChange("") }
-                            )
-                        }
-                    },
-                    label = { Text("Artist Name") },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 4.dp)
-                )
-            }
-        }
-        var suggestedData: SpotifyDataList?
-        var suggestedTracks: List<SpotifyTrack>? = null
-        var suggestedArtists: List<SpotifyArtist>? = null
-        var suggestedAlbums: List<SpotifyAlbum>? = null
-        if (suggestedUiState is UiState.Success) {
-            suggestedData = suggestedUiState.data
-            suggestedTracks = suggestedData.tracks
-            suggestedArtists = suggestedData.artists
-            suggestedAlbums = suggestedData.albums
-        }
-
-        var suggestedTrackById: List<TrackInformation>? = null
-        if (searchByIdUiState is UiState.Success) {
-            suggestedTrackById = searchByIdUiState.data.trackInformation
-        }
-        suggestedTracks?.let { tracks ->
-            if (((trackInput.isNotBlank() && !hasSelectedTrackAndInputDoesNotChange) ||
-                        (artistInput.isNotBlank() && !hasSelectedArtistAndInputDoesNotChange) ||
-                        (dataInput.isNotBlank() && !hasSelectedDataAndInputDoesNotChange))
-            ) {
-                if (dataInput.isNotBlank() && !hasSelectedDataAndInputDoesNotChange) {
+        when (uiState) {
+            UiState.Initial ->
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                ) {
                     item {
-                        Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "Track Suggestions",
-                                    style = textStyleWithShadow,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = SpotifyGreen
-                                )
-                                if (tracks.isEmpty()) {
-                                    Text(
-                                        text = "No suggested tracks found.",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontFamily = FontFamily.Monospace,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                        Text(text = "For Test:")
+                    }
+                    item {
+                        if (permissionStatus.isGranted) {
+                            Button(onClick = onFetchLocationClick) {
+                                Text("Get Location")
+                            }
+                            location?.let {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text("Latitude: ${it.latitude}")
+                                Text("Longitude: ${it.longitude}")
+                            }
+                        } else {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                val textToShow = if (permissionStatus.shouldShowRationale) {
+                                    "We need location permission to get your approximate location, please allow us access."
+                                } else {
+                                    "Location permission is required to continue"
+                                }
+                                Text(textToShow)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(onClick = onRequestPermissionClick) {
+                                    Text("Request Permission")
                                 }
                             }
                         }
                     }
                 }
-                items(
-                    items = tracks,
-                    key = { track -> track.id }
-                ) { track ->
-                    TrackSuggestionItem(
-                        track = track,
-                        onTrackSelected = { selectedTrack ->
-                            onTrackInputChange(selectedTrack.name)
-                            onSelectedSuggestedTrackChange(selectedTrack)
-                            onArtistInputChange(selectedTrack.artists.firstOrNull()?.name ?: "")
-                            onHasSelectedTrackAndInputDoesNotChangeSet(true)
-                            onHasSelectedArtistAndInputDoesNotChangeSet(true)
-                            onHasSelectedDataAndInputDoesNotChangeSet(true)
-                            focusManager.clearFocus()
-                        }
-                    )
-                }
-            }
-        }
-        suggestedArtists?.let { artists ->
-            if (dataInput.isNotBlank() && !hasSelectedDataAndInputDoesNotChange) {
-                item {
-                    Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Artist Suggestions",
-                                style = textStyleWithShadow,
-                                fontFamily = FontFamily.Monospace,
-                                color = SpotifyGreen
-                            )
-                            if (artists.isEmpty()) {
-                                Text(
-                                    text = "No suggested artists found.",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-                items(
-                    items = artists,
-                    key = { artist -> artist.id }
+
+            UiState.Loading -> {
+                Column (
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    ArtistSuggestionItem(
-                        artist = it,
-                        onArtistSelected = { selectedArtist ->
-                            onArtistInputChange(selectedArtist.name)
-                            onHasSelectedTrackAndInputDoesNotChangeSet(true)
-                            onHasSelectedArtistAndInputDoesNotChangeSet(true)
-                            onHasSelectedDataAndInputDoesNotChangeSet(true)
-                            onArtistInputChange(selectedArtist.name)
-                            getTopTracksOfArtist(selectedArtist.id)
-                            focusManager.clearFocus()
-                        }
-                    )
-                }
-            }
-        }
-        suggestedAlbums?.let { albums ->
-            if (dataInput.isNotBlank() && !hasSelectedDataAndInputDoesNotChange) {
-                item {
-                    Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Album Suggestions",
-                                style = textStyleWithShadow,
-                                fontFamily = FontFamily.Monospace,
-                                color = SpotifyGreen
-                            )
-                            if (albums.isEmpty()) {
-                                Text(
-                                    text = "No suggested albums found.",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                    currentWeatherData?.let { data ->
+                        val (weatherIconUrl, weatherDescription) = getWeatherDisplayInfo(data.weatherCode, data.isDay)
+                        val decimalFormat = DecimalFormat("#.0")
+                        Card {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(8.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(0.4f),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = data.time,
+                                        style = MaterialTheme.typography.labelMedium
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(1f),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Row {
+                                        if (weatherIconUrl != null) {
+                                            AsyncImage(
+                                                model = ImageRequest.Builder(LocalContext.current)
+                                                    .data(weatherIconUrl)
+                                                    .crossfade(true)
+                                                    .placeholder(R.drawable.weather_image_placeholder)
+                                                    .error(R.drawable.weather_image_placeholder)
+                                                    .build(),
+                                                contentDescription = weatherDescription ?: "Weather Icon",
+                                                modifier = Modifier.size(24.dp),
+                                                contentScale = ContentScale.Fit
+                                            )
+                                            Text(
+                                                text = " " + (weatherDescription ?: "Unknown Weather"),
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        } else {
+                                            Image(
+                                                painter = painterResource(id = R.drawable.weather_image_placeholder),
+                                                contentDescription = "Unknown Weather",
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                            Text(
+                                                text = " Unknown Weather",
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.Thermostat,
+                                            contentDescription = "Temperature",
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Text(
+                                            text = "${decimalFormat.format(data.temperature)}°C",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
-                }
-                items(
-                    items = albums,
-                    key = { album -> album.id }
-                ) {
-                    AlbumSuggestionItem(
-                        album = it,
-                        onAlbumSelected = { selectedAlbum ->
-                            onDataInputChange(selectedAlbum.name)
-                            onHasSelectedTrackAndInputDoesNotChangeSet(true)
-                            onHasSelectedArtistAndInputDoesNotChangeSet(true)
-                            onHasSelectedDataAndInputDoesNotChangeSet(true)
-                            onSetSelectedAlbum(selectedAlbum)
-                            getAlbumTracks(selectedAlbum.id)
-                            focusManager.clearFocus()
-                        }
-                    )
-                }
-            }
-        }
-
-        if (suggestedTrackById != null && !hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange &&
-            (hasSelectedTrackAndInputDoesNotChange && hasSelectedArtistAndInputDoesNotChange && hasSelectedDataAndInputDoesNotChange)) {
-            item {
-                Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ){
-                    Column (horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "Track Suggestions",
-                            style = textStyleWithShadow,
-                            fontFamily = FontFamily.Monospace,
-                            color = SpotifyGreen
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            if (suggestedTrackById!![0] is SpotifyTrack) {
-                                Text(
-                                    text = "Top Tracks of Artist",
-                                    style = textStyleWithShadowLabel,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = SpotifyWhite
-                                )
-                            }
-                            else if (suggestedTrackById!![0] is SimplifiedTrack) {
-                                Text(
-                                    text = "Tracks from Album",
-                                    style = textStyleWithShadowLabel,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = SpotifyWhite
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            items(
-                items = suggestedTrackById,
-                key = { trackInfo -> trackInfo.id }
-            ) { trackInfo ->
-                if (trackInfo is SpotifyTrack) { // Artist
-                    TrackSuggestionItem(
-                        track = trackInfo,
-                        onTrackSelected = { selectedTrack ->
-                            onTrackInputChange(selectedTrack.name)
-                            onSelectedSuggestedTrackChange(selectedTrack)
-                            onArtistInputChange(selectedTrack.artists.joinToString(", ") { it.name })
-                            onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(true)
-                            suggestedTrackById = null
-                            focusManager.clearFocus()
-                        }
-                    )
-                }
-                else if (trackInfo is SimplifiedTrack) { // Album
-                    SimplifiedTrackSuggestionItem(
-                        selectedAlbum = selectedAlbum,
-                        track = trackInfo,
-                        onTrackSelected = { selectedSimplifiedTrack ->
-                            onTrackInputChange(selectedSimplifiedTrack.name)
-                            getTrackAndSelectedTrack(selectedSimplifiedTrack.id)
-                            onArtistInputChange(selectedSimplifiedTrack.artists.joinToString(", ") { it.name })
-                            onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(true)
-                            suggestedTrackById = null
-                            focusManager.clearFocus()
-                        }
-                    )
-                }
-            }
-        }
-
-        item {
-            Button(
-                onClick = {
-                    suggestedData = null
-                    suggestedTracks = null
-                    suggestedArtists = null
-                    suggestedAlbums = null
-                    suggestedTrackById = null
-                    if (checkIfFullyInput()) {
-                        scope.launch {
-                            searchSimilarTracksAndArtists(
-                                trackInput,
-                                artistInput
-                            )
-                        }
-                    }
-                    focusManager.clearFocus()
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = animatedButtonBackgroundColor
-                ),
-                modifier = Modifier
-                    .padding(top = 16.dp, bottom = 8.dp)
-                    .fillMaxWidth()
-                    .scale(animatedButtonScale)
-                    .shadow(
-                        elevation = if (isSearchButtonHighlighted) 8.dp else 4.dp,
-                        shape = RoundedCornerShape(50)
-                    )
-            ) {
-                if (uiState != UiState.Loading) {
-                    Icon(
-                        Icons.Filled.Search,
-                        contentDescription = "Search Icon",
-                        modifier = Modifier.size(20.dp),
-                        tint = animatedButtonTextColor
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "Search similar tracks and artists!",
-                        color = animatedButtonTextColor,
-                        fontWeight = FontWeight.Bold
-                    )
-                } else {
-                    Text(
-                        "Loading... (Tap to Cancel)",
-                        color = animatedButtonTextColor,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-        item {
-            selectedSuggestedTrack?.let { track ->
-                Spacer(Modifier.padding(8.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ){
-                    Text(
-                        text = "Selected Track",
-                        style = textStyleWithShadow,
-                        fontFamily = FontFamily.Monospace,
-                        color = SpotifyGreen
-                    )
-                }
-                TrackItem(index = 0, track = track) { onTrackClick(it) }
-            }
-        }
-        when (uiState) {
-            is UiState.Loading -> {
-                item {
-                    LoadingContent()
-                }
-            }
-
-            is UiState.Success -> {
-                val artists = uiState.data.artists
-                val tracks = uiState.data.tracks
-                item {
-                    Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ){
-                        Text(
-                            text = "Similar Tracks",
-                            style = textStyleWithShadow,
-                            fontFamily = FontFamily.Monospace,
-                            color = SpotifyGreen
-                        )
-                    }
-                }
-                if (tracks != null) {
-                    item {
-                        Spacer(Modifier.padding(4.dp))
-                        Column {
-                            tracks.forEachIndexed { index, track ->
-                                TrackItem(index + 1, track) { onTrackClick(it) }
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                            }
-                        }
-                    }
-                } else {
-                    item { Text("No tracks found") }
-                }
-                item {
-                    Spacer(Modifier.padding(8.dp, 8.dp, 8.dp, 4.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ){
-                        Text(
-                            text = "Similar Artists",
-                            style = textStyleWithShadow,
-                            fontFamily = FontFamily.Monospace,
-                            color = SpotifyGreen
-                        )
-                    }
-                }
-                if (artists != null) {
-                    item {
-                        Spacer(Modifier.padding(4.dp))
-                        Column {
-                            artists.forEachIndexed { index, artist ->
-                                ArtistItem(index + 1, artist) { onArtistClick(it) }
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                            }
-                        }
-                    }
-                } else {
-                    item { Text("No artists found") }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    CircularProgressIndicator()
                 }
             }
 
             is UiState.Error -> {
-//                item {
-//                    Text(
-//                        "Error",
-//                        fontSize = MaterialTheme.typography.headlineMedium.fontSize,
-//                        textAlign = TextAlign.Center
-//                    )
-//                }
-            }
-
-            else -> {
-                //Text("Initial")
-            }
-        }
-    }
-}
-
-@Composable
-fun TrackSuggestionItem(
-    track: SpotifyTrack,
-    onTrackSelected: (SpotifyTrack) -> Unit
-) {
-    val thumbnailUrl =
-        if (track.album.images.size >= 2)
-            track.album.images[1].url
-        else
-            track.album.images.firstOrNull()?.url
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable {
-                onTrackSelected(track)
-            }
-    ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (thumbnailUrl != null) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(thumbnailUrl) // Use thumbnail if available, otherwise fallback to larger image
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "Album Image",
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(108.dp),
-                    contentScale = ContentScale.Crop
-                )
-            }
-            else {
                 Box(
                     modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(108.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant), // Placeholder background
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Filled.Album,
-                        contentDescription = "No album image available",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        if (uiState.throwable is ApiError.NetworkConnectionError)
+                            Text(text = "Network connection error.", textAlign = TextAlign.Center)
+                        else
+                            Text(text = "Error.", textAlign = TextAlign.Center)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = onRetry) {
+                            Text(text = "Retry")
+                        }
+                    }
                 }
             }
-            Column (
-                modifier = Modifier.padding(start = 4.dp)
-            ) {
-                Text(
-                    text = track.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = track.artists.joinToString(", ") { it.name },
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = track.album.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.Gray
-                )
+
+            is UiState.Success -> {
+                val pages = listOf("Weather", "Emotion")
+                val horizontalPagerState = rememberPagerState(pageCount = { pages.size })
+                val coroutineScope = rememberCoroutineScope()
+
+                Column(modifier = Modifier.padding(bottom = 80.dp)) {
+                    TabRow(selectedTabIndex = horizontalPagerState.currentPage) {
+                        pages.forEachIndexed { index, title ->
+                            Tab(
+                                selected = horizontalPagerState.currentPage == index,
+                                onClick = {
+                                    coroutineScope.launch {
+                                        horizontalPagerState.animateScrollToPage(index)
+                                    }
+                                },
+                                text = {
+                                    Column (
+                                        modifier = Modifier.fillMaxSize(),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Text(text = title)
+                                        Text(
+                                            text = "Recommendation",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }
+
+                    currentWeatherData?.let { data ->
+                        val (weatherIconUrl, weatherDescription) = getWeatherDisplayInfo(data.weatherCode, data.isDay)
+                        val decimalFormat = DecimalFormat("#.0")
+                        Card (modifier = Modifier.padding(4.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(0.4f),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = data.time,
+                                        style = MaterialTheme.typography.labelMedium
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(1f),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Row {
+                                        if (weatherIconUrl != null) {
+                                            AsyncImage(
+                                                model = ImageRequest.Builder(LocalContext.current)
+                                                    .data(weatherIconUrl)
+                                                    .crossfade(true)
+                                                    .placeholder(R.drawable.weather_image_placeholder)
+                                                    .error(R.drawable.weather_image_placeholder)
+                                                    .build(),
+                                                contentDescription = weatherDescription ?: "Weather Icon",
+                                                modifier = Modifier.size(24.dp),
+                                                contentScale = ContentScale.Fit
+                                            )
+                                            Text(
+                                                text = " " + (weatherDescription ?: "Unknown Weather"),
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        } else {
+                                            Image(
+                                                painter = painterResource(id = R.drawable.weather_image_placeholder),
+                                                contentDescription = "Unknown Weather",
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                            Text(
+                                                text = " Unknown Weather",
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.Thermostat,
+                                            contentDescription = "Temperature",
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Text(
+                                            text = "${decimalFormat.format(data.temperature)}°C",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalPager(state = horizontalPagerState) { pageIndex ->
+                        val currentTracks = when (pageIndex) {
+                            0 -> uiState.data!!.tracksA
+                            1 -> uiState.data!!.tracksB
+                            else -> emptyList() // Should not happen with 2 pages
+                        }
+
+                        if (currentTracks != null) {
+                            val verticalPagerState = rememberPagerState(pageCount = { currentTracks.size })
+
+                            ScrollHintVerticalPager(
+                                pagerState = verticalPagerState,
+                                modifier = Modifier.fillMaxSize(),
+                                enableFadingEdgeHint = true,
+                                enableChevronHint = true,
+                                enableVerticalPagerIndicator = true, //  Enable vertical pager indicator
+                                verticalPagerIndicatorActiveColor = MaterialTheme.colorScheme.primary, // Use theme primary color
+                                verticalPagerIndicatorInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), // Use theme secondary color, more transparent
+                                verticalPagerIndicatorSize = 10.dp, // Slightly larger dots
+                                verticalPagerIndicatorSpacing = 6.dp // More compact spacing
+                            ) { page ->
+                                TrackShowcase(track = currentTracks[page])
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun ArtistSuggestionItem(
-    artist: SpotifyArtist,
-    onArtistSelected: (SpotifyArtist) -> Unit
+fun TrackShowcase(
+    track: SpotifyTrack
 ) {
-    val thumbnailUrl =
-        artist.images?.size?.let {
-            if (it >= 2)
-                artist.images[1].url
-            else
-                artist.images.firstOrNull()?.url
+    var cardColor by remember { mutableStateOf(Color.Gray) }
+
+    val trackTextColor = remember(cardColor, MaterialTheme.colorScheme.onSurface) {
+        val onSurfaceLuminance = SpotifyWhite.luminance()
+        val cardLuminance = cardColor.luminance()
+        if (abs(onSurfaceLuminance - cardLuminance) < 0.2f) {
+            if (onSurfaceLuminance > 0.5f) Color.Black else Color.White
+        } else {
+            SpotifyWhite
         }
-    Card(
+    }
+
+    val artistTextColor = remember(cardColor, MaterialTheme.colorScheme.onSurfaceVariant) {
+        val onSurfaceVariantLuminance = SpotifyGrey.luminance()
+        val cardLuminance = cardColor.luminance()
+        // If the luminance difference is small, choose a contrasting color.
+        if (abs(onSurfaceVariantLuminance - cardLuminance) < 0.2f) {
+            if (cardLuminance > 0.5f) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.7f)
+        } else {
+            SpotifyGrey
+        }
+    }
+
+    Card (
+        colors = CardDefaults.cardColors(
+            containerColor = cardColor
+        ),
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable {
-                onArtistSelected(artist)
-            }
+            .padding(4.dp)
+            .fillMaxSize(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
     ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 8.dp, horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            if (thumbnailUrl != null) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(thumbnailUrl) // Use thumbnail if available, otherwise fallback to larger image
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "Album Image",
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(108.dp),
-                    contentScale = ContentScale.Crop
-                )
-            }
-            else {
-                Box(
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(108.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant), // Placeholder background
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Filled.Album,
-                        contentDescription = "No album image available",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(track.album.images.firstOrNull()?.url)
+                    .crossfade(true)
+                    .allowHardware(false) // Required for Palette
+                    .size(Size.ORIGINAL) // Load original size to get accurate colors
+                    .listener(onSuccess = { _, result ->
+                        Palette.from(result.drawable.toBitmap()).generate { palette ->
+                            val dominantColor = palette?.dominantSwatch?.rgb ?: return@generate
+                            cardColor = Color(dominantColor)
+                        }
+                    })
+                    .build(),
+                contentDescription = "Album cover for ${track.album.name}",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .padding(bottom = 16.dp)
+            )
+
+            Text(
+                text = track.name,
+                style = MaterialTheme.typography.titleLarge,
+                color = trackTextColor,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = track.artists.joinToString(", ") { it.name },
+                style = MaterialTheme.typography.bodyMedium,
+                color = artistTextColor,
+                textAlign = TextAlign.Center
+            )
+
+            val url = track.externalUrls["spotify"]
+            if (url != null) {
+                val context = LocalContext.current
+                Spacer(modifier = Modifier.height(4.dp))
+                Button(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        if (intent.resolveActivity(context.packageManager) != null) {
+                            context.startActivity(intent)
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = artistTextColor.copy(alpha = 0.3f), contentColor = trackTextColor),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 2.dp,
+                        pressedElevation = 0.dp
                     )
+                ) {
+                    Row {
+                        Text(text = "Open in Spotify")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Image(
+                            painter = painterResource(R.drawable.primary_logo_green_rgb),
+                            contentDescription = null,
+                            modifier = Modifier.height(20.dp)
+                        )
+                    }
                 }
-            }
-            Column (
-                modifier = Modifier.padding(start = 4.dp)
-            ) {
-                Text(
-                    text = artist.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Medium
-                )
-                val followers = artist.followers["total"]
-                val formattedFollowers = followers.toString().reversed().chunked(3).joinToString(",").reversed()
-                Text(
-                    text = "Followers: $formattedFollowers",
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = artist.genres.joinToString (", "),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.Gray
-                )
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun AlbumSuggestionItem(
-    album: SpotifyAlbum,
-    onAlbumSelected: (SpotifyAlbum) -> Unit
+fun ScrollHintVerticalPager(
+    pagerState: PagerState,
+    modifier: Modifier = Modifier,
+    enableFadingEdgeHint: Boolean = true,
+    enableChevronHint: Boolean = true,
+    enableVerticalPagerIndicator: Boolean = true,
+    verticalPagerIndicatorModifier: Modifier = Modifier,
+    verticalPagerIndicatorActiveColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+    verticalPagerIndicatorInactiveColor: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+    verticalPagerIndicatorSize: Dp = 8.dp,
+    verticalPagerIndicatorSpacing: Dp = 8.dp,
+    verticalPagerIndicatorShape: Shape = MaterialTheme.shapes.small,
+    content: @Composable (page: Int) -> Unit
 ) {
-    val thumbnailUrl =
-        if (album.images.size >= 2)
-            album.images[1].url
-        else
-            album.images.firstOrNull()?.url
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable {
-                onAlbumSelected(album)
-            }
-    ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (thumbnailUrl != null) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(thumbnailUrl) // Use thumbnail if available, otherwise fallback to larger image
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "Album Image",
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(108.dp),
-                    contentScale = ContentScale.Crop
-                )
-            }
-            else {
-                Box(
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(108.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant), // Placeholder background
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Filled.Album,
-                        contentDescription = "No album image available",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Column (
-                modifier = Modifier.padding(start = 4.dp)
-            ) {
-                Text(
-                    text = album.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = album.artists.joinToString(", ") { it.name },
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = album.releaseDate,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.Gray
-                )
-            }
-        }
-    }
-}
+    val backgroundColor = MaterialTheme.colorScheme.background
 
-@Composable
-fun SimplifiedTrackSuggestionItem(
-    selectedAlbum: SpotifyAlbum?,
-    track: SimplifiedTrack,
-    onTrackSelected: (SimplifiedTrack) -> Unit
-) {
-    val thumbnailUrl =
-        selectedAlbum?.images?.size?.let {
-            if (it >= 2)
-                selectedAlbum.images[1].url
-            else
-                selectedAlbum.images.firstOrNull()?.url
-        }
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable {
-                onTrackSelected(track)
-            }
-    ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (thumbnailUrl != null) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(thumbnailUrl) // Use thumbnail if available, otherwise fallback to larger image
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "Album Image",
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(108.dp),
-                    contentScale = ContentScale.Crop
-                )
-            }
-            else {
-                Box(
-                    modifier = Modifier
-                        .padding(end = 8.dp)
-                        .size(108.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant), // Placeholder background
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Filled.Album,
-                        contentDescription = "No album image available",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Column (
-                modifier = Modifier.padding(start = 4.dp)
-            ) {
-                Text(
-                    text = track.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = track.artists.joinToString(", ") { it.name },
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = selectedAlbum?.name ?: "",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.Gray
-                )
-            }
-        }
-    }
-}
-
-
-@Composable
-private fun HomeNavigation() {
-    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val activity = LocalContext.current as? Activity
-
-    val backCallback = remember {
-        object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                activity?.finish()
-            }
-        }
+    val hasMorePagesBelow by remember {
+        derivedStateOf { pagerState.currentPage < pagerState.pageCount - 1 }
     }
 
-    DisposableEffect (lifecycleOwner, backDispatcher) {
-        backDispatcher?.addCallback(lifecycleOwner, backCallback)
-        onDispose {
-            backCallback.remove()
-        }
-    }
-}
-
-@Composable
-fun LoadingContent() {
-    Box(Modifier
-        .fillMaxSize()
-        .padding(32.dp)
-    ) {
-        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-    }
-}
-
-@Preview
-@Composable
-fun HomePagePreview() {
-    val mockUiState = UiState.Success(SpotifyDataList(emptyList(), emptyList(), emptyList(), emptyList()))
-    val mockSuggestedUiState = UiState.Success(SpotifyDataList(emptyList(), emptyList(), emptyList(), emptyList()))
-    val mockSearchByIdUiState = UiState.Success(SpotifyDataList(emptyList(), emptyList(), emptyList(), emptyList()))
-
-    HomePage(
-        uiState = mockUiState,
-        suggestedUiState = mockSuggestedUiState,
-        searchByIdUiState = mockSearchByIdUiState,
-        trackInput = "Bohemian Rhapsody",
-        artistInput = "Queen",
-        dataInput = "",
-        onArtistClick = {},
-        onTrackClick = {},
-        onTrackInputChange = {},
-        onArtistInputChange = {},
-        onDataInputChange = {},
-        selectedSuggestedTrack = null,
-        onSelectedSuggestedTrackChange = {},
-        hasSelectedTrackAndInputDoesNotChange = false,
-        onHasSelectedTrackAndInputDoesNotChangeSet = {},
-        hasSelectedArtistAndInputDoesNotChange = false,
-        onHasSelectedArtistAndInputDoesNotChangeSet = {},
-        hasSelectedDataAndInputDoesNotChange = false,
-        onHasSelectedDataAndInputDoesNotChangeSet = {},
-        hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange = false,
-        onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet = {},
-        searchSimilarTracksAndArtists = { _, _ -> },
-        getTopTracksOfArtist = {},
-        selectedAlbum = null,
-        onSetSelectedAlbum = {},
-        getAlbumTracks = {},
-        getTrackAndSelectedTrack = {},
-        searchButtonAnimationTrigger = 0,
-        onAnimationComplete = {},
-        checkIfFullyInput = { true },
+    val animatedChevronAlpha by animateFloatAsState(
+        targetValue = if (hasMorePagesBelow) 1f else 0f,
+        animationSpec = tween(durationMillis = 300),
+        label = "chevronAlpha"
     )
+
+    val infiniteTransition = rememberInfiniteTransition(label = "bouncingChevron")
+    val animatedBouncyOffsetY by infiniteTransition.animateFloat(
+        initialValue = -4f,
+        targetValue = 4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800, delayMillis = 200),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bouncyOffsetYAnimation"
+    )
+    val currentOffsetY = if (hasMorePagesBelow) animatedBouncyOffsetY else 0f
+    val chevronOffsetY = currentOffsetY.dp
+
+    Box(modifier = modifier) {
+        VerticalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+            content(page)
+        }
+
+        // Vertical Pager Indicator
+        if (enableVerticalPagerIndicator && pagerState.pageCount > 1) {
+            VerticalPagerIndicator(
+                pagerState = pagerState,
+                modifier = verticalPagerIndicatorModifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 16.dp),
+                activeColor = verticalPagerIndicatorActiveColor,
+                inactiveColor = verticalPagerIndicatorInactiveColor,
+                indicatorSize = verticalPagerIndicatorSize,
+                spacing = verticalPagerIndicatorSpacing,
+                indicatorShape = verticalPagerIndicatorShape
+            )
+        }
+
+        // Fading Edge Hint
+        if (enableFadingEdgeHint && hasMorePagesBelow) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(96.dp)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(backgroundColor.copy(alpha = 0f), backgroundColor),
+                            startY = 0f,
+                            endY = Float.POSITIVE_INFINITY
+                        )
+                    )
+            )
+        }
+
+        // Subtle Chevron Hint
+        if (enableChevronHint) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = "Swipe down to see more",
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = animatedChevronAlpha),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .offset(y = chevronOffsetY)
+                    .padding(bottom = 16.dp)
+                    .size(32.dp)
+                    .alpha(animatedChevronAlpha)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun VerticalPagerIndicator(
+    pagerState: PagerState,
+    modifier: Modifier = Modifier,
+    activeColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f), // Color of the active dot, semi-transparent
+    inactiveColor: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f), // Color of inactive dots, more transparent
+    indicatorSize: Dp = 8.dp, // Size of the dots
+    spacing: Dp = 8.dp, // Spacing between dots
+    indicatorShape: Shape = MaterialTheme.shapes.small // Shape of the dots, can be a circle or other shapes
+) {
+    val scope = rememberCoroutineScope() // For handling scrolling after a click
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(spacing), // Use spacing between dots
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        repeat(pagerState.pageCount) { index ->
+            val color = if (pagerState.currentPage == index) activeColor else inactiveColor
+            Box(
+                modifier = Modifier
+                    .size(indicatorSize)
+                    .clip(indicatorShape)
+                    .background(color)
+                    .clickable {
+                        scope.launch {
+                            pagerState.animateScrollToPage(index) // Scroll to the corresponding page on click
+                        }
+                    }
+            )
+        }
+    }
 }

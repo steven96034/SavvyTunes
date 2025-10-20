@@ -6,7 +6,8 @@ import com.example.geminispotifyapp.core.utils.UiEvent
 import com.example.geminispotifyapp.core.utils.UiEventManager
 import com.example.geminispotifyapp.domain.repository.SpotifyRepository
 import com.example.geminispotifyapp.data.remote.model.SpotifyTrack
-import com.example.geminispotifyapp.presentation.features.main.home.HomeViewModel
+import com.example.geminispotifyapp.presentation.MAIN_APP_ROUTE
+import com.example.geminispotifyapp.presentation.features.main.findmusic.FindMusicViewModel
 import com.example.geminispotifyapp.presentation.features.main.userdatadetail.recentlyplayed.UiPlayHistoryObject
 import com.example.geminispotifyapp.presentation.MainScreen
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -41,7 +42,7 @@ class MainScreenWithPagerViewModel @Inject constructor(
         _selectedItemForDetail.value = null
     }
 
-    fun navigateToHomeWithTrackAndArtist(item: Any, homeViewModel: HomeViewModel) {
+    fun navigateToFindMusicWithTrackAndArtist(item: Any, findMusicViewModel: FindMusicViewModel) {
         viewModelScope.launch {
             val track = when (item) {
                 is SpotifyTrack -> item
@@ -57,20 +58,21 @@ class MainScreenWithPagerViewModel @Inject constructor(
             val albumName = track.album.name
 
             // Update the input fields of HomeViewModel
-            homeViewModel.onTrackInputChange(trackName)
-            homeViewModel.onArtistInputChange(artistName)
-            homeViewModel.onDataInputChange(albumName) // actually not used
+            findMusicViewModel.onTrackInputChange(trackName)
+            findMusicViewModel.onArtistInputChange(artistName)
+            findMusicViewModel.onDataInputChange(albumName) // actually not used
 
             // Set the selected track and reset similar search state, also triggering the animation of the search button
-            homeViewModel.onSelectedSuggestedTrackChange(track)
+            findMusicViewModel.onSelectedSuggestedTrackChange(track)
 
             // Set these flags explicitly to prevent triggering auto-suggestion immediately after setting input
-            homeViewModel.onHasSelectedTrackAndInputDoesNotChangeSet(true)
-            homeViewModel.onHasSelectedArtistAndInputDoesNotChangeSet(true)
-            homeViewModel.onHasSelectedDataAndInputDoesNotChangeSet(true)
-            homeViewModel.setHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange(true)
-
-            uiEventManager.sendEvent(UiEvent.Navigate(MainScreen.Home.route))
+            findMusicViewModel.onHasSelectedTrackAndInputDoesNotChangeSet(true)
+            findMusicViewModel.onHasSelectedArtistAndInputDoesNotChangeSet(true)
+            findMusicViewModel.onHasSelectedDataAndInputDoesNotChangeSet(true)
+            findMusicViewModel.setHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange(true)
+            val targetRoute = MainScreen.FindMusic.route
+            val routeWithParam = "$MAIN_APP_ROUTE/$targetRoute"
+            uiEventManager.sendEvent(UiEvent.Navigate(routeWithParam))
         }
     }
 }

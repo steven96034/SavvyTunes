@@ -61,7 +61,6 @@ import coil.compose.AsyncImage
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.remote.model.SpotifyArtist
 import androidx.core.net.toUri
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.geminispotifyapp.data.remote.interceptor.ApiError
 import com.example.geminispotifyapp.presentation.features.main.userdatadetail.DropDownMenuTemplate
 import com.example.geminispotifyapp.presentation.features.main.userdatadetail.Period
@@ -71,7 +70,7 @@ import com.example.geminispotifyapp.presentation.ui.theme.GeminiSpotifyAppTheme
 
 
 @Composable
-fun TopArtistsScreen(onArtistClick: (SpotifyArtist) -> Unit, viewModel: TopArtistsViewModel = hiltViewModel()) {
+fun TopArtistsScreen(onArtistClick: (SpotifyArtist) -> Unit, viewModel: TopArtistsViewModel) {
     val uiState by viewModel.downLoadState.collectAsState()
     val refreshing by viewModel.isRefreshing.collectAsState()
     val artistPeriodSelection by viewModel.artistPeriodSelection.collectAsState()
@@ -206,13 +205,6 @@ fun TopArtistContent(uiState: FetchResult<TopArtistsData>, onArtistClick: (Spoti
             }
         }
     }
-
-//    DetailBox(selectedValue = onArtistSelected, onDismiss = { onArtistSelected = null }) { artist, onDetailDismiss ->
-//        ArtistDetail(
-//            artist = artist,
-//            onDismiss = onDetailDismiss,
-//        )
-//    }
 }
 
 @Composable

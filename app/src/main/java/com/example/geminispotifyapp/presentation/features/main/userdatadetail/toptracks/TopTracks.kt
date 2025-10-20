@@ -64,7 +64,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.net.toUri
-import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.geminispotifyapp.data.remote.interceptor.ApiError
@@ -86,7 +85,7 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.DurationUnit
 
 @Composable
-fun TopTracksScreen(onTrackClick: (SpotifyTrack) -> Unit, viewModel: TopTracksViewModel = hiltViewModel()) {
+fun TopTracksScreen(onTrackClick: (SpotifyTrack) -> Unit, viewModel: TopTracksViewModel) {
     val uiState by viewModel.downLoadState.collectAsState()
     val refreshing by viewModel.isRefreshing.collectAsState()
     val trackPeriodSelection by viewModel.trackPeriodSelection.collectAsState()

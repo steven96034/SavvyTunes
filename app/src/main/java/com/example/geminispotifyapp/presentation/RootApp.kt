@@ -58,12 +58,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.geminispotifyapp.presentation.features.main.MainScreenWithPager
 import com.example.geminispotifyapp.core.utils.UiEvent
 import com.example.geminispotifyapp.presentation.features.login.LoginPage
@@ -76,7 +79,13 @@ import com.example.geminispotifyapp.presentation.features.settings.usersettings.
 
 const val SPLASH_ROUTE = "splash_route"
 const val LOGIN_ROUTE = "login_route"
+// For the main navigation graph (Pager and Settings)
+const val MAIN_GRAPH_ROUTE = "main_graph"
+// For only Pager layouts
 const val MAIN_APP_ROUTE = "main_app_route"
+const val START_PAGE_KEY_OF_MAIN_APP = "startPage"
+const val MAIN_APP_ROUTE_WITH_PARAM = "$MAIN_APP_ROUTE/{$START_PAGE_KEY_OF_MAIN_APP}"
+
 
 interface Screen {
     val route: String
@@ -99,11 +108,11 @@ sealed class SettingsScreen(override val route: String, override val icon: Image
 }
 
 var bottomNavItems = listOf(
-    MainScreen.FindMusic,
+    MainScreen.Home,
     MainScreen.TopArtists,
     MainScreen.TopTracks,
     MainScreen.RecentlyPlayed,
-    MainScreen.Home
+    MainScreen.FindMusic
 )
 
 val settingsItems = listOf(
@@ -121,7 +130,7 @@ fun RootApp() {
 
     LaunchedEffect(isAuthenticated, initialAuthCheckCompleted) {
         if (initialAuthCheckCompleted) {
-            val targetRoute = if (isAuthenticated) MAIN_APP_ROUTE else LOGIN_ROUTE
+            val targetRoute = if (isAuthenticated) MAIN_APP_ROUTE_WITH_PARAM else LOGIN_ROUTE
             navController.navigate(targetRoute) {
                 popUpTo(SPLASH_ROUTE) { inclusive = true }
             }
@@ -136,7 +145,7 @@ fun RootApp() {
         }
     }
     // AppContainer wraps up whole NavHost to ensure all the displayed screens have their features
-    AppContainer(rootNavController = navController) { rootPaddingValues -> // rootPaddingValues 來自 AppContainer 的 Scaffold
+    AppContainer(rootNavController = navController) { rootPaddingValues ->
         NavHost(
             navController = navController,
             startDestination = SPLASH_ROUTE,
@@ -146,37 +155,42 @@ fun RootApp() {
                 SplashScreen()
             }
 
-            composable(LOGIN_ROUTE) { backStackEntry ->
+            composable(LOGIN_ROUTE) {
                 LoginPage(
                     viewModel = loginViewModel,
                 )
             }
-
-            // Nested navigation graph for the main app content
+            // Key modification: Wrap all main pages in a navigation block with a route
             navigation(
-                startDestination = MainScreen.FindMusic.route,
-                route = MAIN_APP_ROUTE
+                startDestination = MAIN_APP_ROUTE, // The start page of this graph is MainScreen
+                route = MAIN_GRAPH_ROUTE // Name the entire graph
             ) {
-                // The composables in the navigation graph are not displayed directly by the NavHost but by the MainScreenWithPager.
-                // When route is in bottomNavItems, show MainScreenWithPager.
-                bottomNavItems.forEach { screen ->
-                    composable(screen.route) { backStackEntry ->
-                        MainScreenWithPager(
-                            backStackEntry = backStackEntry,
-                            navController = navController
-                        )
-                    }
+                // MainScreen registration remains unchanged
+                composable(
+                    route = MAIN_APP_ROUTE_WITH_PARAM,
+                    arguments = listOf(
+                        navArgument(START_PAGE_KEY_OF_MAIN_APP) {
+                            type = NavType.StringType // Parameter type
+                            nullable = true // Set as optional, so navigating directly to MAIN_APP_ROUTE won't cause an error
+                        }
+                    )
+                ) { backStackEntry ->
+                    // We need navController to find the graph's backStackEntry
+                    val startPage = backStackEntry.arguments?.getString(START_PAGE_KEY_OF_MAIN_APP)
+                    MainScreenWithPager(
+                        navController = navController, // Pass in the navController
+                        startPage = startPage
+                    )
                 }
-            }
-
-            composable(SettingsScreen.Settings.route) {
-                UserSettingsScreen()
-            }
-            composable(SettingsScreen.Profile.route) {
-                ProfileScreen(rootPaddingValues)
-            }
-            composable(SettingsScreen.AboutThisApp.route) {
-                AboutThisAppScreen()
+                composable(SettingsScreen.Settings.route) {
+                    UserSettingsScreen()
+                }
+                composable(SettingsScreen.Profile.route) {
+                    ProfileScreen(rootPaddingValues)
+                }
+                composable(SettingsScreen.AboutThisApp.route) {
+                    AboutThisAppScreen()
+                }
             }
         }
     }
@@ -214,7 +228,14 @@ fun AppContainer(
                     Log.d(tag, "AppContainer_Collector: ${event.message}")
                 }
                 is UiEvent.Navigate -> {
-                    rootNavController.navigate(event.route)
+                    rootNavController.navigate(event.route){
+                        Log.d("AppContainer_Collector", "Start destination: ${rootNavController.graph.findStartDestination().route}")
+                        popUpTo(rootNavController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                     Log.d(tag, "AppContainer_Collector: ${event.route}")
                 }
                 is UiEvent.ShowSnackbarDetail -> {
@@ -240,11 +261,16 @@ fun AppContainer(
                             SnackbarDuration.Long
                         )
                         if (snackbarActionResult == SnackbarResult.ActionPerformed) {
-                            rootNavController.navigate(MainScreen.Home.route) {
-                                popUpTo(MAIN_APP_ROUTE) {
-                                    inclusive = false
+                            val targetRoute = MainScreen.Home.route
+                            val routeWithParam = "$MAIN_APP_ROUTE/$targetRoute"
+
+                            rootNavController.navigate(routeWithParam) {
+                                Log.d("AppContainer_Collector", "Start destination: ${rootNavController.graph.findStartDestination().route}")
+                                popUpTo(rootNavController.graph.findStartDestination().id) {
+                                    saveState = true
                                 }
                                 launchSingleTop = true
+                                restoreState = true
                             }
                             Log.d(
                                 tag,
@@ -260,22 +286,27 @@ fun AppContainer(
                             SnackbarDuration.Long
                         )
                         if (snackbarActionResult == SnackbarResult.ActionPerformed) {
-                            rootNavController.navigate(MainScreen.FindMusic.route) {
-                                popUpTo(MAIN_APP_ROUTE) {
-                                    inclusive = false
+                            val targetRoute = MainScreen.FindMusic.route
+                            val routeWithParam = "$MAIN_APP_ROUTE/$targetRoute"
+
+                            rootNavController.navigate(routeWithParam) {
+                                Log.d("AppContainer_Collector", "Start destination: ${rootNavController.graph.findStartDestination().route}")
+                                popUpTo(rootNavController.graph.findStartDestination().id) {
+                                    saveState = true
                                 }
                                 launchSingleTop = true
+                                restoreState = true
                             }
                             Log.d(
                                 tag,
-                                "AppContainer_Collector: Navigating to Home triggered by Snackbar action."
+                                "AppContainer_Collector: Navigating to FindMusic triggered by Snackbar action."
                             )
                         }
                     }
                 }
                 is UiEvent.Unauthorized -> {
                     rootNavController.navigate(LOGIN_ROUTE) {
-                        popUpTo(MAIN_APP_ROUTE) { inclusive = true }
+                        popUpTo(rootNavController.graph.findStartDestination().id) { inclusive = true }
                     }
                     snackbarHostState.showSnackbar(event.message)
                     Log.d(tag, "AppContainer_Collector: ${event.message}")
@@ -318,7 +349,7 @@ fun AppContainer(
                 .windowInsetsPadding(WindowInsets.navigationBars),
             containerColor = Color.Transparent,
             topBar = {
-                if (dynamicAppBarTitle != MainScreen.FindMusic.label) {
+                if (dynamicAppBarTitle != MainScreen.Home.label) {
                     TopAppBar(
                         title = {
                             val allScreens = bottomNavItems + settingsItems
@@ -377,12 +408,15 @@ fun AppContainer(
                                             },
                                             onClick = {
                                                 if (!isCurrentDestination) {
-                                                    rootNavController.navigate(screen.route) {
-                                                        if (currentDestinationRoute in settingsItems.map { it.route })
-                                                            popUpTo(
-                                                                currentDestinationRoute ?: ""
-                                                            ) { inclusive = true }
+                                                    rootNavController.navigate(screen.route){
+                                                        launchSingleTop = true
                                                     }
+//                                                    {
+//                                                        if (currentDestinationRoute in settingsItems.map { it.route })
+//                                                            popUpTo(
+//                                                                currentDestinationRoute ?: ""
+//                                                            ) { inclusive = true }
+//                                                    }
                                                 }
                                                 dynamicAppBarTitle = null
                                                 showMenu = false
