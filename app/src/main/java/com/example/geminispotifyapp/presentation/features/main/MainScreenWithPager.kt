@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -40,6 +41,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.geminispotifyapp.core.utils.UiEvent
 import com.example.geminispotifyapp.data.remote.model.SpotifyArtist
 import com.example.geminispotifyapp.data.remote.model.SpotifyTrack
 import com.example.geminispotifyapp.presentation.features.main.home.HomeScreen
@@ -60,7 +62,9 @@ import com.example.geminispotifyapp.presentation.MAIN_GRAPH_ROUTE
 import com.example.geminispotifyapp.presentation.MainScreen
 import com.example.geminispotifyapp.presentation.bottomNavItems
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.system.exitProcess
 
 @Composable
 fun MainScreenWithPager(
@@ -71,7 +75,7 @@ fun MainScreenWithPager(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val scope = rememberCoroutineScope()
 
-    // Key modification: Calculate the initial page based on the passed parameter
+    // Calculate the initial page based on the passed in parameter
     val initialPageIndex = remember(startPage) {
         if (startPage != null) {
             // Find the index of the route corresponding to the parameter in bottomNavItems
@@ -84,18 +88,25 @@ fun MainScreenWithPager(
     // To fulfill the circle sliding, we set the total pages to Int.MAX_VALUE
     // From a big number in the middle, then user can slide left or right for a long time
     val startPage = Int.MAX_VALUE / 2
-    val initialPage = startPage - (startPage % bottomNavItems.size)  + initialPageIndex
+    val initialPage = startPage - (startPage % bottomNavItems.size) + initialPageIndex
     val pagerState = rememberPagerState(
         initialPage = initialPage,
         pageCount = { Int.MAX_VALUE }
     )
     val selectedScreenIndex = pagerState.currentPage % bottomNavItems.size
 
+    // Update the pager state when the selected tab (initialPage) changes by navigate by UiEvent.Navigate/UiEvent.ShowSnackbarWithAction
     LaunchedEffect(initialPage) {
         if (selectedScreenIndex != initialPage) {
             pagerState.animateScrollToPage(initialPage)
         }
     }
+
+    // Update the app bar title(dynamicAppBarTitle) when the selected tab changes
+    LaunchedEffect(pagerState.currentPage) {
+        viewModel.uiEventManager.sendEvent(UiEvent.UpdateAppBarTitle(bottomNavItems[selectedScreenIndex].label))
+    }
+
 
     // --- ViewModel Scope Setting ---
     val mainGraphBackStackEntry = remember(navBackStackEntry) {
@@ -127,6 +138,7 @@ fun MainScreenWithPager(
                         icon = { Icon(screen.icon, contentDescription = screen.label) },
                         selected = selected,
                         onClick = {
+                                // Directly handle navigation to the corresponding page by clicking icon here
                                 scope.launch {
                                     val currentPosition = pagerState.currentPage
                                     val currentOffset = currentPosition % bottomNavItems.size
@@ -169,8 +181,6 @@ fun MainContentWithPager(
     val checkMarketIfPlayable by viewModel.checkMarketIfPlayable.collectAsStateWithLifecycle()
 
 
-
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -184,12 +194,34 @@ fun MainContentWithPager(
             val screenIndex = page % bottomNavItems.size // Calculate the actual index
             val screen = bottomNavItems[screenIndex]
 
-            when (screen) {
+            val isCurrentPage = (pagerState.currentPage % bottomNavItems.size) == screenIndex
 
-                is MainScreen.Home -> HomeScreen(homeViewModel)
+            when (screen) {
+                is MainScreen.Home -> {
+                    HomeScreen(homeViewModel)
+
+                    // Press back button twice to exit the app (when logged-in)
+                    val backPressedOnce = remember { mutableStateOf(false) }
+                    BackHandler(enabled = isCurrentPage) {
+                        if (backPressedOnce.value) {
+                            // Exit the app
+                            exitProcess(0)
+                        } else {
+                            backPressedOnce.value = true
+                            scope.launch {
+                                viewModel.uiEventManager.sendEvent(UiEvent.ShowSnackbar(
+                                    message = "Press again to exit"
+                                ))
+                                // Reset after a delay
+                                delay(2000)
+                                backPressedOnce.value = false
+                            }
+                        }
+                    }
+                }
 
                 else -> {
-                    BackHandler(enabled = true) {
+                    BackHandler(enabled = isCurrentPage) {
                         scope.launch {
                             // Scroll back to Home page (index 0) when on other pages
                             val currentScreenIndex = pagerState.currentPage % bottomNavItems.size
@@ -218,7 +250,7 @@ fun MainContentWithPager(
                             viewModel = findMusicViewModel
                         )
 
-                        else -> { /* Has handled above*/ }
+                        else -> null
                     }
                 }
             }

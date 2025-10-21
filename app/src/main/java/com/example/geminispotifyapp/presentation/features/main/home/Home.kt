@@ -2,12 +2,13 @@ package com.example.geminispotifyapp.presentation.features.main.home
 
 import android.Manifest
 import android.content.Intent
-import android.location.Location
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -28,7 +29,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
@@ -72,10 +72,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberPermissionState
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import com.example.geminispotifyapp.data.remote.interceptor.ApiError
@@ -91,6 +93,7 @@ import com.example.geminispotifyapp.presentation.ui.theme.SpotifyWhite
 import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.shouldShowRationale
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.DecimalFormat
 import kotlin.math.abs
@@ -103,7 +106,6 @@ fun HomeScreen(
 ) {
     val currentWeatherData by viewModel.currentWeatherData.collectAsStateWithLifecycle()
 
-    val location by viewModel.location.collectAsStateWithLifecycle()
     val showGpsDialog by viewModel.showGpsDialog.collectAsStateWithLifecycle()
 
     val uiState by viewModel.findWeatherMusicUiState.collectAsStateWithLifecycle()
@@ -119,11 +121,16 @@ fun HomeScreen(
         Manifest.permission.ACCESS_COARSE_LOCATION
     )
 
+    LaunchedEffect(locationPermissionState.status.isGranted) {
+        if (locationPermissionState.status.isGranted) {
+            viewModel.fetchLocation()
+        }
+    }
+
     HomeContent(
         currentWeatherData = currentWeatherData,
         uiState = uiState,
         permissionStatus = locationPermissionState.status,
-        location = location,
         showGpsDialog = showGpsDialog,
         onFetchLocationClick = { viewModel.fetchLocation() },
         onRequestPermissionClick = { locationPermissionState.launchPermissionRequest() },
@@ -150,9 +157,7 @@ fun HomeContent(
     currentWeatherData: CurrentWeatherDisplayData?,
     uiState: UiState<TwoTracksList?>,
     permissionStatus: PermissionStatus,
-    location: Location?,
     showGpsDialog: Boolean,
-    onFetchLocationClick: () -> Unit,
     onRequestPermissionClick: () -> Unit,
     onGpsDialogDismiss: () -> Unit,
     onOpenLocationSettingsClick: () -> Unit,
@@ -186,34 +191,23 @@ fun HomeContent(
     ) {
         when (uiState) {
             UiState.Initial ->
-                LazyColumn(
+                Box(
                     modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    item {
-                        Text(text = "For Test:")
-                    }
-                    item {
-                        if (permissionStatus.isGranted) {
-                            Button(onClick = onFetchLocationClick) {
-                                Text("Get Location")
+                    if (permissionStatus.isGranted) {
+                        CircularProgressIndicator()
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            val textToShow = if (permissionStatus.shouldShowRationale) {
+                                "We need location permission to get your approximate location, please allow us access."
+                            } else {
+                                "Location permission is required to continue."
                             }
-                            location?.let {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text("Latitude: ${it.latitude}")
-                                Text("Longitude: ${it.longitude}")
-                            }
-                        } else {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                val textToShow = if (permissionStatus.shouldShowRationale) {
-                                    "We need location permission to get your approximate location, please allow us access."
-                                } else {
-                                    "Location permission is required to continue"
-                                }
-                                Text(textToShow)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Button(onClick = onRequestPermissionClick) {
-                                    Text("Request Permission")
-                                }
+                            Text(textToShow)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = onRequestPermissionClick) {
+                                Text("Request Permission")
                             }
                         }
                     }
@@ -225,75 +219,127 @@ fun HomeContent(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    val infiniteTransition = rememberInfiniteTransition(label = "loading_color_transition")
+                    val animatedColor by infiniteTransition.animateColor(
+                        initialValue = Color(0xFF00796B), // Teal
+                        targetValue = Color(0xFF7B1FA2), // Purple
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(2000),
+                            repeatMode = RepeatMode.Reverse
+                        ), label = "loading_color_animation"
+                    )
+
                     currentWeatherData?.let { data ->
                         val (weatherIconUrl, weatherDescription) = getWeatherDisplayInfo(data.weatherCode, data.isDay)
                         val decimalFormat = DecimalFormat("#.0")
-                        Card {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(8.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
+                        Card (
+                            colors = CardDefaults.cardColors(
+                                containerColor = animatedColor
+                            ),
+                            modifier = Modifier
+                                .padding(4.dp)
+                                .fillMaxSize()
+                                .align(Alignment.CenterHorizontally),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Column(
-                                    modifier = Modifier.fillMaxWidth(0.4f),
-                                    horizontalAlignment = Alignment.CenterHorizontally
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(8.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
                                         text = data.time,
-                                        style = MaterialTheme.typography.labelMedium
+                                        style = MaterialTheme.typography.bodyLarge
                                     )
                                 }
-                                Column(
-                                    modifier = Modifier.fillMaxWidth(1f),
-                                    horizontalAlignment = Alignment.CenterHorizontally
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(8.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row {
-                                        if (weatherIconUrl != null) {
-                                            AsyncImage(
-                                                model = ImageRequest.Builder(LocalContext.current)
-                                                    .data(weatherIconUrl)
-                                                    .crossfade(true)
-                                                    .placeholder(R.drawable.weather_image_placeholder)
-                                                    .error(R.drawable.weather_image_placeholder)
-                                                    .build(),
-                                                contentDescription = weatherDescription ?: "Weather Icon",
-                                                modifier = Modifier.size(24.dp),
-                                                contentScale = ContentScale.Fit
-                                            )
-                                            Text(
-                                                text = " " + (weatherDescription ?: "Unknown Weather"),
-                                                style = MaterialTheme.typography.bodyMedium
-                                            )
-                                        } else {
-                                            Image(
-                                                painter = painterResource(id = R.drawable.weather_image_placeholder),
-                                                contentDescription = "Unknown Weather",
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                            Text(
-                                                text = " Unknown Weather",
-                                                style = MaterialTheme.typography.bodyMedium
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Icon(
-                                            imageVector = Icons.Default.Thermostat,
-                                            contentDescription = "Temperature",
-                                            modifier = Modifier.size(24.dp)
+                                    if (weatherIconUrl != null) {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(LocalContext.current)
+                                                .data(weatherIconUrl)
+                                                .crossfade(true)
+                                                .placeholder(R.drawable.weather_image_placeholder)
+                                                .error(R.drawable.weather_image_placeholder)
+                                                .build(),
+                                            contentDescription = weatherDescription
+                                                ?: "Weather Icon",
+                                            modifier = Modifier.size(48.dp),
+                                            contentScale = ContentScale.Fit
                                         )
                                         Text(
-                                            text = "${decimalFormat.format(data.temperature)}°C",
-                                            style = MaterialTheme.typography.bodyMedium
+                                            text = " " + (weatherDescription
+                                                ?: "Unknown Weather"),
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    } else {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.weather_image_placeholder),
+                                            contentDescription = "Unknown Weather",
+                                            modifier = Modifier.size(48.dp)
+                                        )
+                                        Text(
+                                            text = " Unknown Weather",
+                                            style = MaterialTheme.typography.bodyLarge
                                         )
                                     }
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.Thermostat,
+                                        contentDescription = "Temperature",
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(
+                                        text = "${decimalFormat.format(data.temperature)}°C",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(8.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    CircularProgressIndicator()
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(8.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    var dotCount by remember { mutableIntStateOf(0) }
+                                    LaunchedEffect(Unit) {
+                                        while (true) {
+                                            delay(300)
+                                            dotCount = (dotCount % 3) + 1
+                                        }
+                                    }
+                                    val animatedDotCount by animateIntAsState(
+                                        targetValue = dotCount,
+                                        label = "dotAnimation"
+                                    )
+                                    Text(text = "Loading" + ".".repeat(animatedDotCount))
                                 }
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    CircularProgressIndicator()
                 }
             }
 
@@ -489,7 +535,7 @@ fun TrackShowcase(
         modifier = Modifier
             .padding(4.dp)
             .fillMaxSize(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier

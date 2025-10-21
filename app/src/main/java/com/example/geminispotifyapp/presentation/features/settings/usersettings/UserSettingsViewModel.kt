@@ -47,21 +47,21 @@ class UserSettingsViewModel @Inject constructor(
             initialValue = 15
         )
 
-    val languageOfShowCaseSearch: StateFlow<String?> = spotifyRepository.languageOfShowCaseSearchFlow // <-- 類型改為 String?
+    val languageOfShowCaseSearch: StateFlow<String?> = spotifyRepository.languageOfShowCaseSearchFlow
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = "English"
         )
 
-    val genreOfShowCaseSearch: StateFlow<String?> = spotifyRepository.genreOfShowCaseSearchFlow // <-- 類型改為 String?
+    val genreOfShowCaseSearch: StateFlow<String?> = spotifyRepository.genreOfShowCaseSearchFlow
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = "Country"
         )
 
-    val yearOfShowCaseSearch: StateFlow<String?> = spotifyRepository.yearOfShowCaseSearchFlow // <-- 類型改為 String?
+    val yearOfShowCaseSearch: StateFlow<String?> = spotifyRepository.yearOfShowCaseSearchFlow
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

@@ -1,5 +1,6 @@
 package com.example.geminispotifyapp.presentation
 
+import android.R
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -133,6 +134,12 @@ fun RootApp() {
             val targetRoute = if (isAuthenticated) MAIN_APP_ROUTE_WITH_PARAM else LOGIN_ROUTE
             navController.navigate(targetRoute) {
                 popUpTo(SPLASH_ROUTE) { inclusive = true }
+                anim {
+                    enter = R.anim.slide_in_left
+                    exit = R.anim.slide_out_right
+                    popEnter = R.anim.slide_in_left
+                    popExit = R.anim.slide_out_right
+                }
             }
         }
     }
@@ -219,66 +226,49 @@ fun AppContainer(
     var dynamicAppBarTitle by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        Log.d("AppContainer_Collector", "LAUNCHED EFFECT STARTED.")
         mainViewModel.uiEventManager.eventFlow.collect { event ->
-            Log.d("AppContainer_Collector", ">>>>>> EVENT RECEIVED: $event")
+            Log.d(tag, ">>>>>> EVENT RECEIVED: $event")
             when (event) {
                 is UiEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(message = event.message, withDismissAction = true, duration = SnackbarDuration.Short)
-                    Log.d(tag, "AppContainer_Collector: ${event.message}")
+                    Log.d(tag, "Show snackbar event message: ${event.message}")
                 }
                 is UiEvent.Navigate -> {
-                    rootNavController.navigate(event.route){
-                        Log.d("AppContainer_Collector", "Start destination: ${rootNavController.graph.findStartDestination().route}")
-                        popUpTo(rootNavController.graph.findStartDestination().id) {
-                            saveState = true
+                    // Get the instant data from the Single Source of Truth, which is the rootNavController
+                    val routeBeforeNavigation =
+                        rootNavController.currentDestination?.route
+                    if (routeBeforeNavigation != event.route) {
+                        rootNavController.navigate(event.route) {
+                            popUpTo(rootNavController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                        launchSingleTop = true
-                        restoreState = true
                     }
-                    Log.d(tag, "AppContainer_Collector: ${event.route}")
+                    Log.d(tag, "Navigate to event Route: ${event.route}")
                 }
                 is UiEvent.ShowSnackbarDetail -> {
                     val snackbarActionResult = snackbarHostState.showSnackbar(event.message, "Details", true, SnackbarDuration.Short)
-                    Log.d(tag, "AppContainer_Collector: ${event.message}")
+                    Log.d(tag, "Show snackbar detail event message: ${event.message}")
                     when (snackbarActionResult) {
                         SnackbarResult.ActionPerformed -> {
                             dialogMessage = event.detail
                             showDialog = true
-                            Log.d(tag, "AppContainer_Collector: 'Details' action performed for: ${event.message}")
+                            Log.d(tag, "Show snackbar detail: 'Details' action performed for: ${event.message}")
                         }
                         SnackbarResult.Dismissed -> {
-                            Log.d(tag, "AppContainer_Collector: Snackbar dismissed for: ${event.message}")
+                            Log.d(tag, "Show snackbar detail: Snackbar dismissed for: ${event.message}")
                         }
                     }
                 }
                 is UiEvent.ShowSnackbarWithAction -> {
-                    if (event.actionLabel == MainScreen.Home.label) {
-                        val snackbarActionResult = snackbarHostState.showSnackbar(
-                            event.message,
-                            "See Result",
-                            true,
-                            SnackbarDuration.Long
-                        )
-                        if (snackbarActionResult == SnackbarResult.ActionPerformed) {
-                            val targetRoute = MainScreen.Home.route
-                            val routeWithParam = "$MAIN_APP_ROUTE/$targetRoute"
-
-                            rootNavController.navigate(routeWithParam) {
-                                Log.d("AppContainer_Collector", "Start destination: ${rootNavController.graph.findStartDestination().route}")
-                                popUpTo(rootNavController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                            Log.d(
-                                tag,
-                                "AppContainer_Collector: Navigating to Home triggered by Snackbar action."
-                            )
-                        }
+                    val targetRoute = when (event.actionLabel) {
+                        MainScreen.Home.label -> MainScreen.Home.route
+                        MainScreen.FindMusic.label -> MainScreen.FindMusic.route
+                        else -> null
                     }
-                    else if (event.actionLabel == MainScreen.FindMusic.label) {
+                    if (targetRoute != null) {
                         val snackbarActionResult = snackbarHostState.showSnackbar(
                             event.message,
                             "See Result",
@@ -286,20 +276,44 @@ fun AppContainer(
                             SnackbarDuration.Long
                         )
                         if (snackbarActionResult == SnackbarResult.ActionPerformed) {
-                            val targetRoute = MainScreen.FindMusic.route
                             val routeWithParam = "$MAIN_APP_ROUTE/$targetRoute"
 
-                            rootNavController.navigate(routeWithParam) {
-                                Log.d("AppContainer_Collector", "Start destination: ${rootNavController.graph.findStartDestination().route}")
-                                popUpTo(rootNavController.graph.findStartDestination().id) {
-                                    saveState = true
+                            // Get the instant data from the Single Source of Truth, which is the rootNavController
+                            val routeBeforeNavigation =
+                                rootNavController.currentDestination?.route
+                            if (routeBeforeNavigation != routeWithParam) {
+                                rootNavController.navigate(routeWithParam) {
+                                    popUpTo(rootNavController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                    // If current route is not in MAIN_APP_ROUTE, animate the navigation
+                                    if (routeBeforeNavigation != null && !routeBeforeNavigation.startsWith(
+                                            MAIN_APP_ROUTE
+                                        )
+                                    ) {
+                                        Log.d(
+                                            tag,
+                                            "Animation starts because route is '${routeBeforeNavigation}'."
+                                        )
+                                        anim {
+                                            enter = R.anim.slide_in_left
+                                            exit = R.anim.slide_out_right
+                                            popEnter = R.anim.slide_in_left
+                                            popExit = R.anim.slide_out_right
+                                        }
+                                    } else {
+                                        Log.d(
+                                            tag,
+                                            "Animation doesn't start and route is '${routeBeforeNavigation}'."
+                                        )
+                                    }
                                 }
-                                launchSingleTop = true
-                                restoreState = true
                             }
                             Log.d(
                                 tag,
-                                "AppContainer_Collector: Navigating to FindMusic triggered by Snackbar action."
+                                "Show snackbar with action: Navigating to Home triggered by Snackbar action."
                             )
                         }
                     }
@@ -309,7 +323,7 @@ fun AppContainer(
                         popUpTo(rootNavController.graph.findStartDestination().id) { inclusive = true }
                     }
                     snackbarHostState.showSnackbar(event.message)
-                    Log.d(tag, "AppContainer_Collector: ${event.message}")
+                    Log.d(tag, "Unauthorized event message: ${event.message}")
                 }
                 is UiEvent.UpdateAppBarTitle -> {
                     dynamicAppBarTitle = event.title
@@ -360,7 +374,7 @@ fun AppContainer(
                                 ?: "Music Explorer by Gemini"
 
                             Log.d(
-                                "AppContainer",
+                                "Main Scaffold",
                                 "currentDestinationRoute: $currentDestinationRoute, Calculated title: $title"
                             )
                             Text(
@@ -407,16 +421,8 @@ fun AppContainer(
                                                 )
                                             },
                                             onClick = {
-                                                if (!isCurrentDestination) {
-                                                    rootNavController.navigate(screen.route){
-                                                        launchSingleTop = true
-                                                    }
-//                                                    {
-//                                                        if (currentDestinationRoute in settingsItems.map { it.route })
-//                                                            popUpTo(
-//                                                                currentDestinationRoute ?: ""
-//                                                            ) { inclusive = true }
-//                                                    }
+                                                rootNavController.navigate(screen.route) {
+                                                    launchSingleTop = true
                                                 }
                                                 dynamicAppBarTitle = null
                                                 showMenu = false

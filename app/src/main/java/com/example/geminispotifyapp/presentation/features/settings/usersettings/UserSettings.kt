@@ -214,15 +214,13 @@ fun UserSettingsContent(
                         }
                         // Language Filter
                         item {
-                            var useLanguage by remember { mutableStateOf(languageOfShowCaseSearch != null) }
-
+                            val useLanguage = languageOfShowCaseSearch != null
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("Enable Language Filter")
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Switch(
                                     checked = useLanguage,
                                     onCheckedChange = { isChecked ->
-                                        useLanguage = isChecked
                                         if (!isChecked) {
                                             onLanguageOfShowCaseSearchChange(null)
                                             languageSearchText = "" // Clear search text when turned off
@@ -259,13 +257,17 @@ fun UserSettingsContent(
                                                 val currentDisplayName = languageOfShowCaseSearch?.let { englishName ->
                                                     languagePairs.find { it.second == englishName }?.first
                                                 }
-                                                Text(currentDisplayName ?: "Select a language")
+                                                if (languageSearchText.isNotEmpty() || expandedLanguage) {
+                                                    Text("Select a language")
+                                                } else {
+                                                    Text(currentDisplayName ?: "Select a language")
+                                                }
                                             },
                                             placeholder = {
                                                 val currentDisplayName = languageOfShowCaseSearch?.let { englishName ->
                                                     languagePairs.find { it.second == englishName }?.first
                                                 }
-                                                Text(currentDisplayName ?: "Select a language")
+                                                Text(currentDisplayName ?: "Select or input language")
                                             },
                                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedLanguage) },
                                             modifier = Modifier

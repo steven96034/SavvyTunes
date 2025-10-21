@@ -3,7 +3,6 @@ package com.example.geminispotifyapp.presentation.features.main.findmusic
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,8 +41,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
-import com.example.geminispotifyapp.R
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -220,20 +217,41 @@ fun FindMusicPage(
         contentPadding = PaddingValues(bottom = 80.dp) // For the bottom navigation bar
     ) {
         item {
-            Image(
-                painterResource(R.drawable.full_logo_green_rgb),
-                contentDescription = "Spotify Logo"
-            )
-        }
-        item {
-            Spacer(modifier = Modifier.padding(4.dp))
+            Row (
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column (
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = "Find Music",
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            shadow = Shadow(
+                                color = Color.LightGray.copy(alpha = 0.7f),
+                                blurRadius = 10f
+                            )
+                        ),
+                        fontWeight = FontWeight.Bold,
+                        color = SpotifyGreen,
+                        modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp)
+                    )
+                    Text(
+                        text = "Powered by Spotify and Gemini",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.LightGray,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
+            }
         }
         item {
             Text(
-                text = "This demo App takes usage of user data from Spotify,\n" +
-                        "there may be some places that haven't satisfied Spotify Design Guidelines or Spotify Developer Terms!",
+                text = "Find similar tracks and artists! Select a track to search for similar tracks and artists in Spotify!",
                 style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(4.dp)
+                color = Color.Gray,
+                modifier = Modifier.padding(horizontal = 12.dp)
             )
         }
         item {
@@ -256,7 +274,7 @@ fun FindMusicPage(
                         )
                     }
                 },
-                label = { Text("Input Any Name (of track, artist, or album)") },
+                label = { Text("Input Any Name (track, artist, or album)") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 4.dp)
