@@ -132,7 +132,6 @@ fun HomeScreen(
         uiState = uiState,
         permissionStatus = locationPermissionState.status,
         showGpsDialog = showGpsDialog,
-        onFetchLocationClick = { viewModel.fetchLocation() },
         onRequestPermissionClick = { locationPermissionState.launchPermissionRequest() },
         onGpsDialogDismiss = { viewModel.onGpsDialogDismiss() },
         onOpenLocationSettingsClick = {
