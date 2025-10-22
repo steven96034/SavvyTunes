@@ -121,8 +121,9 @@ fun HomeScreen(
         Manifest.permission.ACCESS_COARSE_LOCATION
     )
 
-    LaunchedEffect(locationPermissionState.status.isGranted) {
-        if (locationPermissionState.status.isGranted) {
+    LaunchedEffect(locationPermissionState.status, uiState) {
+        // Check if the location permission is granted and the UI state is Initial then fetch location
+        if (locationPermissionState.status.isGranted && uiState is UiState.Initial) {
             viewModel.fetchLocation()
         }
     }
@@ -183,6 +184,9 @@ fun HomeContent(
         )
     }
 
+    var hasRequestedPermissionAtLeastOnce by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = onRefresh,
@@ -197,16 +201,47 @@ fun HomeContent(
                     if (permissionStatus.isGranted) {
                         CircularProgressIndicator()
                     } else {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            val textToShow = if (permissionStatus.shouldShowRationale) {
-                                "We need location permission to get your approximate location, please allow us access."
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            // Key logic check:
+                            // If shouldShowRationale is false, and we have "requested at least once",
+                            // it means the user has "permanently denied" the permission.
+                            val isPermanentlyDenied = !permissionStatus.shouldShowRationale && hasRequestedPermissionAtLeastOnce
+
+                            if (isPermanentlyDenied) {
+                                // Situation 3: Permanently Denied -> Open Settings
+                                Text(
+                                    "You have permanently denied location permission. Please open it in the app settings to continue using this feature.",
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(onClick = {
+                                    val intent = Intent(
+                                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                        android.net.Uri.fromParts("package", context.packageName, null)
+                                    )
+                                    context.startActivity(intent)
+                                }) {
+                                    Text("Go to Settings")
+                                }
                             } else {
-                                "Location permission is required to continue."
-                            }
-                            Text(textToShow)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(onClick = onRequestPermissionClick) {
-                                Text("Request Permission")
+                                val textToShow = if (permissionStatus.shouldShowRationale) {
+                                    // Situation 2: The second time asking for permission, explain why the permission is required.
+                                    "We need location permission to get your approximate location, so we can provide weather information and music recommendation, please allow us access."
+                                } else {
+                                    // Situation 1: First time of asking for permission.
+                                    "Location permission is required to continue."
+                                }
+                                Text(textToShow, textAlign = TextAlign.Center)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(onClick = {
+                                    hasRequestedPermissionAtLeastOnce = true
+                                    onRequestPermissionClick()
+                                }) {
+                                    Text("Request Permission")
+                                }
                             }
                         }
                     }
