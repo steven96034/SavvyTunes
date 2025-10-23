@@ -122,11 +122,6 @@ fun MainScreenWithPager(
         bottomBar = {
             NavigationBar(
                 modifier = Modifier
-                //.fillMaxWidth()
-                // .align(Alignment.BottomCenter) // Align to bottom center(BoxScope)
-
-                // Add bottom padding to avoid overlap with system gesture navigation bar
-                //.windowInsetsPadding(WindowInsets.navigationBars),
                 ,containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
             ) {
 

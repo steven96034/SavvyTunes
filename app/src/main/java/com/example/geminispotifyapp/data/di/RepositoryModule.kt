@@ -3,7 +3,9 @@ package com.example.geminispotifyapp.data.di
 import com.example.geminispotifyapp.data.repository.LocationTrackerImpl
 import com.example.geminispotifyapp.domain.repository.SpotifyRepository
 import com.example.geminispotifyapp.data.repository.SpotifyRepositoryImpl
+import com.example.geminispotifyapp.data.repository.WeatherIconRepositoryImpl
 import com.example.geminispotifyapp.domain.repository.LocationTracker
+import com.example.geminispotifyapp.domain.repository.WeatherIconRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -25,4 +27,10 @@ abstract class RepositoryModule {
     abstract fun bindLocationTracker(
         locationTrackerImpl: LocationTrackerImpl
     ): LocationTracker
+
+    @Binds
+    @Singleton
+    abstract fun bindWeatherIconRepository(
+        weatherIconRepositoryImpl: WeatherIconRepositoryImpl
+    ): WeatherIconRepository
 }

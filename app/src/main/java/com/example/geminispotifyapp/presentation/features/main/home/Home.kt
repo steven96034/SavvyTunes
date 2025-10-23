@@ -443,17 +443,17 @@ fun HomeContent(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = 8.dp),
+                                    .padding(vertical = 4.dp),
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(
-                                    modifier = Modifier.fillMaxWidth(0.4f),
+                                    modifier = Modifier.fillMaxWidth(0.5f),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
                                         text = data.time,
-                                        style = MaterialTheme.typography.labelMedium
+                                        style = MaterialTheme.typography.labelLarge,
                                     )
                                 }
                                 Column(
@@ -567,7 +567,7 @@ fun TrackShowcase(
             containerColor = cardColor
         ),
         modifier = Modifier
-            .padding(4.dp)
+            .padding(horizontal = 4.dp)
             .fillMaxSize(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {

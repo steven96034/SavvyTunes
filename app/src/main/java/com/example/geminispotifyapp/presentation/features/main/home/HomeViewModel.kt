@@ -12,7 +12,7 @@ import com.example.geminispotifyapp.core.utils.UiEventManager
 import com.example.geminispotifyapp.data.repository.LocationResult
 import com.example.geminispotifyapp.data.repository.LocationTrackerImpl
 import com.example.geminispotifyapp.data.remote.api.GeminiApi
-import com.example.geminispotifyapp.data.repository.WeatherIconRepositoryImpl
+import com.example.geminispotifyapp.domain.repository.WeatherIconRepository
 import com.example.geminispotifyapp.domain.usecase.SearchForSpecificTrackUseCase
 import com.example.geminispotifyapp.presentation.MainScreen
 import com.google.ai.client.generativeai.type.GenerateContentResponse
@@ -72,10 +72,9 @@ class HomeViewModel @Inject constructor(
     private val locationTracker: LocationTrackerImpl,
     private val uiEventManager: UiEventManager,
     private val searchForSpecificTrackUseCase: SearchForSpecificTrackUseCase,
-    val weatherIconRepository: WeatherIconRepositoryImpl
+    val weatherIconRepository: WeatherIconRepository
 ): ViewModel() {
     private val client = OkHttpClient()
-    private val TAG = "WeatherService"
 
     private val _wmo = MutableStateFlow<List<Float?>?>(null)
 
@@ -96,12 +95,6 @@ class HomeViewModel @Inject constructor(
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing
-
-    init {
-        viewModelScope.launch {
-            fetchLocation()
-        }
-    }
 
     fun refreshHome() {
         if (_isRefreshing.value) {
@@ -140,6 +133,7 @@ class HomeViewModel @Inject constructor(
 
 
 
+    private val weatherTag = "WeatherService"
 
     /**
      * Helper function to convert a Unix Epoch timestamp (in seconds) to a human-readable date-time string.
@@ -157,7 +151,7 @@ class HomeViewModel @Inject constructor(
             val sdf = SimpleDateFormat(pattern, Locale.getDefault()) // Use the default locale
             sdf.format(date)
         } catch (e: Exception) {
-            Log.e(TAG, "Error formatting timestamp $unixTimestampSeconds", e)
+            Log.e(weatherTag, "Error formatting timestamp $unixTimestampSeconds", e)
             unixTimestampSeconds.toString() // Return the original string on conversion failure
         }
     }
@@ -177,7 +171,7 @@ class HomeViewModel @Inject constructor(
         val responseBytes = suspendCoroutine { continuation ->
             client.newCall(request).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    Log.e(TAG, "Weather API request failed", e)
+                    Log.e(weatherTag, "Weather API request failed", e)
                     continuation.resumeWithException(e)
                 }
 
@@ -188,11 +182,11 @@ class HomeViewModel @Inject constructor(
                                 continuation.resume(bytes)
                             } ?: run {
                                 val error = IOException("Response body is null")
-                                Log.e(TAG, "Weather API response body null", error)
+                                Log.e(weatherTag, "Weather API response body null", error)
                                 continuation.resumeWithException(error)
                             }
                         } catch (e: Exception) {
-                            Log.e(TAG, "Failed to read response bytes", e)
+                            Log.e(weatherTag, "Failed to read response bytes", e)
                             continuation.resumeWithException(e)
                         } finally {
                             response.close()
@@ -200,7 +194,7 @@ class HomeViewModel @Inject constructor(
                     } else {
                         val error = IOException("Unexpected response code: ${response.code}")
                         Log.e(
-                            TAG,
+                            weatherTag,
                             "Weather API request not successful: ${response.code}",
                             error
                         )
@@ -246,7 +240,7 @@ class HomeViewModel @Inject constructor(
                                 val forecastTimeString =
                                     formatUnixTimestampToDateTimeString(forecastTime)
                                 Log.d(
-                                    TAG,
+                                    weatherTag,
                                     "Hourly forecast at $forecastTimeString: Temperature -> $temp / WMO -> $wmoCode"
                                 )
 
@@ -256,17 +250,17 @@ class HomeViewModel @Inject constructor(
                             }
 
                         } else {
-                            Log.w(TAG, "Hourly temperature or WMO data not found.")
+                            Log.w(weatherTag, "Hourly temperature or WMO data not found.")
                         }
                     }
-                } ?: Log.w(TAG, "Hourly data is null.")
+                } ?: Log.w(weatherTag, "Hourly data is null.")
                 _allForecastTimes.value = timeValues.toList()
                 _temperature2m.value = tempValues.toList()
                 _wmo.value = wmoValues.toList()
 
                 buffer.clear()
             } catch (e: Exception) {
-                Log.e(TAG, "Error parsing FlatBuffer response", e)
+                Log.e(weatherTag, "Error parsing FlatBuffer response", e)
                 null
             }
         }
@@ -277,7 +271,7 @@ class HomeViewModel @Inject constructor(
     private var searchJob: Job? = null
     private lateinit var responseRelated: GenerateContentResponse
 
-    private val tag = "HomeViewModel"
+    private val musicTag = "WeatherMusic"
 
     private var relatedTracksOfCondition = mutableListOf<String>()
     private var relatedTracksOfEmotion = mutableListOf<String>()
@@ -310,7 +304,7 @@ class HomeViewModel @Inject constructor(
             if (nearestTimeIndex == null) {
                 return@launch
             }
-            Log.d(tag, "nearestTimeIndex: $nearestTimeIndex")
+            Log.d(musicTag, "nearestTimeIndex: $nearestTimeIndex")
 
             uiEventManager.sendEvent(UiEvent.ShowSnackbar("You can explore other content in app, we'll inform you when it's ready!"))
             _findWeatherMusicUiState.value = UiState.Loading
@@ -320,7 +314,7 @@ class HomeViewModel @Inject constructor(
                 val languageOfShowCaseSearch = spotifyRepository.languageOfShowCaseSearchFlow.first()
                 val genreOfShowCaseSearch = spotifyRepository.genreOfShowCaseSearchFlow.first()
                 val yearOfShowCaseSearch = spotifyRepository.yearOfShowCaseSearchFlow.first()
-                Log.d(tag, "numOfShowCaseSearch: $numOfShowCaseSearch, languageOfShowCaseSearch: $languageOfShowCaseSearch, genreOfShowCaseSearch: $genreOfShowCaseSearch, yearOfShowCaseSearch: $yearOfShowCaseSearch")
+                Log.d(musicTag, "numOfShowCaseSearch: $numOfShowCaseSearch, languageOfShowCaseSearch: $languageOfShowCaseSearch, genreOfShowCaseSearch: $genreOfShowCaseSearch, yearOfShowCaseSearch: $yearOfShowCaseSearch")
 
                 val numOfQuery = "$numOfShowCaseSearch"
                 val languageOfQuery = if (languageOfShowCaseSearch != null)" $languageOfShowCaseSearch" else ""
@@ -331,7 +325,7 @@ class HomeViewModel @Inject constructor(
                 val wmo = _wmo.value!![nearestTimeIndex]!!.toInt()
                 val temperature = _temperature2m.value!![nearestTimeIndex]
 
-                Log.d(tag, "nearestTimeIndex: $nearestTimeIndex, wmo: $wmo, temperature: $temperature")
+                Log.d(musicTag, "nearestTimeIndex: $nearestTimeIndex, wmo: $wmo, temperature: $temperature")
 
                 withContext(Dispatchers.IO) {
                     // Song name and album name for artists list is redundant for now, more precise for future.
@@ -348,14 +342,14 @@ class HomeViewModel @Inject constructor(
                              Notice: List only one related music track in each row using format: Song Name##Album Name##Artists Name
                                     """
                     )
-                    Log.d(tag, "response: ${responseRelated.text}")
+                    Log.d(musicTag, "response: ${responseRelated.text}")
                     geminiFinishedTime = System.currentTimeMillis()
                     Log.d(
-                        tag,
+                        musicTag,
                         "Gemini response takes time: ${System.currentTimeMillis() - startTime}ms"
                     )
                     responseRelated.text?.trimIndent()?.let { outputContent ->
-                        Log.d(tag, "trimmed response: $outputContent")
+                        Log.d(musicTag, "trimmed response: $outputContent")
                         relatedTracksOfEmotion.clear()
                         relatedTracksOfCondition.clear()
 
@@ -378,12 +372,12 @@ class HomeViewModel @Inject constructor(
                                 )
                             )
                         } else {
-                            Log.e(tag, "Response format error")
+                            Log.e(musicTag, "Response format error")
                             // fallback to all tracks
                             relatedTracksOfCondition.addAll(lines.subList(0, minOf(numOfShowCaseSearch, lines.size)))
                         }
-                        Log.d(tag, "relatedTracks: $relatedTracksOfCondition")
-                        Log.d(tag, "relatedArtists: $relatedTracksOfEmotion")
+                        Log.d(musicTag, "relatedTracks: $relatedTracksOfCondition")
+                        Log.d(musicTag, "relatedArtists: $relatedTracksOfEmotion")
 
 
                         conditionTempList.clear()
@@ -403,7 +397,7 @@ class HomeViewModel @Inject constructor(
                                         val artistName = parts[2].trim()
                                         searchForSpecificTrackUseCase(trackName, albumName, artistName)
                                     } else {
-                                        Log.e(tag, "Unexpected track format: $trackInfo")
+                                        Log.e(musicTag, "Unexpected track format: $trackInfo")
                                         Pair(null, trackInfo) // Format error also consider as not found
                                     }
                                 }
@@ -411,7 +405,7 @@ class HomeViewModel @Inject constructor(
                             // Wait for all tracks to be fetched
                             @Suppress("UNCHECKED_CAST")
                             val trackResults = deferredTrackResults.awaitAll()
-                            Log.d(tag, "Chunk search finished.")
+                            Log.d(musicTag, "Chunk search finished.")
                             trackResults.forEach { result ->
                                 val (track, notFoundId) = result
                                 if (track != null) {
@@ -432,7 +426,7 @@ class HomeViewModel @Inject constructor(
                                         val artistName = parts[2].trim()
                                         searchForSpecificTrackUseCase(trackName, albumName, artistName)
                                     } else {
-                                        Log.e(tag, "Unexpected track format: $trackInfo")
+                                        Log.e(musicTag, "Unexpected track format: $trackInfo")
                                         Pair(null, trackInfo) // Format error also consider as not found
                                     }
                                 }
@@ -440,7 +434,7 @@ class HomeViewModel @Inject constructor(
                             // Wait for all tracks to be fetched
                             @Suppress("UNCHECKED_CAST")
                             val trackResults = deferredTrackResults.awaitAll()
-                            Log.d(tag, "Chunk search finished.")
+                            Log.d(musicTag, "Chunk search finished.")
                             trackResults.forEach { result ->
                                 val (track, notFoundId) = result
                                 if (track != null) {
@@ -451,10 +445,10 @@ class HomeViewModel @Inject constructor(
                             }
                         }
 
-                        Log.d(tag, "conditionNotFoundList: $conditionNotFoundList")
-                        Log.d(tag, "emotionNotFoundList: $emotionNotFoundList")
-                        Log.d(tag, "conditionTempList: ${conditionTempList.joinToString { it.name }}")
-                        Log.d(tag, "emotionTempList: ${emotionTempList.joinToString { it.name }}")
+                        Log.d(musicTag, "conditionNotFoundList: $conditionNotFoundList")
+                        Log.d(musicTag, "emotionNotFoundList: $emotionNotFoundList")
+                        Log.d(musicTag, "conditionTempList: ${conditionTempList.joinToString { it.name }}")
+                        Log.d(musicTag, "emotionTempList: ${emotionTempList.joinToString { it.name }}")
 
                         val data = TwoTracksList(
                             conditionTempList.toList(),
@@ -464,13 +458,13 @@ class HomeViewModel @Inject constructor(
                     //For test
                     uiEventManager.sendEvent(UiEvent.ShowSnackbarWithAction("Search successfully completed.", MainScreen.Home.label))
 
-                        Log.d(tag, "Tracks Data: $data")
+                        Log.d(musicTag, "Tracks Data: $data")
                     }
                 } ?: if (isActive) { // If response.text is null
                     _findWeatherMusicUiState.value =
                         UiState.Error("Failed to get a valid response from Gemini.")
                 } else {
-                    Log.d(tag, "Response is null.")
+                    Log.d(musicTag, "Response is null.")
                 }
             }
             catch (e: ServerException) {
@@ -482,7 +476,7 @@ class HomeViewModel @Inject constructor(
                             "Gemini Server Error, please try again later.", e.stackTraceToString()
                         )
                     )
-                    Log.d(tag, "Error: $e")
+                    Log.d(musicTag, "Error: $e")
                     e.printStackTrace()
                 }
             }
@@ -495,7 +489,7 @@ class HomeViewModel @Inject constructor(
                             "Some error occurred when finding recommendations, please try again later.", e.stackTraceToString()
                         )
                     )
-                    Log.d(tag, "Error: $e")
+                    Log.d(musicTag, "Error: $e")
                     e.printStackTrace()
                 }
             } finally {
@@ -505,18 +499,18 @@ class HomeViewModel @Inject constructor(
                 if (_findWeatherMusicUiState.value is UiState.Loading && !isActive && searchJob?.isCancelled == true) {
                     _findWeatherMusicUiState.value = UiState.Initial
                     Log.d(
-                        tag,
+                        musicTag,
                         "Search was cancelled and UI state reset to Initial in finally."
                     )
                 }
                 if (_isRefreshing.value) {
                     _isRefreshing.value = false
-                    Log.d(tag, "Refresh finished, isRefreshing set to false in finally.")
+                    Log.d(musicTag, "Refresh finished, isRefreshing set to false in finally.")
                 }
             }
-            Log.d(tag, "Spotify API takes time: ${System.currentTimeMillis() - geminiFinishedTime}ms")
+            Log.d(musicTag, "Spotify API takes time: ${System.currentTimeMillis() - geminiFinishedTime}ms")
             Log.d(
-                tag,
+                musicTag,
                 "Search job finished. Overall time: ${(System.currentTimeMillis() - startTime)}ms"
             )
         }
@@ -552,7 +546,7 @@ class HomeViewModel @Inject constructor(
             if (temp != null && wmoCode != null && time != null) {
                 _currentWeatherData.value = CurrentWeatherDisplayData(temp, wmoCode.toInt(), time, isDay)
             } else {
-                Log.e(tag, "Cannot set current weather data due to null values.")
+                Log.e(musicTag, "Cannot set current weather data due to null values.")
             }
         }
         nearestTimeIndex
@@ -567,7 +561,7 @@ class HomeViewModel @Inject constructor(
             val sdf = SimpleDateFormat(pattern, Locale.getDefault())
             sdf.parse(dateTimeString)?.time // Returns milliseconds since epoch
         } catch (e: Exception) {
-            Log.e(TAG, "Error parsing date-time string $dateTimeString", e)
+            Log.e(weatherTag, "Error parsing date-time string $dateTimeString", e)
             null
         }
     }
