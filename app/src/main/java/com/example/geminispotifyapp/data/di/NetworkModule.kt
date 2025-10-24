@@ -5,6 +5,7 @@ import com.example.geminispotifyapp.data.remote.interceptor.ErrorHandlingInterce
 import com.example.geminispotifyapp.data.remote.interceptor.TokenInterceptor
 import com.example.geminispotifyapp.data.remote.api.SpotifyApiService
 import com.example.geminispotifyapp.data.remote.api.SpotifyUserApiService
+import com.example.geminispotifyapp.data.repository.WeatherApiService
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
@@ -48,6 +49,21 @@ object NetWorkModule {
             .client(okHttpClient)
             .build()
             .create(SpotifyApiService::class.java)
+    }
+
+    const val BASE_URL = "https://api.open-meteo.com/"
+
+    @Provides
+    @Singleton
+    fun provideWeatherApiService(
+        @WeatherInfoGist okHttpClient: OkHttpClient
+    ): WeatherApiService {
+        return Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(WeatherApiService::class.java)
     }
 
     // Singleton OkHttpClient instance

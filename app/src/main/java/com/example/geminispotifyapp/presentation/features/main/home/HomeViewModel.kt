@@ -12,6 +12,8 @@ import com.example.geminispotifyapp.core.utils.UiEventManager
 import com.example.geminispotifyapp.data.repository.LocationResult
 import com.example.geminispotifyapp.data.repository.LocationTrackerImpl
 import com.example.geminispotifyapp.data.remote.api.GeminiApi
+import com.example.geminispotifyapp.data.repository.WeatherDataRepositoryImpl
+import com.example.geminispotifyapp.data.repository.WeatherResponse
 import com.example.geminispotifyapp.domain.repository.WeatherIconRepository
 import com.example.geminispotifyapp.domain.usecase.SearchForSpecificTrackUseCase
 import com.example.geminispotifyapp.presentation.MainScreen
@@ -72,20 +74,23 @@ class HomeViewModel @Inject constructor(
     private val locationTracker: LocationTrackerImpl,
     private val uiEventManager: UiEventManager,
     private val searchForSpecificTrackUseCase: SearchForSpecificTrackUseCase,
-    val weatherIconRepository: WeatherIconRepository
+    val weatherIconRepository: WeatherIconRepository,
+    private val weatherDataRepositoryImpl: WeatherDataRepositoryImpl
 ): ViewModel() {
-    private val client = OkHttpClient()
+//    private val client = OkHttpClient()
+//
+//    private val _wmo = MutableStateFlow<List<Float?>?>(null)
+//
+//    private val _temperature2m = MutableStateFlow<List<Float?>?>(null)
 
-    private val _wmo = MutableStateFlow<List<Float?>?>(null)
-
-    private val _temperature2m = MutableStateFlow<List<Float?>?>(null)
-
-    private val _allForecastTimes = MutableStateFlow<List<String?>>(emptyList())
-    val allForecastTimes: StateFlow<List<String?>> = _allForecastTimes
+//    private val _allForecastTimes = MutableStateFlow<List<String?>>(emptyList())
+//    val allForecastTimes: StateFlow<List<String?>> = _allForecastTimes
 
     // Data display in UI (temp, wmo code, time)
-    private val _currentWeatherData = MutableStateFlow<CurrentWeatherDisplayData?>(null)
-    val currentWeatherData: StateFlow<CurrentWeatherDisplayData?> = _currentWeatherData.asStateFlow()
+//    private val _currentWeatherData = MutableStateFlow<CurrentWeatherDisplayData?>(null)
+//    val currentWeatherData: StateFlow<CurrentWeatherDisplayData?> = _currentWeatherData.asStateFlow()
+    private val _weatherDataJson = MutableStateFlow<WeatherResponse?>(null)
+    val weatherDataJson: StateFlow<WeatherResponse?> = _weatherDataJson.asStateFlow()
 
     private val _location = MutableStateFlow<Location?>(null)
     val location: StateFlow<Location?> = _location
@@ -95,6 +100,19 @@ class HomeViewModel @Inject constructor(
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing
+
+    init {
+        observeJsonWeatherData()
+    }
+
+    private fun observeJsonWeatherData() {
+        viewModelScope.launch {
+            weatherDataRepositoryImpl.weatherData.collect { weatherResponse ->
+                _weatherDataJson.value = weatherResponse
+                Log.d("HomeViewModel", "JSON Weather Data Updated: $weatherResponse")
+            }
+        }
+    }
 
     fun refreshHome() {
         if (_isRefreshing.value) {
@@ -110,7 +128,12 @@ class HomeViewModel @Inject constructor(
             when (val result = locationTracker.getCurrentLocation()) {
                 is LocationResult.Success -> {
                     _location.value = result.location
-                    fetchWeatherData(result.location.latitude, result.location.longitude)
+                    var time = System.currentTimeMillis()
+//                    fetchWeatherData(result.location.latitude, result.location.longitude)
+//                    Log.d("LocationTracker", "WeatherData fetch (FlatBuffers from OkHttp3) finished in ${System.currentTimeMillis() - time} ms")
+                    time = System.currentTimeMillis()
+                    weatherDataRepositoryImpl.fetchWeatherData(result.location.latitude, result.location.longitude)
+                    Log.d("LocationTracker", "WeatherData fetch (Json from Retrofit) finished in ${System.currentTimeMillis() - time} ms")
                     findRelatedWeatherMusic()
                 }
                 is LocationResult.GpsDisabled -> {
@@ -133,138 +156,138 @@ class HomeViewModel @Inject constructor(
 
 
 
-    private val weatherTag = "WeatherService"
+//    private val weatherTag = "WeatherService"
 
-    /**
-     * Helper function to convert a Unix Epoch timestamp (in seconds) to a human-readable date-time string.
-     * @param unixTimestampSeconds The Unix Epoch timestamp in seconds.
-     * @param pattern The date-time format string, defaulting to "yyyy-MM-dd HH:mm:ss".
-     * @return The formatted date-time string, or "N/A" if the input is null, or the original string if conversion fails.
-     */
-    private fun formatUnixTimestampToDateTimeString(
-        unixTimestampSeconds: Long?,
-        pattern: String = "yyyy-MM-dd HH:mm:ss"
-    ): String {
-        if (unixTimestampSeconds == null) return "N/A"
-        return try {
-            val date = Date(unixTimestampSeconds * 1000L) // Convert seconds to milliseconds
-            val sdf = SimpleDateFormat(pattern, Locale.getDefault()) // Use the default locale
-            sdf.format(date)
-        } catch (e: Exception) {
-            Log.e(weatherTag, "Error formatting timestamp $unixTimestampSeconds", e)
-            unixTimestampSeconds.toString() // Return the original string on conversion failure
-        }
-    }
+//    /**
+//     * Helper function to convert a Unix Epoch timestamp (in seconds) to a human-readable date-time string.
+//     * @param unixTimestampSeconds The Unix Epoch timestamp in seconds.
+//     * @param pattern The date-time format string, defaulting to "yyyy-MM-dd HH:mm:ss".
+//     * @return The formatted date-time string, or "N/A" if the input is null, or the original string if conversion fails.
+//     */
+//    private fun formatUnixTimestampToDateTimeString(
+//        unixTimestampSeconds: Long?,
+//        pattern: String = "yyyy-MM-dd HH:mm:ss"
+//    ): String {
+//        if (unixTimestampSeconds == null) return "N/A"
+//        return try {
+//            val date = Date(unixTimestampSeconds * 1000L) // Convert seconds to milliseconds
+//            val sdf = SimpleDateFormat(pattern, Locale.getDefault()) // Use the default locale
+//            sdf.format(date)
+//        } catch (e: Exception) {
+//            Log.e(weatherTag, "Error formatting timestamp $unixTimestampSeconds", e)
+//            unixTimestampSeconds.toString() // Return the original string on conversion failure
+//        }
+//    }
 
-    suspend fun fetchWeatherData(latitude: Double, longitude: Double) = withContext(Dispatchers.IO) {
-        // Step 1 : Request
-        // Found that "current" data is not transferred from OpenMeteo endpoint in flatbuffers format. (Maybe this data is not in demand of extremely effective transfer./)
-        // So we just get the time near the current time in hourly data. (&current=temperature_2m,weather_code)
-        val mUrl =
-            "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&hourly=temperature_2m,weather_code&timezone=auto&forecast_days=1&format=flatbuffers"
-
-        val request = Request.Builder()
-            .url(mUrl)
-            .get()
-            .build()
-
-        val responseBytes = suspendCoroutine { continuation ->
-            client.newCall(request).enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    Log.e(weatherTag, "Weather API request failed", e)
-                    continuation.resumeWithException(e)
-                }
-
-                override fun onResponse(call: Call, response: Response) {
-                    if (response.isSuccessful) {
-                        try {
-                            response.body?.bytes()?.let { bytes ->
-                                continuation.resume(bytes)
-                            } ?: run {
-                                val error = IOException("Response body is null")
-                                Log.e(weatherTag, "Weather API response body null", error)
-                                continuation.resumeWithException(error)
-                            }
-                        } catch (e: Exception) {
-                            Log.e(weatherTag, "Failed to read response bytes", e)
-                            continuation.resumeWithException(e)
-                        } finally {
-                            response.close()
-                        }
-                    } else {
-                        val error = IOException("Unexpected response code: ${response.code}")
-                        Log.e(
-                            weatherTag,
-                            "Weather API request not successful: ${response.code}",
-                            error
-                        )
-                        continuation.resumeWithException(error)
-                    }
-                }
-            })
-        }
-
-        responseBytes.let { bytes ->
-            try {
-                // Step 2 : Use Binary Response buffer and convert it to ByteBuffer
-                val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
-
-                // Step 3 : create the ApiResponse Instance
-                val mApiResponse =
-                    WeatherApiResponse.getRootAsWeatherApiResponse(buffer.position(4) as ByteBuffer)
-
-                val hourly: VariablesWithTime? = mApiResponse.hourly()
-
-                val timeValues = mutableListOf<String?>()
-                val tempValues = mutableListOf<Float?>()
-                val wmoValues = mutableListOf<Float?>()
-
-                hourly?.let {
-                    val temperature2m: VariableWithValues? = VariablesSearch(it)
-                        .variable(Variable.temperature)
-                        .altitude(2)
-                        .first()
-                    val wmo: VariableWithValues? = VariablesSearch(it)
-                        .variable(Variable.weather_code)
-                        .first()
-                    val hourlyBlockStartTime = it.time()
-                    val hourlyIntervalSeconds = it.interval()
-
-                    withContext(Dispatchers.Default) {
-                        if (temperature2m != null && wmo != null) {
-                            for (vl in 0 until temperature2m.valuesLength()) {
-                                val forecastTime =
-                                    hourlyBlockStartTime + (vl * hourlyIntervalSeconds)
-                                val temp = temperature2m.values(vl)
-                                val wmoCode = wmo.values(vl)
-                                val forecastTimeString =
-                                    formatUnixTimestampToDateTimeString(forecastTime)
-                                Log.d(
-                                    weatherTag,
-                                    "Hourly forecast at $forecastTimeString: Temperature -> $temp / WMO -> $wmoCode"
-                                )
-
-                                timeValues.add(forecastTimeString)
-                                tempValues.add(temp)
-                                wmoValues.add(wmoCode)
-                            }
-
-                        } else {
-                            Log.w(weatherTag, "Hourly temperature or WMO data not found.")
-                        }
-                    }
-                } ?: Log.w(weatherTag, "Hourly data is null.")
-                _allForecastTimes.value = timeValues.toList()
-                _temperature2m.value = tempValues.toList()
-                _wmo.value = wmoValues.toList()
-
-                buffer.clear()
-            } catch (e: Exception) {
-                Log.e(weatherTag, "Error parsing FlatBuffer response", e)
-                null
-            }
-        }
-    }
+//    suspend fun fetchWeatherData(latitude: Double, longitude: Double) = withContext(Dispatchers.IO) {
+//        // Step 1 : Request
+//        // Found that "current" data is not transferred from OpenMeteo endpoint in flatbuffers format. (Maybe this data is not in demand of extremely effective transfer./)
+//        // So we just get the time near the current time in hourly data. (&current=temperature_2m,weather_code)
+//        val mUrl =
+//            "https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&hourly=temperature_2m,weather_code&timezone=auto&forecast_days=1&format=flatbuffers"
+//
+//        val request = Request.Builder()
+//            .url(mUrl)
+//            .get()
+//            .build()
+//
+//        val responseBytes = suspendCoroutine { continuation ->
+//            client.newCall(request).enqueue(object : Callback {
+//                override fun onFailure(call: Call, e: IOException) {
+//                    Log.e(weatherTag, "Weather API request failed", e)
+//                    continuation.resumeWithException(e)
+//                }
+//
+//                override fun onResponse(call: Call, response: Response) {
+//                    if (response.isSuccessful) {
+//                        try {
+//                            response.body?.bytes()?.let { bytes ->
+//                                continuation.resume(bytes)
+//                            } ?: run {
+//                                val error = IOException("Response body is null")
+//                                Log.e(weatherTag, "Weather API response body null", error)
+//                                continuation.resumeWithException(error)
+//                            }
+//                        } catch (e: Exception) {
+//                            Log.e(weatherTag, "Failed to read response bytes", e)
+//                            continuation.resumeWithException(e)
+//                        } finally {
+//                            response.close()
+//                        }
+//                    } else {
+//                        val error = IOException("Unexpected response code: ${response.code}")
+//                        Log.e(
+//                            weatherTag,
+//                            "Weather API request not successful: ${response.code}",
+//                            error
+//                        )
+//                        continuation.resumeWithException(error)
+//                    }
+//                }
+//            })
+//        }
+//
+//        responseBytes.let { bytes ->
+//            try {
+//                // Step 2 : Use Binary Response buffer and convert it to ByteBuffer
+//                val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+//
+//                // Step 3 : create the ApiResponse Instance
+//                val mApiResponse =
+//                    WeatherApiResponse.getRootAsWeatherApiResponse(buffer.position(4) as ByteBuffer)
+//
+//                val hourly: VariablesWithTime? = mApiResponse.hourly()
+//
+//                val timeValues = mutableListOf<String?>()
+//                val tempValues = mutableListOf<Float?>()
+//                val wmoValues = mutableListOf<Float?>()
+//
+//                hourly?.let {
+//                    val temperature2m: VariableWithValues? = VariablesSearch(it)
+//                        .variable(Variable.temperature)
+//                        .altitude(2)
+//                        .first()
+//                    val wmo: VariableWithValues? = VariablesSearch(it)
+//                        .variable(Variable.weather_code)
+//                        .first()
+//                    val hourlyBlockStartTime = it.time()
+//                    val hourlyIntervalSeconds = it.interval()
+//
+//                    withContext(Dispatchers.Default) {
+//                        if (temperature2m != null && wmo != null) {
+//                            for (vl in 0 until temperature2m.valuesLength()) {
+//                                val forecastTime =
+//                                    hourlyBlockStartTime + (vl * hourlyIntervalSeconds)
+//                                val temp = temperature2m.values(vl)
+//                                val wmoCode = wmo.values(vl)
+//                                val forecastTimeString =
+//                                    formatUnixTimestampToDateTimeString(forecastTime)
+//                                Log.d(
+//                                    weatherTag,
+//                                    "Hourly forecast at $forecastTimeString: Temperature -> $temp / WMO -> $wmoCode"
+//                                )
+//
+//                                timeValues.add(forecastTimeString)
+//                                tempValues.add(temp)
+//                                wmoValues.add(wmoCode)
+//                            }
+//
+//                        } else {
+//                            Log.w(weatherTag, "Hourly temperature or WMO data not found.")
+//                        }
+//                    }
+//                } ?: Log.w(weatherTag, "Hourly data is null.")
+//                _allForecastTimes.value = timeValues.toList()
+//                _temperature2m.value = tempValues.toList()
+//                _wmo.value = wmoValues.toList()
+//
+//                buffer.clear()
+//            } catch (e: Exception) {
+//                Log.e(weatherTag, "Error parsing FlatBuffer response", e)
+//                null
+//            }
+//        }
+//    }
     private var _findWeatherMusicUiState: MutableStateFlow<UiState<TwoTracksList>> =
         MutableStateFlow(UiState.Initial)
     val findWeatherMusicUiState: StateFlow<UiState<TwoTracksList>> = _findWeatherMusicUiState.asStateFlow()
@@ -300,11 +323,21 @@ class HomeViewModel @Inject constructor(
 
         searchJob = viewModelScope.launch {
 
-            val nearestTimeIndex = findNearestForecastTime(allForecastTimes.value)
-            if (nearestTimeIndex == null) {
+//            val nearestTimeIndex = findNearestForecastTime(allForecastTimes.value)
+//            if (nearestTimeIndex == null) {
+//                return@launch
+//            }
+//            Log.d(musicTag, "nearestTimeIndex: $nearestTimeIndex")
+            val currentJsonWeather = weatherDataJson.value?.current
+            if (currentJsonWeather == null) {
+                Log.e(musicTag, "JSON weather data is not available yet.")
+                _findWeatherMusicUiState.value = UiState.Error("Weather data not available.")
+                // 記得在 finally block 中處理 isRefreshing
+                if (_isRefreshing.value) {
+                    _isRefreshing.value = false
+                }
                 return@launch
             }
-            Log.d(musicTag, "nearestTimeIndex: $nearestTimeIndex")
 
             uiEventManager.sendEvent(UiEvent.ShowSnackbar("You can explore other content in app, we'll inform you when it's ready!"))
             _findWeatherMusicUiState.value = UiState.Loading
@@ -322,10 +355,13 @@ class HomeViewModel @Inject constructor(
                 val yearOfQuery = if (yearOfShowCaseSearch != null) " around A.D. $yearOfShowCaseSearch" else ""
 
 
-                val wmo = _wmo.value!![nearestTimeIndex]!!.toInt()
-                val temperature = _temperature2m.value!![nearestTimeIndex]
+//                val wmo = _wmo.value!![nearestTimeIndex]!!.toInt()
+//                val temperature = _temperature2m.value!![nearestTimeIndex]
+//                Log.d(musicTag, "nearestTimeIndex: $nearestTimeIndex, wmo: $wmo, temperature: $temperature")
+                val wmo = currentJsonWeather.weatherCode
+                val temperature = currentJsonWeather.temperature.toFloat() // 注意型別從 Double 轉 Float
 
-                Log.d(musicTag, "nearestTimeIndex: $nearestTimeIndex, wmo: $wmo, temperature: $temperature")
+                Log.d(musicTag, "Using JSON Weather Data -> wmo: $wmo, temperature: $temperature")
 
                 withContext(Dispatchers.IO) {
                     // Song name and album name for artists list is redundant for now, more precise for future.
@@ -516,53 +552,53 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private suspend fun findNearestForecastTime(forecastTimes: List<String?>): Int? = withContext(Dispatchers.Default) {
-        if (forecastTimes.isEmpty()) {
-            return@withContext null
-        }
+//    private suspend fun findNearestForecastTime(forecastTimes: List<String?>): Int? = withContext(Dispatchers.Default) {
+//        if (forecastTimes.isEmpty()) {
+//            return@withContext null
+//        }
+//
+//        val currentTimeMillis = System.currentTimeMillis()
+//        var minDiff = Long.MAX_VALUE
+//        var nearestTimeIndex: Int? = null
+//
+//        forecastTimes.forEachIndexed { index, forecastTimeString ->
+//            val forecastTimeMillis = parseDateTimeStringToUnixTimestamp(forecastTimeString)
+//            if (forecastTimeMillis != null) {
+//                val diff = abs(currentTimeMillis - forecastTimeMillis)
+//                if (diff < minDiff) {
+//                    minDiff = diff
+//                    nearestTimeIndex = index
+//                }
+//            }
+//        }
+//        nearestTimeIndex?.let { index ->
+//            val temp = _temperature2m.value?.get(index)
+//            val wmoCode = _wmo.value?.get(index)
+//            val time = _allForecastTimes.value[index]
+//            val isDay = time?.let {
+//                val hour = it.substring(11, 13).toIntOrNull()
+//                hour != null && hour in 6..17
+//            } ?: true // Default to day if time is null
+//            if (temp != null && wmoCode != null && time != null) {
+//                _currentWeatherData.value = CurrentWeatherDisplayData(temp, wmoCode.toInt(), time, isDay)
+//            } else {
+//                Log.e(musicTag, "Cannot set current weather data due to null values.")
+//            }
+//        }
+//        nearestTimeIndex
+//    }
 
-        val currentTimeMillis = System.currentTimeMillis()
-        var minDiff = Long.MAX_VALUE
-        var nearestTimeIndex: Int? = null
-
-        forecastTimes.forEachIndexed { index, forecastTimeString ->
-            val forecastTimeMillis = parseDateTimeStringToUnixTimestamp(forecastTimeString)
-            if (forecastTimeMillis != null) {
-                val diff = abs(currentTimeMillis - forecastTimeMillis)
-                if (diff < minDiff) {
-                    minDiff = diff
-                    nearestTimeIndex = index
-                }
-            }
-        }
-        nearestTimeIndex?.let { index ->
-            val temp = _temperature2m.value?.get(index)
-            val wmoCode = _wmo.value?.get(index)
-            val time = _allForecastTimes.value[index]
-            val isDay = time?.let {
-                val hour = it.substring(11, 13).toIntOrNull()
-                hour != null && hour in 6..17
-            } ?: true // Default to day if time is null
-            if (temp != null && wmoCode != null && time != null) {
-                _currentWeatherData.value = CurrentWeatherDisplayData(temp, wmoCode.toInt(), time, isDay)
-            } else {
-                Log.e(musicTag, "Cannot set current weather data due to null values.")
-            }
-        }
-        nearestTimeIndex
-    }
-
-    private fun parseDateTimeStringToUnixTimestamp(
-        dateTimeString: String?,
-        pattern: String = "yyyy-MM-dd HH:mm:ss"
-    ): Long? {
-        if (dateTimeString == null || dateTimeString == "N/A") return null
-        return try {
-            val sdf = SimpleDateFormat(pattern, Locale.getDefault())
-            sdf.parse(dateTimeString)?.time // Returns milliseconds since epoch
-        } catch (e: Exception) {
-            Log.e(weatherTag, "Error parsing date-time string $dateTimeString", e)
-            null
-        }
-    }
+//    private fun parseDateTimeStringToUnixTimestamp(
+//        dateTimeString: String?,
+//        pattern: String = "yyyy-MM-dd HH:mm:ss"
+//    ): Long? {
+//        if (dateTimeString == null || dateTimeString == "N/A") return null
+//        return try {
+//            val sdf = SimpleDateFormat(pattern, Locale.getDefault())
+//            sdf.parse(dateTimeString)?.time // Returns milliseconds since epoch
+//        } catch (e: Exception) {
+//            Log.e(weatherTag, "Error parsing date-time string $dateTimeString", e)
+//            null
+//        }
+//    }
 }

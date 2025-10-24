@@ -88,6 +88,7 @@ import coil.request.ImageRequest
 import coil.size.Size
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.geminispotifyapp.R
+import com.example.geminispotifyapp.data.repository.WeatherResponse
 import com.example.geminispotifyapp.presentation.ui.theme.SpotifyGrey
 import com.example.geminispotifyapp.presentation.ui.theme.SpotifyWhite
 import com.google.accompanist.permissions.PermissionStatus
@@ -104,7 +105,9 @@ import kotlin.math.abs
 fun HomeScreen(
     viewModel: HomeViewModel
 ) {
-    val currentWeatherData by viewModel.currentWeatherData.collectAsStateWithLifecycle()
+    //val currentWeatherData by viewModel.currentWeatherData.collectAsStateWithLifecycle()
+    val currentWeatherData by viewModel.weatherDataJson.collectAsStateWithLifecycle()
+
 
     val showGpsDialog by viewModel.showGpsDialog.collectAsStateWithLifecycle()
 
@@ -154,7 +157,7 @@ fun HomeScreen(
 )
 @Composable
 fun HomeContent(
-    currentWeatherData: CurrentWeatherDisplayData?,
+    currentWeatherData: WeatherResponse?,
     uiState: UiState<TwoTracksList?>,
     permissionStatus: PermissionStatus,
     showGpsDialog: Boolean,
@@ -263,8 +266,8 @@ fun HomeContent(
                         ), label = "loading_color_animation"
                     )
 
-                    currentWeatherData?.let { data ->
-                        val (weatherIconUrl, weatherDescription) = getWeatherDisplayInfo(data.weatherCode, data.isDay)
+                    currentWeatherData?.current?.let { data ->
+                        val (weatherIconUrl, weatherDescription) = getWeatherDisplayInfo(data.weatherCode, data.isDay == 1)
                         val decimalFormat = DecimalFormat("#.0")
                         Card (
                             colors = CardDefaults.cardColors(
@@ -436,10 +439,13 @@ fun HomeContent(
                         }
                     }
 
-                    currentWeatherData?.let { data ->
-                        val (weatherIconUrl, weatherDescription) = getWeatherDisplayInfo(data.weatherCode, data.isDay)
+                    currentWeatherData?.current?.let { data ->
+                        val (weatherIconUrl, weatherDescription) = getWeatherDisplayInfo(
+                            data.weatherCode,
+                            data.isDay == 1
+                        )
                         val decimalFormat = DecimalFormat("#.0")
-                        Card (modifier = Modifier.padding(4.dp)) {
+                        Card(modifier = Modifier.padding(4.dp)) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -447,59 +453,48 @@ fun HomeContent(
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column(
-                                    modifier = Modifier.fillMaxWidth(0.5f),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
+                                Text(
+                                    text = data.time,
+                                    style = MaterialTheme.typography.labelLarge,
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                if (weatherIconUrl != null) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(weatherIconUrl)
+                                            .crossfade(true)
+                                            .placeholder(R.drawable.weather_image_placeholder)
+                                            .error(R.drawable.weather_image_placeholder)
+                                            .build(),
+                                        contentDescription = weatherDescription ?: "Weather Icon",
+                                        modifier = Modifier.size(24.dp),
+                                        contentScale = ContentScale.Fit
+                                    )
                                     Text(
-                                        text = data.time,
-                                        style = MaterialTheme.typography.labelLarge,
+                                        text = " " + (weatherDescription ?: "Unknown Weather"),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                } else {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.weather_image_placeholder),
+                                        contentDescription = "Unknown Weather",
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(
+                                        text = " Unknown Weather",
+                                        style = MaterialTheme.typography.bodyMedium
                                     )
                                 }
-                                Column(
-                                    modifier = Modifier.fillMaxWidth(1f),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Row {
-                                        if (weatherIconUrl != null) {
-                                            AsyncImage(
-                                                model = ImageRequest.Builder(LocalContext.current)
-                                                    .data(weatherIconUrl)
-                                                    .crossfade(true)
-                                                    .placeholder(R.drawable.weather_image_placeholder)
-                                                    .error(R.drawable.weather_image_placeholder)
-                                                    .build(),
-                                                contentDescription = weatherDescription ?: "Weather Icon",
-                                                modifier = Modifier.size(24.dp),
-                                                contentScale = ContentScale.Fit
-                                            )
-                                            Text(
-                                                text = " " + (weatherDescription ?: "Unknown Weather"),
-                                                style = MaterialTheme.typography.bodyMedium
-                                            )
-                                        } else {
-                                            Image(
-                                                painter = painterResource(id = R.drawable.weather_image_placeholder),
-                                                contentDescription = "Unknown Weather",
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                            Text(
-                                                text = " Unknown Weather",
-                                                style = MaterialTheme.typography.bodyMedium
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Icon(
-                                            imageVector = Icons.Default.Thermostat,
-                                            contentDescription = "Temperature",
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                        Text(
-                                            text = "${decimalFormat.format(data.temperature)}°C",
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                    }
-                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Thermostat,
+                                    contentDescription = "Temperature",
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    text = "${decimalFormat.format(data.temperature)}°C",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
                             }
                         }
                     }
