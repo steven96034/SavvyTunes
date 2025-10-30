@@ -108,7 +108,6 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.accompanist.navigation.animation)
-    implementation(libs.openmeteo)
     implementation(libs.accompanist.permissions)
     implementation(libs.kotlin.test)
 
