@@ -1,6 +1,7 @@
 package com.example.geminispotifyapp.data.repository
 
 import android.util.Log
+import com.example.geminispotifyapp.domain.repository.WeatherDataRepository
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,11 @@ data class CurrentData(
     @SerializedName("is_day") val isDay: Int
 )
 
+sealed class WeatherResult{
+    data class Success(val weatherResponse: WeatherResponse) : WeatherResult()
+    data class Error(val exception: Exception) : WeatherResult()
+}
+
 // Retrofit service interface
 interface WeatherApiService {
     // v1/forecast?latitude=24.212371880320966&longitude=120.70398004277607&hourly=temperature_2m,weather_code&timezone=auto&forecast_days=1
@@ -36,27 +42,23 @@ interface WeatherApiService {
 @Singleton
 class WeatherDataRepositoryImpl @Inject constructor(
     private val weatherApiService: WeatherApiService
-) {
+): WeatherDataRepository {
     private val _weatherData = MutableStateFlow<WeatherResponse?>(null)
-    val weatherData: StateFlow<WeatherResponse?> = _weatherData.asStateFlow()
+    override val weatherData: StateFlow<WeatherResponse?> = _weatherData.asStateFlow()
 
     /**
      * Fetches weather data from the API and updates the StateFlow.
      */
-    suspend fun fetchWeatherData(latitude: Double, longitude: Double): WeatherResponse? {
-        try {
+    override suspend fun fetchWeatherData(latitude: Double, longitude: Double): Result<WeatherResponse> {
+        return try {
             Log.d("WeatherDataRepository", "Fetching weather data for latitude: $latitude, longitude: $longitude")
             val response = weatherApiService.getWeatherData(latitude, longitude)
             val formattedTime = response.current.time.replace("T", "  ")
             _weatherData.value = response.copy(current = response.current.copy(time = formattedTime))
-
             Log.d("WeatherDataRepository", "Weather data: time: $formattedTime, weatherCode: ${response.current.weatherCode}, temperature: ${response.current.temperature}, isDay: ${response.current.isDay}")
-            return response
+            Result.success(response.copy(current = response.current.copy(time = formattedTime)))
         } catch (e: Exception) {
-            // TODO: Handle exceptions (e.g., network error)
-            e.printStackTrace()
-            _weatherData.value = null // Or emit an error state
-            return null
-        }
+            Log.e("WeatherDataRepository", "Error fetching weather data: ${e.message}")
+            Result.failure(e)        }
     }
 }

@@ -118,7 +118,7 @@ fun HomeScreen(
     val settingResultLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
-        viewModel.fetchLocation()
+        viewModel.fetchLocationAndWeather()
     }
     val locationPermissionState = rememberPermissionState(
         Manifest.permission.ACCESS_COARSE_LOCATION
@@ -127,7 +127,7 @@ fun HomeScreen(
     LaunchedEffect(locationPermissionState.status, uiState) {
         // Check if the location permission is granted and the UI state is Initial then fetch location
         if (locationPermissionState.status.isGranted && uiState is UiState.Initial) {
-            viewModel.fetchLocation()
+            viewModel.fetchLocationAndWeather()
         }
     }
 
@@ -144,7 +144,7 @@ fun HomeScreen(
             settingResultLauncher.launch(intent)
         },
         getWeatherDisplayInfo = { wmoCode: Int, isDay: Boolean -> viewModel.weatherIconRepository.getWeatherDisplayInfo(wmoCode, isDay) },
-        onRetry = { viewModel.fetchLocation() },
+        onRetry = { viewModel.fetchLocationAndWeather() },
         onRefresh = { viewModel.refreshHome() },
         isRefreshing = isRefreshing
     )

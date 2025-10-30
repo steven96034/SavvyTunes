@@ -14,7 +14,9 @@ import com.example.geminispotifyapp.data.repository.LocationTrackerImpl
 import com.example.geminispotifyapp.data.remote.api.GeminiApi
 import com.example.geminispotifyapp.data.repository.WeatherDataRepositoryImpl
 import com.example.geminispotifyapp.data.repository.WeatherResponse
+import com.example.geminispotifyapp.data.repository.WeatherResult
 import com.example.geminispotifyapp.domain.repository.WeatherIconRepository
+import com.example.geminispotifyapp.domain.usecase.GetLocationAndWeatherUseCase
 import com.example.geminispotifyapp.domain.usecase.SearchForSpecificTrackUseCase
 import com.example.geminispotifyapp.presentation.MainScreen
 import com.google.ai.client.generativeai.type.GenerateContentResponse
@@ -45,6 +47,10 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.text.SimpleDateFormat
+import java.time.Duration
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
@@ -61,39 +67,54 @@ data class TwoTracksList(
     val tracksB: List<SpotifyTrack>?
 )
 
-data class CurrentWeatherDisplayData(
-    val temperature: Float,
-    val weatherCode: Int,
-    val time: String,
-    val isDay: Boolean
+//data class CurrentWeatherDisplayData(
+//    val temperature: Float,
+//    val weatherCode: Int,
+//    val time: String,
+//    val isDay: Boolean
+//)
+
+data class HomeDataPayload(
+    val location: Location,
+    val weatherResponse: WeatherResponse
 )
+
+sealed class HomeDataState {
+    object Initial : HomeDataState()
+    object Loading : HomeDataState()
+    data class Success(val data: HomeDataPayload) : HomeDataState()
+    data class Error(val message: String) : HomeDataState()
+    object GpsDisabled : HomeDataState()
+    object MissingPermission: HomeDataState()
+}
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val spotifyRepository: SpotifyRepository,
-    private val locationTracker: LocationTrackerImpl,
+//    private val locationTracker: LocationTrackerImpl,
     private val uiEventManager: UiEventManager,
     private val searchForSpecificTrackUseCase: SearchForSpecificTrackUseCase,
     val weatherIconRepository: WeatherIconRepository,
-    private val weatherDataRepositoryImpl: WeatherDataRepositoryImpl
+    private val weatherDataRepositoryImpl: WeatherDataRepositoryImpl,
+    private val getLocationAndWeatherUseCase: GetLocationAndWeatherUseCase,
 ): ViewModel() {
 //    private val client = OkHttpClient()
 //
 //    private val _wmo = MutableStateFlow<List<Float?>?>(null)
 //
 //    private val _temperature2m = MutableStateFlow<List<Float?>?>(null)
-
+//
 //    private val _allForecastTimes = MutableStateFlow<List<String?>>(emptyList())
 //    val allForecastTimes: StateFlow<List<String?>> = _allForecastTimes
 
-    // Data display in UI (temp, wmo code, time)
+//     Data display in UI (temp, wmo code, time)
 //    private val _currentWeatherData = MutableStateFlow<CurrentWeatherDisplayData?>(null)
 //    val currentWeatherData: StateFlow<CurrentWeatherDisplayData?> = _currentWeatherData.asStateFlow()
     private val _weatherDataJson = MutableStateFlow<WeatherResponse?>(null)
     val weatherDataJson: StateFlow<WeatherResponse?> = _weatherDataJson.asStateFlow()
 
-    private val _location = MutableStateFlow<Location?>(null)
-    val location: StateFlow<Location?> = _location
+//    private val _location = MutableStateFlow<Location?>(null)
+//    val location: StateFlow<Location?> = _location
 
     private val _showGpsDialog = MutableStateFlow(false)
     val showGpsDialog: StateFlow<Boolean> = _showGpsDialog
@@ -114,39 +135,117 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    val refreshTag = "RefreshHomeData"
     fun refreshHome() {
         if (_isRefreshing.value) {
             return
         }
+
         _isRefreshing.value = true
-        findRelatedWeatherMusic()
+
+        val weatherData = _weatherDataJson.value
+        if (weatherData != null) { // The data in cache is valid.
+            val dataTimeStr = weatherData.current.time
+            val pattern = "yyyy-MM-dd  HH:mm"
+            val formatter = DateTimeFormatter.ofPattern(pattern)
+            lateinit var localDateTime: LocalDateTime
+            try {
+                localDateTime = LocalDateTime.parse(dataTimeStr, formatter)
+                Log.d(refreshTag, "Weather data time(Before/After): $dataTimeStr/$localDateTime")
+                val currentTime = LocalDateTime.now()
+                val diffInMinutes = ChronoUnit.MINUTES.between(localDateTime, currentTime)
+                if (diffInMinutes >= 15) {
+                    Log.d(refreshTag, "Weather data timeout, refreshing for whole new data.")
+                    fetchLocationAndWeather()
+                }
+                else {
+                    Log.d(refreshTag, "Just only get new music recommendations (Weather data not timeout).")
+                    findRelatedWeatherMusic(weatherData)
+                }
+            } catch (e: Exception) {
+                Log.e(refreshTag, "Error parsing date-time string $dataTimeStr, just refreshing for whole new data.", e)
+                fetchLocationAndWeather()
+            }
+        }
+        else {
+            fetchLocationAndWeather()
+        }
     }
 
 
-    fun fetchLocation() {
+//    fun fetchLocation() {
+//        viewModelScope.launch {
+//            when (val result = locationTracker.getCurrentLocation()) {
+//                is LocationResult.Success -> {
+//                    _location.value = result.location
+//                    var time = System.currentTimeMillis()
+////                    fetchWeatherData(result.location.latitude, result.location.longitude)
+////                    Log.d("LocationTracker", "WeatherData fetch (FlatBuffers from OkHttp3) finished in ${System.currentTimeMillis() - time} ms")
+//                    time = System.currentTimeMillis()
+//                    when (val result = weatherDataRepositoryImpl.fetchWeatherData(
+//                        result.location.latitude,
+//                        result.location.longitude
+//                    )) {
+//                        is WeatherResult.Success -> {
+//                            _weatherDataJson.value = result.weatherResponse
+//                            findRelatedWeatherMusic()
+//                            Log.d("LocationTracker", "WeatherData fetch (Json from Retrofit) finished in ${System.currentTimeMillis() - time} ms")
+//                        }
+//
+//                        is WeatherResult.Error -> {
+//                            Log.d("LocationTracker", "Error getting weather data: ${result.exception.message}")
+//                        }
+//                    }
+//                }
+//                is LocationResult.GpsDisabled -> {
+//                    _showGpsDialog.value = true
+//                }
+//                is LocationResult.MissingPermission -> {
+//                    Log.d("LocationTracker", "Missing location permission")
+//                }
+//                is LocationResult.Error -> {
+//                    Log.d("LocationTracker", "Error getting location: ${result.exception}")
+//                    uiEventManager.sendEvent(UiEvent.ShowSnackbar("Error getting location. Please try again."))
+//                }
+//            }
+//        }
+//    }
+
+    private val _homeDataState = MutableStateFlow<HomeDataState>(HomeDataState.Initial)
+
+    fun fetchLocationAndWeather() {
+        if (_homeDataState.value is HomeDataState.Loading) return
+
         viewModelScope.launch {
-            when (val result = locationTracker.getCurrentLocation()) {
-                is LocationResult.Success -> {
-                    _location.value = result.location
-                    var time = System.currentTimeMillis()
-//                    fetchWeatherData(result.location.latitude, result.location.longitude)
-//                    Log.d("LocationTracker", "WeatherData fetch (FlatBuffers from OkHttp3) finished in ${System.currentTimeMillis() - time} ms")
-                    time = System.currentTimeMillis()
-                    weatherDataRepositoryImpl.fetchWeatherData(result.location.latitude, result.location.longitude)
-                    Log.d("LocationTracker", "WeatherData fetch (Json from Retrofit) finished in ${System.currentTimeMillis() - time} ms")
-                    findRelatedWeatherMusic()
+            _homeDataState.value = HomeDataState.Loading
+
+//            val time = System.currentTimeMillis()
+//            fetchWeatherData(24.1981981981982, 120.69521580571502)
+//            Log.d("WeatherTest", "WeatherData fetch (FlatBuffers from OkHttp3) finished in ${System.currentTimeMillis() - time} ms")
+
+            val resultState = getLocationAndWeatherUseCase()
+            _homeDataState.value = resultState
+
+
+            when (resultState) {
+                is HomeDataState.Success -> {
+                    findRelatedWeatherMusic(resultState.data.weatherResponse)
                 }
-                is LocationResult.GpsDisabled -> {
+
+                HomeDataState.GpsDisabled -> {
                     _showGpsDialog.value = true
                 }
-                is LocationResult.MissingPermission -> {
+                HomeDataState.MissingPermission -> {
                     Log.d("LocationTracker", "Missing location permission")
                 }
-                is LocationResult.Error -> {
-                    Log.d("LocationTracker", "Error getting location: ${result.exception}")
+                is HomeDataState.Error -> {
+                    Log.d("LocationTracker", "Error getting location: ${resultState.message}")
                     uiEventManager.sendEvent(UiEvent.ShowSnackbar("Error getting location. Please try again."))
                 }
+                else -> {}
             }
+
+            _isRefreshing.value = false
         }
     }
 
@@ -157,7 +256,7 @@ class HomeViewModel @Inject constructor(
 
 
 //    private val weatherTag = "WeatherService"
-
+//
 //    /**
 //     * Helper function to convert a Unix Epoch timestamp (in seconds) to a human-readable date-time string.
 //     * @param unixTimestampSeconds The Unix Epoch timestamp in seconds.
@@ -178,7 +277,7 @@ class HomeViewModel @Inject constructor(
 //            unixTimestampSeconds.toString() // Return the original string on conversion failure
 //        }
 //    }
-
+//
 //    suspend fun fetchWeatherData(latitude: Double, longitude: Double) = withContext(Dispatchers.IO) {
 //        // Step 1 : Request
 //        // Found that "current" data is not transferred from OpenMeteo endpoint in flatbuffers format. (Maybe this data is not in demand of extremely effective transfer./)
@@ -242,6 +341,8 @@ class HomeViewModel @Inject constructor(
 //                val tempValues = mutableListOf<Float?>()
 //                val wmoValues = mutableListOf<Float?>()
 //
+//                val currentTime = System.currentTimeMillis()
+//
 //                hourly?.let {
 //                    val temperature2m: VariableWithValues? = VariablesSearch(it)
 //                        .variable(Variable.temperature)
@@ -277,6 +378,7 @@ class HomeViewModel @Inject constructor(
 //                        }
 //                    }
 //                } ?: Log.w(weatherTag, "Hourly data is null.")
+//                Log.d("WeatherTest", "WeatherData fetch (FlatBuffers from OkHttp3), time taken for only parsing data: ${System.currentTimeMillis() - currentTime} ms.")
 //                _allForecastTimes.value = timeValues.toList()
 //                _temperature2m.value = tempValues.toList()
 //                _wmo.value = wmoValues.toList()
@@ -307,7 +409,7 @@ class HomeViewModel @Inject constructor(
     private val emotionNotFoundList = mutableListOf<String>()
 
 
-    fun findRelatedWeatherMusic() {
+    fun findRelatedWeatherMusic(weatherResponse: WeatherResponse) {
 
         // Check if the search is already in progress, if yes, then return and display initial.
         if (_findWeatherMusicUiState.value is UiState.Loading) {
@@ -328,16 +430,16 @@ class HomeViewModel @Inject constructor(
 //                return@launch
 //            }
 //            Log.d(musicTag, "nearestTimeIndex: $nearestTimeIndex")
-            val currentJsonWeather = weatherDataJson.value?.current
-            if (currentJsonWeather == null) {
-                Log.e(musicTag, "JSON weather data is not available yet.")
-                _findWeatherMusicUiState.value = UiState.Error("Weather data not available.")
-                // 記得在 finally block 中處理 isRefreshing
-                if (_isRefreshing.value) {
-                    _isRefreshing.value = false
-                }
-                return@launch
-            }
+            val currentJsonWeather = weatherResponse.current
+//            if (currentJsonWeather == null) {
+//                Log.e(musicTag, "JSON weather data is not available yet.")
+//                _findWeatherMusicUiState.value = UiState.Error("Weather data not available.")
+//                // 記得在 finally block 中處理 isRefreshing
+//                if (_isRefreshing.value) {
+//                    _isRefreshing.value = false
+//                }
+//                return@launch
+//            }
 
             uiEventManager.sendEvent(UiEvent.ShowSnackbar("You can explore other content in app, we'll inform you when it's ready!"))
             _findWeatherMusicUiState.value = UiState.Loading
