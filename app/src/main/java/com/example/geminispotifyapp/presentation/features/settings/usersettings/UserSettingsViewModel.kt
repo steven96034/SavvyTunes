@@ -47,25 +47,32 @@ class UserSettingsViewModel @Inject constructor(
             initialValue = 15
         )
 
-    val languageOfShowCaseSearch: StateFlow<String?> = spotifyRepository.languageOfShowCaseSearchFlow
+    val languageOfShowCaseSearch: StateFlow<String> = spotifyRepository.languageOfShowCaseSearchFlow
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = "English"
         )
 
-    val genreOfShowCaseSearch: StateFlow<String?> = spotifyRepository.genreOfShowCaseSearchFlow
+    val genreOfShowCaseSearch: StateFlow<String> = spotifyRepository.genreOfShowCaseSearchFlow
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = "Country"
         )
 
-    val yearOfShowCaseSearch: StateFlow<String?> = spotifyRepository.yearOfShowCaseSearchFlow
+    val yearOfShowCaseSearch: StateFlow<String> = spotifyRepository.yearOfShowCaseSearchFlow
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = "2015"
+        )
+
+    val isRandomYearOfShowCaseSelection: StateFlow<Boolean> = spotifyRepository.isRandomYearOfShowCaseSelectionFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
         )
 
     suspend fun setSearchSimilarNum(searchNum: Int) {
@@ -82,15 +89,19 @@ class UserSettingsViewModel @Inject constructor(
         spotifyRepository.setNumOfShowCaseSearch(num)
     }
 
-    suspend fun setLanguageOfShowCaseSearch(language: String?) {
+    suspend fun setLanguageOfShowCaseSearch(language: String) {
         spotifyRepository.setLanguageOfShowCaseSearch(language)
     }
 
-    suspend fun setGenreOfShowCaseSearch(genre: String?) {
+    suspend fun setGenreOfShowCaseSearch(genre: String) {
         spotifyRepository.setGenreOfShowCaseSearch(genre)
     }
 
-    suspend fun setYearOfShowCaseSearch(year: String?) {
+    suspend fun setYearOfShowCaseSearch(year: String) {
         spotifyRepository.setYearOfShowCaseSearch(year)
+    }
+
+    suspend fun setIsRandomYearOfShowCaseSelection(isRandom: Boolean) {
+        spotifyRepository.setIsRandomYearOfShowCaseSelection(isRandom)
     }
 }

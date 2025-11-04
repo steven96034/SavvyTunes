@@ -55,9 +55,11 @@ class SpotifyRepositoryImpl @Inject constructor(
     override val checkMarketIfPlayableFlow: Flow<String?> = appDatabase.checkMarketIfPlayableFlow
 
     override val numOfShowCaseSearchFlow: Flow<Int> = appDatabase.numOfShowCaseSearchFlow
-    override val languageOfShowCaseSearchFlow: Flow<String?> = appDatabase.languageOfShowCaseSearchFlow
-    override val genreOfShowCaseSearchFlow: Flow<String?> = appDatabase.genreOfShowCaseSearchFlow
-    override val yearOfShowCaseSearchFlow: Flow<String?> = appDatabase.yearOfShowCaseSearchFlow
+    override val languageOfShowCaseSearchFlow: Flow<String> = appDatabase.languageOfShowCaseSearchFlow
+    override val genreOfShowCaseSearchFlow: Flow<String> = appDatabase.genreOfShowCaseSearchFlow
+    override val yearOfShowCaseSearchFlow: Flow<String> = appDatabase.yearOfShowCaseSearchFlow
+    override val isRandomYearOfShowCaseSelectionFlow: Flow<Boolean> = appDatabase.isRandomYearOfShowCaseSelectionFlow
+
 
     init {
         // Launch coroutine in ApplicationScope to collect data from DataStore
@@ -388,16 +390,20 @@ class SpotifyRepositoryImpl @Inject constructor(
         appDatabase.saveNumOfShowCaseSearch(num)
     }
 
-    override suspend fun setLanguageOfShowCaseSearch(language: String?) {
+    override suspend fun setLanguageOfShowCaseSearch(language: String) {
         appDatabase.saveLanguageOfShowCaseSearch(language)
     }
 
-    override suspend fun setGenreOfShowCaseSearch(genre: String?) {
+    override suspend fun setGenreOfShowCaseSearch(genre: String) {
         appDatabase.saveGenreOfShowCaseSearch(genre)
     }
 
-    override suspend fun setYearOfShowCaseSearch(year: String?) {
+    override suspend fun setYearOfShowCaseSearch(year: String) {
         appDatabase.saveYearOfShowCaseSearch(year)
+    }
+
+    override suspend fun setIsRandomYearOfShowCaseSelection(isRandom: Boolean) {
+        appDatabase.saveIsRandomYearOfShowCaseSelection(isRandom)
     }
 
     companion object {

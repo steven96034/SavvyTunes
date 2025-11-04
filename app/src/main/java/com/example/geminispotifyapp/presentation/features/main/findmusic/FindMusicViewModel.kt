@@ -49,7 +49,8 @@ class FindMusicViewModel @Inject constructor(
     private val spotifyRepository: SpotifyRepository,
     private val uiEventManager: UiEventManager,
     private val globalErrorHandler: GlobalErrorHandler,
-    private val searchForSpecificTrackUseCase: SearchForSpecificTrackUseCase
+    private val searchForSpecificTrackUseCase: SearchForSpecificTrackUseCase,
+    private val geminiApi: GeminiApi
 ) : ViewModel() {
     // For Search State
     private var _searchSimilarUiState: MutableStateFlow<UiState<SpotifyDataList>> =
@@ -454,7 +455,7 @@ class FindMusicViewModel @Inject constructor(
                 Log.d(tag, "numOfSearch: $numOfSearch, $searchSimilarNum")
                 withContext(Dispatchers.IO) {
                     // Song name and album name for artists list is redundant for now, more precise for future.
-                    responseSimilar = GeminiApi().askGemini(
+                    responseSimilar = geminiApi.askGemini(
                         """Please list $numOfSearch music tracks of related genres of $track##$artist, where the format mentioned is: Song Name##Artists Name.
                                 List only one related music track in each row using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,                               
                                     if there is more than one artist, just separate them with comma, also do not use blank row to separate each track(only use one row for each track). 

@@ -2,6 +2,7 @@ package com.example.geminispotifyapp.presentation.features.settings.usersettings
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -55,6 +56,7 @@ import androidx.compose.ui.unit.min
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import java.util.Locale
 
 
@@ -69,6 +71,7 @@ fun UserSettingsScreen(
     val languageOfShowCaseSearch by viewModel.languageOfShowCaseSearch.collectAsStateWithLifecycle()
     val genreOfShowCaseSearch by viewModel.genreOfShowCaseSearch.collectAsStateWithLifecycle()
     val yearOfShowCaseSearch by viewModel.yearOfShowCaseSearch.collectAsStateWithLifecycle()
+    val isRandomYearOfShowCaseSelection by viewModel.isRandomYearOfShowCaseSelection.collectAsStateWithLifecycle()
 
     val searchText by viewModel.searchText.collectAsStateWithLifecycle()
 
@@ -87,10 +90,12 @@ fun UserSettingsScreen(
         languageOfShowCaseSearch = languageOfShowCaseSearch,
         genreOfShowCaseSearch = genreOfShowCaseSearch,
         yearOfShowCaseSearch = yearOfShowCaseSearch,
+        isRandomYearOfShowCaseSelection = isRandomYearOfShowCaseSelection,
         onNumOfShowCaseSearchChange = { newValue -> scope.launch { viewModel.setNumOfShowCaseSearch(newValue) } },
         onLanguageOfShowCaseSearchChange = { newValue -> scope.launch { viewModel.setLanguageOfShowCaseSearch(newValue) } },
         onGenreOfShowCaseSearchChange = { newValue -> scope.launch { viewModel.setGenreOfShowCaseSearch(newValue) } },
-        onYearOfShowCaseSearchChange = { newValue -> scope.launch { viewModel.setYearOfShowCaseSearch(newValue) } }
+        onYearOfShowCaseSearchChange = { newValue -> scope.launch { viewModel.setYearOfShowCaseSearch(newValue) } },
+        onIsRandomYearOfShowCaseSelection = { newValue -> scope.launch { viewModel.setIsRandomYearOfShowCaseSelection(newValue) } }
     )
 }
 
@@ -106,13 +111,15 @@ fun UserSettingsContent(
     onSearchForMarketChange: (String?) -> Unit,
     onSearchTextChange: (String) -> Unit,
     numOfShowCaseSearch: Int,
-    languageOfShowCaseSearch: String?,
-    genreOfShowCaseSearch: String?,
-    yearOfShowCaseSearch: String?,
+    languageOfShowCaseSearch: String,
+    genreOfShowCaseSearch: String,
+    yearOfShowCaseSearch: String,
+    isRandomYearOfShowCaseSelection: Boolean,
     onNumOfShowCaseSearchChange: (Int) -> Unit,
-    onLanguageOfShowCaseSearchChange: (String?) -> Unit,
-    onGenreOfShowCaseSearchChange: (String?) -> Unit,
-    onYearOfShowCaseSearchChange: (String?) -> Unit
+    onLanguageOfShowCaseSearchChange: (String) -> Unit,
+    onGenreOfShowCaseSearchChange: (String) -> Unit,
+    onYearOfShowCaseSearchChange: (String) -> Unit,
+    onIsRandomYearOfShowCaseSelection: (Boolean) -> Unit
 ) {
     val countryCodes = remember { Locale.getISOCountries() }
     val countries = remember(countryCodes) {
@@ -136,8 +143,30 @@ fun UserSettingsContent(
     val focusManager = LocalFocusManager.current
 
     val genres = remember {
-        listOf("Pop", "Rock", "Hip Hop", "Jazz", "Classical", "Country", "Electronic", "R&B", "Reggae", "Blues")
+        listOf(
+            "Pop",
+            "Rock",
+            "Hip Hop",
+            "Jazz",
+            "Classical",
+            "Country",
+            "Electronic",
+            "R&B",
+            "Reggae",
+            "Blues",
+            "Metal",
+            "Folk",
+            "Indie",
+            "Punk",
+            "Soul",
+            "Funk",
+            "Disco",
+            "Techno",
+            "House",
+            "Ambient"
+        )
     }
+    val currentYear = remember { Calendar.getInstance().get(Calendar.YEAR) }
 
     var expanded by remember { mutableStateOf(false) }
     var expandedExpandable by remember { mutableStateOf(false) }
@@ -162,7 +191,7 @@ fun UserSettingsContent(
     // Max height of the DropdownMenu is 300.dp or half of the screen height
     val maxDropdownHeight = remember { min(300.dp, screenHeightDp / 2) }
 
-    val tabTitles = listOf("Showcase", "Search", "Market")
+    val tabTitles = listOf("Showcase", "Search", "Others")
     val pagerState = rememberPagerState(pageCount = { tabTitles.size })
     val coroutineScope = rememberCoroutineScope()
 
@@ -214,7 +243,7 @@ fun UserSettingsContent(
                         }
                         // Language Filter
                         item {
-                            val useLanguage = languageOfShowCaseSearch != null
+                            val useLanguage = languageOfShowCaseSearch != ""
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("Enable Language Filter")
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -222,13 +251,14 @@ fun UserSettingsContent(
                                     checked = useLanguage,
                                     onCheckedChange = { isChecked ->
                                         if (!isChecked) {
-                                            onLanguageOfShowCaseSearchChange(null)
+                                            onLanguageOfShowCaseSearchChange("")
                                             languageSearchText = "" // Clear search text when turned off
                                         } else {
-                                            val selectedLanguage = languageOfShowCaseSearch ?: "English"
-                                            onLanguageOfShowCaseSearchChange(selectedLanguage)
+                                            onLanguageOfShowCaseSearchChange("English")
                                             // When turned on, set the search box text to the currently selected language
-                                            languageSearchText = languagePairs.find { it.second == selectedLanguage }?.first ?: selectedLanguage
+                                            languageSearchText =
+                                                languagePairs.find { it.second == languageOfShowCaseSearch }?.first
+                                                    ?: languageOfShowCaseSearch
                                         }
                                     }
                                 )
@@ -254,9 +284,10 @@ fun UserSettingsContent(
                                                 if (!expandedLanguage) expandedLanguage = true
                                             },
                                             label = {
-                                                val currentDisplayName = languageOfShowCaseSearch?.let { englishName ->
-                                                    languagePairs.find { it.second == englishName }?.first
-                                                }
+                                                val currentDisplayName =
+                                                    languageOfShowCaseSearch.let { englishName ->
+                                                        languagePairs.find { it.second == englishName }?.first
+                                                    }
                                                 if (languageSearchText.isNotEmpty() || expandedLanguage) {
                                                     Text("Select a language")
                                                 } else {
@@ -264,9 +295,10 @@ fun UserSettingsContent(
                                                 }
                                             },
                                             placeholder = {
-                                                val currentDisplayName = languageOfShowCaseSearch?.let { englishName ->
-                                                    languagePairs.find { it.second == englishName }?.first
-                                                }
+                                                val currentDisplayName =
+                                                    languageOfShowCaseSearch.let { englishName ->
+                                                        languagePairs.find { it.second == englishName }?.first
+                                                    }
                                                 Text(currentDisplayName ?: "Select or input language")
                                             },
                                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedLanguage) },
@@ -320,7 +352,7 @@ fun UserSettingsContent(
 
                         // Genre Filter
                         item {
-                            var useGenre = genreOfShowCaseSearch != null
+                            var useGenre = genreOfShowCaseSearch != ""
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("Enable Genre Filter")
@@ -330,9 +362,9 @@ fun UserSettingsContent(
                                     onCheckedChange = { isChecked ->
                                         useGenre = isChecked
                                         if (!isChecked) {
-                                            onGenreOfShowCaseSearchChange(null)
+                                            onGenreOfShowCaseSearchChange("")
                                         } else {
-                                            onGenreOfShowCaseSearchChange(genreOfShowCaseSearch ?: "Pop")
+                                            onGenreOfShowCaseSearchChange("Country")
                                         }
                                     }
                                 )
@@ -346,7 +378,7 @@ fun UserSettingsContent(
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         OutlinedTextField(
-                                            value = genreOfShowCaseSearch ?: "Pop",
+                                            value = genreOfShowCaseSearch,
                                             onValueChange = { },
                                             readOnly = true,
                                             label = { Text("Genre of showcase tracks to search") },
@@ -379,7 +411,7 @@ fun UserSettingsContent(
 
                         // MARK: Year Filter (remains the same)
                         item {
-                            var useYear = yearOfShowCaseSearch != null
+                            var useYear = yearOfShowCaseSearch != ""
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("Enable Year Filter")
@@ -389,9 +421,9 @@ fun UserSettingsContent(
                                     onCheckedChange = { isChecked ->
                                         useYear = isChecked
                                         if (!isChecked) {
-                                            onYearOfShowCaseSearchChange(null)
+                                            onYearOfShowCaseSearchChange("")
                                         } else {
-                                            onYearOfShowCaseSearchChange(yearOfShowCaseSearch ?: "2015")
+                                            onYearOfShowCaseSearchChange("2015")
                                         }
                                     }
                                 )
@@ -402,19 +434,36 @@ fun UserSettingsContent(
                                     val annotatedText = buildAnnotatedString {
                                         append("Year of showcase tracks to search: ")
                                         pushStyle(SpanStyle(textDecoration = TextDecoration.Underline, color = MaterialTheme.colorScheme.onSurface))
-                                        append(yearOfShowCaseSearch ?: "Any")
+                                        append(yearOfShowCaseSearch)
                                         pop()
                                     }
                                     Text(text = annotatedText, modifier = Modifier.padding(bottom = 8.dp))
                                     Slider(
-                                        value = yearOfShowCaseSearch?.toFloat() ?: 2015f,
+                                        value = if (yearOfShowCaseSearch != "") yearOfShowCaseSearch.toFloat() else 2015f,
                                         onValueChange = { newValue ->
                                             onYearOfShowCaseSearchChange(newValue.toInt().toString())
                                         },
-                                        valueRange = 1900f..2024f,
-                                        steps = 123,
+                                        valueRange = 1900f..currentYear.toFloat(),
+                                        steps = currentYear - 1900,
                                         modifier = Modifier.fillMaxWidth()
                                     )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Text(
+                                            text = "Randomize the Selected Year in Small Range!",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Switch(
+                                            checked = isRandomYearOfShowCaseSelection,
+                                            onCheckedChange = {
+                                                onIsRandomYearOfShowCaseSelection(it)
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -630,9 +679,11 @@ fun UserSettingsScreenPreview() {
         languageOfShowCaseSearch = "English",
         genreOfShowCaseSearch = "Country",
         yearOfShowCaseSearch = "2015",
+        isRandomYearOfShowCaseSelection = false,
         onNumOfShowCaseSearchChange = {},
         onLanguageOfShowCaseSearchChange = {},
         onGenreOfShowCaseSearchChange = {},
-        onYearOfShowCaseSearchChange = {}
+        onYearOfShowCaseSearchChange = {},
+        onIsRandomYearOfShowCaseSelection = {}
     )
 }

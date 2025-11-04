@@ -36,13 +36,15 @@ class AuthManager @Inject constructor(
          * [Spotify Scopes documentation](https://developer.spotify.com/documentation/general/guides/scopes/)
          */
         private val SCOPES = listOf(
-            "playlist-read-private", // Read access to user's private playlists.
-            "playlist-modify-private", // Write/delete access to the list of artists and other users that the user follows.
-            "user-follow-read", // Read access to the list of artists and other users that the user follows.
-            "user-library-modify", // Write/delete access to a user's "Your Music" library.
-            "user-library-read", // Read access to a user's library.
+//            "playlist-read-private", // Read access to user's private playlists.
+//            "playlist-modify-private", // Write/delete access to the list of artists and other users that the user follows.
+//            "user-follow-read", // Read access to the list of artists and other users that the user follows.
+//            "user-library-modify", // Write/delete access to a user's "Your Music" library.
+//            "user-library-read", // Read access to a user's library.
             "user-top-read", // Read access to a user's top artists and tracks.
-            "user-read-recently-played" // Read access to a user’s recently played tracks.
+            "user-read-recently-played", // Read access to a user’s recently played tracks.
+            "user-read-private", // Read access to user’s subscription details (type of user account).
+            "user-read-email" // Read access to user’s email address.
         )
 
         private const val AUTH_ENDPOINT = "https://accounts.spotify.com/authorize"

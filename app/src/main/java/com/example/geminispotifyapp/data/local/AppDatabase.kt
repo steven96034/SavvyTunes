@@ -3,6 +3,7 @@ package com.example.geminispotifyapp.data.local
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -36,6 +37,7 @@ class AppDatabase @Inject constructor(
         val SHOW_CASE_LANGUAGE_KEY = stringPreferencesKey("show_case_language")
         val SHOW_CASE_GENRE_KEY = stringPreferencesKey("show_case_genre")
         val SHOW_CASE_YEAR_KEY = stringPreferencesKey("show_case_year")
+        val IS_RANDOM_YEAR_OF_SHOW_CASE_SELECTION = booleanPreferencesKey("is_random_year_of_show_case_selection")
     }
 
     suspend fun saveCodeVerifier(codeVerifier: String) {
@@ -190,45 +192,43 @@ class AppDatabase @Inject constructor(
         }
     }
 
-    val languageOfShowCaseSearchFlow: Flow<String?> = dataStore.data.map { preferences ->
-        preferences[SHOW_CASE_LANGUAGE_KEY]
+    val languageOfShowCaseSearchFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[SHOW_CASE_LANGUAGE_KEY] ?: "English"
     }
 
-    suspend fun saveLanguageOfShowCaseSearch(language: String?) {
+    suspend fun saveLanguageOfShowCaseSearch(language: String) {
         dataStore.edit { preferences ->
-            if (language == null) {
-                preferences.remove(SHOW_CASE_LANGUAGE_KEY)
-            } else {
-                preferences[SHOW_CASE_LANGUAGE_KEY] = language
-            }
+            preferences[SHOW_CASE_LANGUAGE_KEY] = language
         }
     }
 
-    val genreOfShowCaseSearchFlow: Flow<String?> = dataStore.data.map { preferences ->
-        preferences[SHOW_CASE_GENRE_KEY]
+    val genreOfShowCaseSearchFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[SHOW_CASE_GENRE_KEY] ?: "" // Genre is not set by default
     }
 
-    suspend fun saveGenreOfShowCaseSearch(genre: String?) {
+    suspend fun saveGenreOfShowCaseSearch(genre: String) {
         dataStore.edit { preferences ->
-            if (genre == null) {
-                preferences.remove(SHOW_CASE_GENRE_KEY)
-            } else {
-                preferences[SHOW_CASE_GENRE_KEY] = genre
-            }
+            preferences[SHOW_CASE_GENRE_KEY] = genre
         }
     }
 
-    val yearOfShowCaseSearchFlow: Flow<String?> = dataStore.data.map { preferences ->
-        preferences[SHOW_CASE_YEAR_KEY]
+    val yearOfShowCaseSearchFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[SHOW_CASE_YEAR_KEY] ?: "2015"
     }
 
-    suspend fun saveYearOfShowCaseSearch(year: String?) {
+    suspend fun saveYearOfShowCaseSearch(year: String) {
         dataStore.edit { preferences ->
-            if (year == null) {
-                preferences.remove(SHOW_CASE_YEAR_KEY)
-            } else {
-                preferences[SHOW_CASE_YEAR_KEY] = year
-            }
+            preferences[SHOW_CASE_YEAR_KEY] = year
+        }
+    }
+
+    val isRandomYearOfShowCaseSelectionFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[IS_RANDOM_YEAR_OF_SHOW_CASE_SELECTION] ?: false
+    }
+
+    suspend fun saveIsRandomYearOfShowCaseSelection(isRandom: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[IS_RANDOM_YEAR_OF_SHOW_CASE_SELECTION] = isRandom
         }
     }
 }

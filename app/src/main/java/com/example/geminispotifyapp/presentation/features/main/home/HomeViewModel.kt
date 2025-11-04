@@ -33,6 +33,7 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import java.util.Calendar
 import javax.inject.Inject
 import kotlin.collections.chunked
 import kotlin.collections.map
@@ -60,12 +61,12 @@ sealed class HomeDataState {
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val spotifyRepository: SpotifyRepository,
-//    private val locationTracker: LocationTrackerImpl,
     private val uiEventManager: UiEventManager,
     private val searchForSpecificTrackUseCase: SearchForSpecificTrackUseCase,
     val weatherIconRepository: WeatherIconRepository,
     private val weatherDataRepositoryImpl: WeatherDataRepositoryImpl,
     private val getLocationAndWeatherUseCase: GetLocationAndWeatherUseCase,
+    private val geminiApi: GeminiApi
 ): ViewModel() {
     private val _weatherDataJson = MutableStateFlow<WeatherResponse?>(null)
     val weatherDataJson: StateFlow<WeatherResponse?> = _weatherDataJson.asStateFlow()
@@ -204,30 +205,46 @@ class HomeViewModel @Inject constructor(
                 val languageOfShowCaseSearch = spotifyRepository.languageOfShowCaseSearchFlow.first()
                 val genreOfShowCaseSearch = spotifyRepository.genreOfShowCaseSearchFlow.first()
                 val yearOfShowCaseSearch = spotifyRepository.yearOfShowCaseSearchFlow.first()
+                val isRandomYearOfShowCaseSelection = spotifyRepository.isRandomYearOfShowCaseSelectionFlow.first()
+
+                // For random year search in small range
+                val randomNumber = (-5..5).random()
+                var yearOfSearch = 0
+                val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+                if (yearOfShowCaseSearch != "") {
+                    yearOfSearch = if (isRandomYearOfShowCaseSelection) {
+                        val newYear = yearOfShowCaseSearch.toInt() + randomNumber
+                        Log.d(musicTag, "yearOfSearch: $newYear (After added by random number: $randomNumber)")
+                        if (newYear > currentYear) currentYear else newYear
+                    } else {
+                        yearOfShowCaseSearch.toInt()
+                    }
+                }
+
                 Log.d(musicTag, "numOfShowCaseSearch: $numOfShowCaseSearch, languageOfShowCaseSearch: $languageOfShowCaseSearch, genreOfShowCaseSearch: $genreOfShowCaseSearch, yearOfShowCaseSearch: $yearOfShowCaseSearch")
 
                 val numOfQuery = "$numOfShowCaseSearch"
-                val languageOfQuery = if (languageOfShowCaseSearch != null)" $languageOfShowCaseSearch" else ""
-                val genreOfQuery = if (genreOfShowCaseSearch != null) " ($genreOfShowCaseSearch related genre)" else ""
-                val yearOfQuery = if (yearOfShowCaseSearch != null) " around A.D. $yearOfShowCaseSearch" else ""
+                val languageOfQuery = if (languageOfShowCaseSearch != "") ", where the tracks should be written in $languageOfShowCaseSearch," else ", where the tracks should be written/included in a great variety of languages,"
+                val genreOfQuery = if (genreOfShowCaseSearch != "") " (with genre $genreOfShowCaseSearch)" else ""
+                val yearOfQuery = if (yearOfShowCaseSearch != "") " around A.D. $yearOfSearch" else ""
 
                 val wmo = currentJsonWeather.weatherCode
-                val temperature = currentJsonWeather.temperature.toFloat() // 注意型別從 Double 轉 Float
+                val temperature = currentJsonWeather.temperature.toFloat()
+                val time = currentJsonWeather.time
 
-                Log.d(musicTag, "Using JSON Weather Data -> wmo: $wmo, temperature: $temperature")
+                Log.d(musicTag, "Using JSON Weather Data -> wmo: $wmo, temperature: $temperature, time: $time")
 
                 withContext(Dispatchers.IO) {
-                    // Song name and album name for artists list is redundant for now, more precise for future.
-                    responseRelated = GeminiApi().askGemini(
-                        """Rules to respond: List only one related music of$languageOfQuery track$genreOfQuery$yearOfQuery in each row using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,
+                    responseRelated = geminiApi.askGemini(
+                        """Rules to respond: List only one related music of track$genreOfQuery$yearOfQuery in each row$languageOfQuery using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,
                              if there is more than one artist, just separate them with comma, also do not use blank row to separate each track(only use one row for each track).
                              Use one blank row to separate the response of aforementioned weather condition and the response of related emotion of this weather.
                              Other response rule: Do not use No., and do not respond any other statement, neither.
 
                              Below is the main query:
-                             The current weather represented in WMO weather interpretation code is $wmo, the current temperature is $temperature.
-                             Please recommend $numOfQuery related music tracks of aforementioned weather condition, where the format mentioned is: Song Name##Artists Name.
-                             Also, recommend $numOfQuery related music tracks of the related emotion of this weather, where the format mentioned is: Song Name##Artists Name.
+                             The current weather represented in WMO weather interpretation code is $wmo, the current temperature is $temperature, and current time is $time.
+                             Please recommend $numOfQuery related music tracks of aforementioned weather condition, where the format mentioned is: Song Name##Album Name##Artists Name.
+                             Also, recommend $numOfQuery related music tracks of the related emotion of this weather and time, where the format mentioned is: Song Name##Album Name##Artists Name.
                              Notice: List only one related music track in each row using format: Song Name##Album Name##Artists Name
                                     """
                     )
@@ -253,7 +270,7 @@ class HomeViewModel @Inject constructor(
                                     minOf(numOfShowCaseSearch, blankLineIndex)
                                 )
                             )
-                            // Last $numOfSearch rows: emotion
+                            // Last $numOfSearch rows: emotion and time
                             relatedTracksOfEmotion.addAll(
                                 lines.subList(
                                     blankLineIndex + 1,

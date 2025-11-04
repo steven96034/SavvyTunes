@@ -105,9 +105,7 @@ import kotlin.math.abs
 fun HomeScreen(
     viewModel: HomeViewModel
 ) {
-    //val currentWeatherData by viewModel.currentWeatherData.collectAsStateWithLifecycle()
     val currentWeatherData by viewModel.weatherDataJson.collectAsStateWithLifecycle()
-
 
     val showGpsDialog by viewModel.showGpsDialog.collectAsStateWithLifecycle()
 
@@ -521,6 +519,27 @@ fun HomeContent(
                                 verticalPagerIndicatorSpacing = 6.dp // More compact spacing
                             ) { page ->
                                 TrackShowcase(track = currentTracks[page])
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState()),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
+                                ) {
+                                    Text("Recommendation is not found in this category of searching result, wanna try again?")
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Button(onClick = onRefresh) { // Retry for user but actually refresh for app
+                                        Text(text = "Retry")
+                                    }
+                                }
                             }
                         }
                     }
