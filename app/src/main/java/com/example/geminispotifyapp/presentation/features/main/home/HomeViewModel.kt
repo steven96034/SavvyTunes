@@ -16,6 +16,7 @@ import com.example.geminispotifyapp.domain.repository.WeatherIconRepository
 import com.example.geminispotifyapp.domain.usecase.GetLocationAndWeatherUseCase
 import com.example.geminispotifyapp.domain.usecase.SearchForSpecificTrackUseCase
 import com.example.geminispotifyapp.presentation.MainScreen
+import com.example.geminispotifyapp.presentation.SettingsScreen
 import com.google.ai.client.generativeai.type.GenerateContentResponse
 import com.google.ai.client.generativeai.type.ServerException
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -163,6 +164,10 @@ class HomeViewModel @Inject constructor(
 
     fun onGpsDialogDismiss() {
         _showGpsDialog.value = false
+    }
+
+    fun navigateToSettings() {
+        uiEventManager.sendEvent(UiEvent.Navigate(SettingsScreen.Settings.route))
     }
 
     private var _findWeatherMusicUiState: MutableStateFlow<UiState<TwoTracksList>> =

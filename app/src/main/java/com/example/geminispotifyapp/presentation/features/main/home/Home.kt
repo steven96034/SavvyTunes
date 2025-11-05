@@ -2,7 +2,10 @@ package com.example.geminispotifyapp.presentation.features.main.home
 
 import android.Manifest
 import android.content.Intent
+import android.content.res.Configuration
+import android.net.Uri
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColor
@@ -38,6 +41,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material3.ButtonDefaults
@@ -65,10 +69,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.palette.graphics.Palette
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -78,6 +86,10 @@ import com.google.accompanist.permissions.rememberPermissionState
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.unit.IntSize
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import com.example.geminispotifyapp.data.remote.interceptor.ApiError
@@ -112,6 +124,9 @@ fun HomeScreen(
     val uiState by viewModel.findWeatherMusicUiState.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
 
+    // Detect portrait orientation
+    val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
+
     // Handle the logic after returning from the settings page
     val settingResultLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -132,6 +147,7 @@ fun HomeScreen(
     HomeContent(
         currentWeatherData = currentWeatherData,
         uiState = uiState,
+        isPortrait = isPortrait,
         permissionStatus = locationPermissionState.status,
         showGpsDialog = showGpsDialog,
         onRequestPermissionClick = { locationPermissionState.launchPermissionRequest() },
@@ -144,7 +160,8 @@ fun HomeScreen(
         getWeatherDisplayInfo = { wmoCode: Int, isDay: Boolean -> viewModel.weatherIconRepository.getWeatherDisplayInfo(wmoCode, isDay) },
         onRetry = { viewModel.fetchLocationAndWeather() },
         onRefresh = { viewModel.refreshHome() },
-        isRefreshing = isRefreshing
+        isRefreshing = isRefreshing,
+        navigateToSettings = { viewModel.navigateToSettings() }
     )
 }
 
@@ -157,6 +174,7 @@ fun HomeScreen(
 fun HomeContent(
     currentWeatherData: WeatherResponse?,
     uiState: UiState<TwoTracksList?>,
+    isPortrait: Boolean,
     permissionStatus: PermissionStatus,
     showGpsDialog: Boolean,
     onRequestPermissionClick: () -> Unit,
@@ -165,7 +183,8 @@ fun HomeContent(
     getWeatherDisplayInfo: (wmoCode: Int, isDay: Boolean) -> Pair<String?, String?>,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
-    isRefreshing: Boolean
+    isRefreshing: Boolean,
+    navigateToSettings: () -> Unit
 ) {
     if (showGpsDialog) {
         AlertDialog(
@@ -221,7 +240,7 @@ fun HomeContent(
                                 Button(onClick = {
                                     val intent = Intent(
                                         Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                        android.net.Uri.fromParts("package", context.packageName, null)
+                                        Uri.fromParts("package", context.packageName, null)
                                     )
                                     context.startActivity(intent)
                                 }) {
@@ -503,8 +522,8 @@ fun HomeContent(
                             1 -> uiState.data!!.tracksB
                             else -> emptyList() // Should not happen with 2 pages
                         }
-
-                        if (currentTracks != null) {
+                        Log.d("HomeContent", "currentTracks: $currentTracks")
+                        if (!currentTracks.isNullOrEmpty()) { // If the list is not empty or null.
                             val verticalPagerState = rememberPagerState(pageCount = { currentTracks.size })
 
                             ScrollHintVerticalPager(
@@ -518,7 +537,7 @@ fun HomeContent(
                                 verticalPagerIndicatorSize = 10.dp, // Slightly larger dots
                                 verticalPagerIndicatorSpacing = 6.dp // More compact spacing
                             ) { page ->
-                                TrackShowcase(track = currentTracks[page])
+                                TrackShowcase(track = currentTracks[page], isPortrait = isPortrait)
                             }
                         } else {
                             Box(
@@ -534,7 +553,62 @@ fun HomeContent(
                                         .fillMaxWidth()
                                         .padding(16.dp)
                                 ) {
-                                    Text("Recommendation is not found in this category of searching result, wanna try again?")
+                                    Text(
+                                        "Recommendation is not found in this category of searching result.",
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        val fullMessage = // The complete message after translation
+                                            "You can add the number of showcase to search or adjust other filters in Settings Page."
+                                        val settingsWord = "Settings Page"
+                                        val startIndex = fullMessage.indexOf(settingsWord)
+                                        val endIndex = startIndex + settingsWord.length
+                                        val annotatedString = buildAnnotatedString {
+                                            // First, add the complete message to the AnnotatedString
+                                            append(fullMessage)
+                                            if (startIndex != -1) {
+                                                // Use the addLink function to add a clickable LinkAnnotation
+                                                addLink(
+                                                    // LinkAnnotation.Clickable defines the click behavior and style
+                                                    clickable = LinkAnnotation.Clickable(
+                                                        tag = "settings_link_tag",
+                                                        styles = TextLinkStyles(
+                                                            SpanStyle(
+                                                                color = MaterialTheme.colorScheme.primary,
+                                                                textDecoration = TextDecoration.Underline
+                                                            )
+                                                        ),
+                                                        linkInteractionListener = { navigateToSettings() }
+                                                    ),
+                                                    start = startIndex,
+                                                    end = endIndex
+                                                )
+                                            }
+                                        }
+
+                                        Icon(
+                                            imageVector = Icons.Default.Info,
+                                            contentDescription = "Info",
+                                            modifier = Modifier
+                                                .padding(horizontal = 8.dp)
+                                                .size(16.dp)
+                                        )
+                                        Text(
+                                            text = annotatedString,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(end = 8.dp),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center,
+                                            style = MaterialTheme.typography.labelMedium
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text("Wanna try again?", textAlign = TextAlign.Center)
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Button(onClick = onRefresh) { // Retry for user but actually refresh for app
                                         Text(text = "Retry")
@@ -551,8 +625,24 @@ fun HomeContent(
 
 @Composable
 fun TrackShowcase(
-    track: SpotifyTrack
+    track: SpotifyTrack,
+    isPortrait: Boolean
 ) {
+    var imageWidthFraction by remember { mutableStateOf(0.9f) }
+    var cardSize by remember { mutableStateOf(IntSize.Zero) }
+    var actualImageWidth by remember { mutableStateOf(0) }
+    var actualImageHeight by remember { mutableStateOf(0) }
+    val imageAspectRatio by remember(actualImageWidth, actualImageHeight) {
+        derivedStateOf {
+            if (actualImageWidth > 0 && actualImageHeight > 0) {
+                actualImageWidth.toFloat() / actualImageHeight.toFloat()
+            } else {
+                1f // Default value until actual dimensions are available
+            }
+        }
+    }
+
+
     var cardColor by remember { mutableStateOf(Color.Gray) }
 
     val trackTextColor = remember(cardColor, MaterialTheme.colorScheme.onSurface) {
@@ -581,77 +671,203 @@ fun TrackShowcase(
             containerColor = cardColor
         ),
         modifier = Modifier
+            .onSizeChanged { cardSize = it }
             .padding(horizontal = 4.dp)
             .fillMaxSize(),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(vertical = 8.dp, horizontal = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(track.album.images.firstOrNull()?.url)
-                    .crossfade(true)
-                    .allowHardware(false) // Required for Palette
-                    .size(Size.ORIGINAL) // Load original size to get accurate colors
-                    .listener(onSuccess = { _, result ->
-                        Palette.from(result.drawable.toBitmap()).generate { palette ->
-                            val dominantColor = palette?.dominantSwatch?.rgb ?: return@generate
-                            cardColor = Color(dominantColor)
-                        }
-                    })
-                    .build(),
-                contentDescription = "Album cover for ${track.album.name}",
-                contentScale = ContentScale.Fit,
+        if (isPortrait) { // For portrait orientation
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .padding(bottom = 16.dp)
-            )
+                    .fillMaxSize()
+                    .padding(vertical = 8.dp, horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                LaunchedEffect(cardSize, imageAspectRatio) {
+                    if (cardSize.height > 0 && cardSize.width > 0 && imageAspectRatio > 0 && actualImageWidth > 0 && actualImageHeight > 0) {
+                        Log.d("TrackShowcase", "(${track.name}) current cardSize: $cardSize, imageAspectRatio: $imageAspectRatio")
+                        Log.d("TrackShowcase", "(${track.name}) Actual image dimensions: ${actualImageWidth}x${actualImageHeight}")
+                        // Goal: Image height should not exceed 70% of the card's height
+                        val maxAllowedImageHeight = cardSize.height * 0.7f
 
-            Text(
-                text = track.name,
-                style = MaterialTheme.typography.titleLarge,
-                color = trackTextColor,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = track.artists.joinToString(", ") { it.name },
-                style = MaterialTheme.typography.bodyMedium,
-                color = artistTextColor,
-                textAlign = TextAlign.Center
-            )
+                        // If the image were displayed at 100% card width, its height would be (cardSize.width / imageAspectRatio)
+                        // We need to find a fraction (f) such that (cardSize.width * f) / imageAspectRatio <= maxAllowedImageHeight
 
-            val url = track.externalUrls["spotify"]
-            if (url != null) {
-                val context = LocalContext.current
-                Spacer(modifier = Modifier.height(4.dp))
-                Button(
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        if (intent.resolveActivity(context.packageManager) != null) {
-                            context.startActivity(intent)
+                        // Back-calculate the maximum allowed image width from the height constraint
+                        val maxWidthFromHeightConstraint = maxAllowedImageHeight * imageAspectRatio
+
+                        // Now calculate the ratio of this width to the total card width
+                        val fractionBasedOnHeight = maxWidthFromHeightConstraint / cardSize.width
+
+                        // We also need to consider that the image cannot exceed the card's width itself (i.e., fraction <= 1.0f)
+                        // and we want a maximum of 0.9f (based on the initial value)
+                        // and a minimum of 0.2f
+                        val calculatedFraction = fractionBasedOnHeight
+                            .coerceAtMost(0.9f) // Cannot exceed 90% of the card's width
+                            .coerceAtLeast(0.2f) // Cannot be less than 20% of the card's width
+
+                        // Only update the state if the value has actually changed to avoid unnecessary recomposition
+                        if (abs(calculatedFraction - imageWidthFraction) > 0.001f) { // Use a small threshold to compare floating-point numbers
+                            imageWidthFraction = calculatedFraction
+                            Log.d("TrackShowcase", "(${track.name}) Updated imageWidthFraction to: $imageWidthFraction")
                         }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = artistTextColor.copy(alpha = 0.3f), contentColor = trackTextColor),
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = 2.dp,
-                        pressedElevation = 0.dp
-                    )
-                ) {
-                    Row {
-                        Text(text = "Open in Spotify")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Image(
-                            painter = painterResource(R.drawable.primary_logo_green_rgb),
-                            contentDescription = null,
-                            modifier = Modifier.height(20.dp)
+                    } else {
+                        // If size information is incomplete, set a reasonable default value
+                        if (imageWidthFraction != 0.9f) {
+                            imageWidthFraction = 0.9f
+                        }
+                    }
+                }
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(track.album.images.firstOrNull()?.url)
+                        .crossfade(true)
+                        .allowHardware(false) // Required for Palette
+                        .size(Size.ORIGINAL) // Load original size to get accurate colors
+                        .listener(onSuccess = { _, result ->
+                            actualImageWidth = result.drawable.intrinsicWidth
+                            actualImageHeight = result.drawable.intrinsicHeight
+                            Palette.from(result.drawable.toBitmap()).generate { palette ->
+                                val dominantColor = palette?.dominantSwatch?.rgb ?: return@generate
+                                cardColor = Color(dominantColor)
+                            }
+                        })
+                        .build(),
+                    contentDescription = "Album cover for ${track.album.name}",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxWidth(imageWidthFraction)
+                        .padding(bottom = 16.dp)
+                )
+
+                Text(
+                    text = track.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = trackTextColor,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = track.artists.joinToString(", ") { it.name },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = artistTextColor,
+                    textAlign = TextAlign.Center
+                )
+
+                val url = track.externalUrls["spotify"]
+                if (url != null) {
+                    val context = LocalContext.current
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Button(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            if (intent.resolveActivity(context.packageManager) != null) {
+                                context.startActivity(intent)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = artistTextColor.copy(
+                                alpha = 0.3f
+                            ), contentColor = trackTextColor
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 2.dp,
+                            pressedElevation = 0.dp
                         )
+                    ) {
+                        Row {
+                            Text(text = "Open in Spotify")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Image(
+                                painter = painterResource(R.drawable.primary_logo_green_rgb),
+                                contentDescription = null,
+                                modifier = Modifier.height(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        else { // For landscape orientation
+            Row (
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(vertical = 8.dp, horizontal = 16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(track.album.images.firstOrNull()?.url)
+                        .crossfade(true)
+                        .allowHardware(false) // Required for Palette
+                        .size(Size.ORIGINAL) // Load original size to get accurate colors
+                        .listener(onSuccess = { _, result ->
+                            Palette.from(result.drawable.toBitmap()).generate { palette ->
+                                val dominantColor = palette?.dominantSwatch?.rgb ?: return@generate
+                                cardColor = Color(dominantColor)
+                            }
+                        })
+                        .build(),
+                    contentDescription = "Album cover for ${track.album.name}",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxWidth(0.5f)
+                        .padding(bottom = 16.dp)
+                )
+                Column (
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = track.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = trackTextColor,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = track.artists.joinToString(", ") { it.name },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = artistTextColor,
+                        textAlign = TextAlign.Center
+                    )
+
+                    val url = track.externalUrls["spotify"]
+                    if (url != null) {
+                        val context = LocalContext.current
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Button(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                if (intent.resolveActivity(context.packageManager) != null) {
+                                    context.startActivity(intent)
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = artistTextColor.copy(
+                                    alpha = 0.3f
+                                ), contentColor = trackTextColor
+                            ),
+                            elevation = ButtonDefaults.buttonElevation(
+                                defaultElevation = 2.dp,
+                                pressedElevation = 0.dp
+                            )
+                        ) {
+                            Row {
+                                Text(text = "Open in Spotify")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Image(
+                                    painter = painterResource(R.drawable.primary_logo_green_rgb),
+                                    contentDescription = null,
+                                    modifier = Modifier.height(20.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }

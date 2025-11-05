@@ -48,6 +48,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -77,6 +78,7 @@ import com.example.geminispotifyapp.presentation.ui.theme.SpotifyGreen
 import com.example.geminispotifyapp.presentation.features.settings.aboutthisapp.AboutThisAppScreen
 import com.example.geminispotifyapp.presentation.features.settings.profile.ProfileScreen
 import com.example.geminispotifyapp.presentation.features.settings.usersettings.UserSettingsScreen
+import kotlinx.coroutines.launch
 
 const val SPLASH_ROUTE = "splash_route"
 const val LOGIN_ROUTE = "login_route"
@@ -122,6 +124,14 @@ val settingsItems = listOf(
     SettingsScreen.AboutThisApp
 )
 
+val allAppScreens = bottomNavItems + settingsItems
+
+// Create a map from route to label
+val screenLabelsByRoute: Map<String, String> = allAppScreens.associate {
+    it.route to it.label
+}
+
+
 @Composable
 fun RootApp() {
     val navController = rememberNavController()
@@ -145,7 +155,7 @@ fun RootApp() {
     }
 
     LaunchedEffect(loginViewModel.isAuthenticated) {
-        loginViewModel.isAuthenticated.collect { authStatus ->
+        loginViewModel.isAuthenticated.collect {
             if (!initialAuthCheckCompleted) {
                 initialAuthCheckCompleted = true
             }
@@ -225,109 +235,141 @@ fun AppContainer(
 
     var dynamicAppBarTitle by remember { mutableStateOf<String?>(null) }
 
+    val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         mainViewModel.uiEventManager.eventFlow.collect { event ->
-            Log.d(tag, ">>>>>> EVENT RECEIVED: $event")
-            when (event) {
-                is UiEvent.ShowSnackbar -> {
-                    snackbarHostState.showSnackbar(message = event.message, withDismissAction = true, duration = SnackbarDuration.Short)
-                    Log.d(tag, "Show snackbar event message: ${event.message}")
-                }
-                is UiEvent.Navigate -> {
-                    // Get the instant data from the Single Source of Truth, which is the rootNavController
-                    val routeBeforeNavigation =
-                        rootNavController.currentDestination?.route
-                    if (routeBeforeNavigation != event.route) {
-                        rootNavController.navigate(event.route) {
-                            popUpTo(rootNavController.graph.findStartDestination().id) {
-                                saveState = true
+            scope.launch {
+                // Launch a new coroutine for each flow-in event, so we don't block the UI thread by handling events
+                // Snackbar would not be interfered by new added snackbar event due to the inner design of SnackbarHostState (line-up inside the SnackbarHost)
+                Log.d(tag, ">>>>>> EVENT RECEIVED: $event")
+                when (event) {
+                    is UiEvent.ShowSnackbar -> {
+                        snackbarHostState.showSnackbar(
+                            message = event.message,
+                            withDismissAction = true,
+                            duration = SnackbarDuration.Short
+                        )
+                        Log.d(tag, "Show snackbar event message: ${event.message}")
+                    }
+
+                    is UiEvent.Navigate -> {
+                        // Get the instant data from the Single Source of Truth, which is the rootNavController
+                        val routeBeforeNavigation =
+                            rootNavController.currentDestination?.route
+                        if (routeBeforeNavigation != event.route) {
+                            rootNavController.navigate(event.route) {
+                                popUpTo(rootNavController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
                         }
+                        dynamicAppBarTitle = screenLabelsByRoute[event.route]
+                        Log.d(tag, "Navigate to event Route: ${event.route}, $dynamicAppBarTitle")
                     }
-                    Log.d(tag, "Navigate to event Route: ${event.route}")
-                }
-                is UiEvent.ShowSnackbarDetail -> {
-                    val snackbarActionResult = snackbarHostState.showSnackbar(event.message, "Details", true, SnackbarDuration.Short)
-                    Log.d(tag, "Show snackbar detail event message: ${event.message}")
-                    when (snackbarActionResult) {
-                        SnackbarResult.ActionPerformed -> {
-                            dialogMessage = event.detail
-                            showDialog = true
-                            Log.d(tag, "Show snackbar detail: 'Details' action performed for: ${event.message}")
-                        }
-                        SnackbarResult.Dismissed -> {
-                            Log.d(tag, "Show snackbar detail: Snackbar dismissed for: ${event.message}")
-                        }
-                    }
-                }
-                is UiEvent.ShowSnackbarWithAction -> {
-                    val targetRoute = when (event.actionLabel) {
-                        MainScreen.Home.label -> MainScreen.Home.route
-                        MainScreen.FindMusic.label -> MainScreen.FindMusic.route
-                        else -> null
-                    }
-                    if (targetRoute != null) {
+
+                    is UiEvent.ShowSnackbarDetail -> {
                         val snackbarActionResult = snackbarHostState.showSnackbar(
                             event.message,
-                            "See Result",
+                            "Details",
                             true,
-                            SnackbarDuration.Long
+                            SnackbarDuration.Short
                         )
-                        if (snackbarActionResult == SnackbarResult.ActionPerformed) {
-                            val routeWithParam = "$MAIN_APP_ROUTE/$targetRoute"
-
-                            // Get the instant data from the Single Source of Truth, which is the rootNavController
-                            val routeBeforeNavigation =
-                                rootNavController.currentDestination?.route
-                            if (routeBeforeNavigation != routeWithParam) {
-                                rootNavController.navigate(routeWithParam) {
-                                    popUpTo(rootNavController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                    // If current route is not in MAIN_APP_ROUTE, animate the navigation
-                                    if (routeBeforeNavigation != null && !routeBeforeNavigation.startsWith(
-                                            MAIN_APP_ROUTE
-                                        )
-                                    ) {
-                                        Log.d(
-                                            tag,
-                                            "Animation starts because route is '${routeBeforeNavigation}'."
-                                        )
-                                        anim {
-                                            enter = R.anim.slide_in_left
-                                            exit = R.anim.slide_out_right
-                                            popEnter = R.anim.slide_in_left
-                                            popExit = R.anim.slide_out_right
-                                        }
-                                    } else {
-                                        Log.d(
-                                            tag,
-                                            "Animation doesn't start and route is '${routeBeforeNavigation}'."
-                                        )
-                                    }
-                                }
+                        Log.d(tag, "Show snackbar detail event message: ${event.message}")
+                        when (snackbarActionResult) {
+                            SnackbarResult.ActionPerformed -> {
+                                dialogMessage = event.detail
+                                showDialog = true
+                                Log.d(
+                                    tag,
+                                    "Show snackbar detail: 'Details' action performed for: ${event.message}"
+                                )
                             }
-                            Log.d(
-                                tag,
-                                "Show snackbar with action: Navigating to Home triggered by Snackbar action."
-                            )
+
+                            SnackbarResult.Dismissed -> {
+                                Log.d(
+                                    tag,
+                                    "Show snackbar detail: Snackbar dismissed for: ${event.message}"
+                                )
+                            }
                         }
                     }
-                }
-                is UiEvent.Unauthorized -> {
-                    rootNavController.navigate(LOGIN_ROUTE) {
-                        popUpTo(rootNavController.graph.findStartDestination().id) { inclusive = true }
+
+                    is UiEvent.ShowSnackbarWithAction -> {
+                        val targetRoute = when (event.actionLabel) {
+                            MainScreen.Home.label -> MainScreen.Home.route
+                            MainScreen.FindMusic.label -> MainScreen.FindMusic.route
+                            else -> null
+                        }
+                        if (targetRoute != null) {
+                            val snackbarActionResult = snackbarHostState.showSnackbar(
+                                event.message,
+                                "See Result",
+                                true,
+                                SnackbarDuration.Long
+                            )
+                            if (snackbarActionResult == SnackbarResult.ActionPerformed) {
+                                val routeWithParam = "$MAIN_APP_ROUTE/$targetRoute"
+
+                                // Get the instant data from the Single Source of Truth, which is the rootNavController
+                                val routeBeforeNavigation =
+                                    rootNavController.currentDestination?.route
+                                if (routeBeforeNavigation != routeWithParam) {
+                                    rootNavController.navigate(routeWithParam) {
+                                        popUpTo(rootNavController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                        // If current route is not in MAIN_APP_ROUTE, animate the navigation
+                                        if (routeBeforeNavigation != null && !routeBeforeNavigation.startsWith(
+                                                MAIN_APP_ROUTE
+                                            )
+                                        ) {
+                                            Log.d(
+                                                tag,
+                                                "Animation starts because route is '${routeBeforeNavigation}'."
+                                            )
+                                            anim {
+                                                enter = R.anim.slide_in_left
+                                                exit = R.anim.slide_out_right
+                                                popEnter = R.anim.slide_in_left
+                                                popExit = R.anim.slide_out_right
+                                            }
+                                        } else {
+                                            Log.d(
+                                                tag,
+                                                "Animation doesn't start and route is '${routeBeforeNavigation}'."
+                                            )
+                                        }
+                                    }
+                                }
+                                Log.d(
+                                    tag,
+                                    "Show snackbar with action: Navigating to Home triggered by Snackbar action."
+                                )
+                            }
+                        }
                     }
-                    snackbarHostState.showSnackbar(event.message)
-                    Log.d(tag, "Unauthorized event message: ${event.message}")
-                }
-                is UiEvent.UpdateAppBarTitle -> {
-                    dynamicAppBarTitle = event.title
-                    Log.d(tag, "AppContainer_Collector: Updated app bar title to: ${event.title}")
+
+                    is UiEvent.Unauthorized -> {
+                        rootNavController.navigate(LOGIN_ROUTE) {
+                            popUpTo(rootNavController.graph.findStartDestination().id) {
+                                inclusive = true
+                            }
+                        }
+                        snackbarHostState.showSnackbar(event.message)
+                        Log.d(tag, "Unauthorized event message: ${event.message}")
+                    }
+
+                    is UiEvent.UpdateAppBarTitle -> {
+                        dynamicAppBarTitle = event.title
+                        Log.d(
+                            tag,
+                            "AppContainer_Collector: Updated app bar title to: ${event.title}"
+                        )
+                    }
                 }
             }
         }
@@ -366,11 +408,8 @@ fun AppContainer(
                 if (dynamicAppBarTitle != MainScreen.Home.label) {
                     TopAppBar(
                         title = {
-                            val allScreens = bottomNavItems + settingsItems
-                            val currentScreen =
-                                allScreens.find { it.route == currentDestinationRoute }
                             val title = dynamicAppBarTitle
-                                ?: currentScreen?.label
+                                ?: screenLabelsByRoute[currentDestinationRoute]
                                 ?: "Music Explorer by Gemini"
 
                             Log.d(

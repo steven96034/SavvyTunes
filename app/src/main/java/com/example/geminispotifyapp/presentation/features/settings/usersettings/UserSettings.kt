@@ -444,7 +444,7 @@ fun UserSettingsContent(
                                             onYearOfShowCaseSearchChange(newValue.toInt().toString())
                                         },
                                         valueRange = 1900f..currentYear.toFloat(),
-                                        steps = currentYear - 1900,
+                                        steps = currentYear - 1900 - 1,
                                         modifier = Modifier.fillMaxWidth()
                                     )
                                     Row(

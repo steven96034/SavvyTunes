@@ -58,7 +58,7 @@ class UiEventManagerTest {
     fun sendMultipleEvents_receivesEventsInOrder() = runTest {
         // Arrange
         val event1 = UiEvent.ShowSnackbar("Message 1")
-        val event2 = UiEvent.UpdateAppBarTitle("New Title")
+        val event2 = UiEvent.ShowSnackbar("Message 2 ")
 
         // Act & Assert
         uiEventManager.eventFlow.test {
