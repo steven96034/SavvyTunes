@@ -80,6 +80,7 @@ dependencies {
     implementation(libs.generativeai)
     implementation(files("../spotify-app-remote-release-0.8.0.aar"))
     implementation(libs.gson)
+    implementation(libs.androidx.work.runtime.ktx)
     // Spotify
     implementation(libs.auth)
     implementation(libs.spotify.api.kotlin.core)
@@ -102,6 +103,7 @@ dependencies {
     implementation(libs.androidx.browser)
     implementation(libs.play.services.location)
     implementation(libs.androidx.palette.ktx)
+    implementation(libs.androidx.hilt.work)
     ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.androidx.material.icons.core)
