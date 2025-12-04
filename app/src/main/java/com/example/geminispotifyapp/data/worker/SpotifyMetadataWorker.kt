@@ -17,39 +17,76 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.geminispotifyapp.MainActivity
 import com.example.geminispotifyapp.R
+import com.example.geminispotifyapp.core.utils.UiEvent
+import com.example.geminispotifyapp.core.utils.UiState
+import com.example.geminispotifyapp.data.local.room.AppLocalDataSource
+import com.example.geminispotifyapp.domain.usecase.FindWeatherRelatedMusic
+import com.example.geminispotifyapp.domain.usecase.GetLocationAndWeatherUseCase
+import com.example.geminispotifyapp.presentation.features.main.home.HomeDataState
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.last
 
 @HiltWorker
 class SpotifyMetadataWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted workerParams: WorkerParameters,
+    private val getLocationAndWeatherUseCase: GetLocationAndWeatherUseCase,
+    private val findWeatherRelatedMusicUseCase: FindWeatherRelatedMusic,
+    //private val localDataSource: AppLocalDataSource
 ) : CoroutineWorker(appContext, workerParams) {
 
     init {
         Log.d("SpotifyWorker", "SpotifyMetadataWorker constructor called!")
     }
 
-    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
+    @RequiresPermission(allOf = [Manifest.permission.POST_NOTIFICATIONS, Manifest.permission.ACCESS_COARSE_LOCATION])
     override suspend fun doWork(): Result {
+        var weatherState: HomeDataState = HomeDataState.Initial
         return try {
-            // Cover old data: clear old data first
+            // TODO：Cover old data: clear old data first
 //            metadataDataStore.clearMetadata()
+
+//            if (weatherState !is HomeDataState.Success) {
+//                weatherState = getLocationAndWeatherUseCase()
+//            }
 //
-//            // Get new Spotify Metadata
-//            val metadata = spotifyRepository.getLatestMetadata()
+//            if (weatherState is HomeDataState.Success) {
+//                val finalState = findWeatherRelatedMusicUseCase(weatherState.data.weatherResponse).last()
+//                val weatherData = weatherState.data.weatherResponse
 //
-//            // Save new Metadata
-//            metadataDataStore.saveMetadata(metadata)
+//                Log.d("SpotifyWorker", "Music Recommendation Final State: $finalState")
 //
+//                when (finalState) {
+//                    is UiState.Success -> {
+//                        // TODO：Save data from finalState.data and weatherState.data.weatherResponse
+//                        //localDataSource.saveTracks(finalState.data)
+//                        //localDataSource.saveWeather(weatherData)
+//                        Log.d("SpotifyWorker", "Music Recommendation Refresh Success(Weather and Tracks")
+//                    }
+//                    is UiState.Error -> {
+//                        throw Exception(finalState.message)
+//                    }
+//                    is UiState.Loading, is UiState.Initial -> {
+//                        throw Exception("Flow completed prematurely without a final result.")
+//                    }
+//                }
+//            }
+//            else {
+//                throw Exception("Weather state is not success, try again below.")
+//            }
+
 //            // Send notification
-//            sendNotification("Data Has Been Updated", "Click to see the latest data.")
-            Log.d("SpotifyWorker", "doWork() called, but not implemented yet.")
+            sendNotification("Data Has Been Updated", "Click to see the latest data.")
+            Log.d("SpotifyWorker", "doWork() called, but only implemented parts.")
 
             Result.success()
         } catch (e: Exception) {
             // If error occurs, ensure old data is deleted and retry
             //metadataDataStore.clearMetadata()
+            Log.d("SpotifyWorker", "runAttemptCount: $runAttemptCount")
             if (runAttemptCount < 3) { // limit to 3 attempts
                 Result.retry()
             } else {

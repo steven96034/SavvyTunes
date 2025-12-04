@@ -11,6 +11,7 @@ import com.example.geminispotifyapp.data.remote.model.TracksResponse
 import com.example.geminispotifyapp.data.remote.model.UserProfileResponse
 import com.example.geminispotifyapp.core.utils.FetchResult
 import com.example.geminispotifyapp.core.utils.FetchResultWithEtag
+import com.example.geminispotifyapp.presentation.features.main.home.TwoTracksList
 import kotlinx.coroutines.flow.Flow
 
 interface SpotifyRepository {
@@ -24,6 +25,8 @@ interface SpotifyRepository {
     val genreOfShowCaseSearchFlow: Flow<String>
     val yearOfShowCaseSearchFlow: Flow<String>
     val isRandomYearOfShowCaseSelectionFlow: Flow<Boolean>
+    val workerFlagFlow: Flow<Boolean>
+
 
 
     suspend fun getAccessToken(): String
@@ -92,4 +95,6 @@ interface SpotifyRepository {
     suspend fun setGenreOfShowCaseSearch(genre: String)
     suspend fun setYearOfShowCaseSearch(year: String)
     suspend fun setIsRandomYearOfShowCaseSelection(isRandom: Boolean)
+    suspend fun getRecommendedTracks(): TwoTracksList?
+    suspend fun setWorkerFlag(flag: Boolean)
 }

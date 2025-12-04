@@ -140,7 +140,7 @@ fun HomeScreen(
     LaunchedEffect(locationPermissionState.status, uiState) {
         // Check if the location permission is granted and the UI state is Initial then fetch location
         if (locationPermissionState.status.isGranted && uiState is UiState.Initial) {
-            viewModel.fetchLocationAndWeather()
+            viewModel.initAndStartFetchData()
         }
     }
 

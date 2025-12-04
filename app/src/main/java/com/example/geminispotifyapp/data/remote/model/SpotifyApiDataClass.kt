@@ -1,6 +1,7 @@
 package com.example.geminispotifyapp.data.remote.model
 
 import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.Serializable
 
 interface TrackInformation {
     val artists: List<SimplifiedArtist>
@@ -36,6 +37,7 @@ data class SpotifyArtist(
     val uri: String
 )
 
+@Serializable
 data class SimplifiedArtist(
     val id: String,
     val name: String,
@@ -95,6 +97,7 @@ data class SpotifyAlbum(
     val availableMarkets: List<String>
 )
 
+@Serializable
 data class SpotifyImage(
     val url: String,
     val height: Int?,

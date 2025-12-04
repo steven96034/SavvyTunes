@@ -20,11 +20,14 @@ import com.example.geminispotifyapp.domain.repository.SpotifyRepository
 import com.example.geminispotifyapp.core.utils.ApiExecutionHelper
 import com.example.geminispotifyapp.core.utils.FetchResult
 import com.example.geminispotifyapp.core.utils.FetchResultWithEtag
+import com.example.geminispotifyapp.data.local.room.AppLocalDataSource
+import com.example.geminispotifyapp.presentation.features.main.home.TwoTracksList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -38,6 +41,7 @@ class SpotifyRepositoryImpl @Inject constructor(
     private val spotifyUserApiService: SpotifyUserApiService,
     private val spotifyApiService: SpotifyApiService,
     private val apiExecutionHelper: ApiExecutionHelper, // Inject ApiExecutionHelper
+    private val localDataSource: AppLocalDataSource,
     @ApplicationScope private val applicationScope: CoroutineScope
 ) : SpotifyRepository {
     private val tag = "SpotifyRepository"
@@ -60,6 +64,7 @@ class SpotifyRepositoryImpl @Inject constructor(
     override val yearOfShowCaseSearchFlow: Flow<String> = appDatabase.yearOfShowCaseSearchFlow
     override val isRandomYearOfShowCaseSelectionFlow: Flow<Boolean> = appDatabase.isRandomYearOfShowCaseSelectionFlow
 
+    override val workerFlagFlow: Flow<Boolean> = appDatabase.workerFlagFlow
 
     init {
         // Launch coroutine in ApplicationScope to collect data from DataStore
@@ -374,6 +379,10 @@ class SpotifyRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getRecommendedTracks(): TwoTracksList? {
+        return localDataSource.getSavedTracks().firstOrNull()
+    }
+
     override suspend fun setSearchSimilarNum(searchNum: Int) {
         appDatabase.saveSearchSimilarNum(searchNum)
     }
@@ -404,6 +413,10 @@ class SpotifyRepositoryImpl @Inject constructor(
 
     override suspend fun setIsRandomYearOfShowCaseSelection(isRandom: Boolean) {
         appDatabase.saveIsRandomYearOfShowCaseSelection(isRandom)
+    }
+
+    override suspend fun setWorkerFlag(flag: Boolean) {
+        appDatabase.saveWorkerFlag(flag)
     }
 
     companion object {

@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin)
+    alias(libs.plugins.kotlinSerialization)
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
 }
@@ -89,7 +90,6 @@ dependencies {
     implementation(libs.coil.kt.coil.compose)
     // Network
     implementation(libs.retrofit)
-    implementation (libs.converter.gson)
     implementation(libs.okhttp)
     implementation (libs.okhttp3.logging.interceptor)
     implementation(libs.converter.gson)
@@ -112,6 +112,11 @@ dependencies {
     implementation(libs.accompanist.navigation.animation)
     implementation(libs.accompanist.permissions)
     implementation(libs.kotlin.test)
+    implementation("androidx.room:room-runtime:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    implementation(libs.kotlinx.serialization.json)
+
 
 
     testImplementation(libs.junit)

@@ -38,6 +38,7 @@ class AppDatabase @Inject constructor(
         val SHOW_CASE_GENRE_KEY = stringPreferencesKey("show_case_genre")
         val SHOW_CASE_YEAR_KEY = stringPreferencesKey("show_case_year")
         val IS_RANDOM_YEAR_OF_SHOW_CASE_SELECTION = booleanPreferencesKey("is_random_year_of_show_case_selection")
+        val WORKER_FLAG = booleanPreferencesKey("worker_flag")
     }
 
     suspend fun saveCodeVerifier(codeVerifier: String) {
@@ -229,6 +230,16 @@ class AppDatabase @Inject constructor(
     suspend fun saveIsRandomYearOfShowCaseSelection(isRandom: Boolean) {
         dataStore.edit { preferences ->
             preferences[IS_RANDOM_YEAR_OF_SHOW_CASE_SELECTION] = isRandom
+        }
+    }
+
+    val workerFlagFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[WORKER_FLAG] ?: false
+    }
+
+    suspend fun saveWorkerFlag(flag: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[WORKER_FLAG] = flag
         }
     }
 }
