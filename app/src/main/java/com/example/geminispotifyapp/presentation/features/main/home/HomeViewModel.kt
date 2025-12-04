@@ -8,10 +8,7 @@ import com.example.geminispotifyapp.core.utils.UiState
 import com.example.geminispotifyapp.data.remote.model.SpotifyTrack
 import com.example.geminispotifyapp.core.utils.UiEvent
 import com.example.geminispotifyapp.core.utils.UiEventManager
-import com.example.geminispotifyapp.data.repository.WeatherDataRepositoryImpl
 import com.example.geminispotifyapp.data.repository.WeatherResponse
-import com.example.geminispotifyapp.data.worker.SpotifyMetadataWorker
-import com.example.geminispotifyapp.domain.repository.SpotifyRepository
 import com.example.geminispotifyapp.domain.repository.WeatherDataRepository
 import com.example.geminispotifyapp.domain.repository.WeatherIconRepository
 import com.example.geminispotifyapp.domain.usecase.FindWeatherRelatedMusic
@@ -241,10 +238,10 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun cancelSearch() {
-        searchJob?.cancel()
-        _findWeatherMusicUiState.value = UiState.Initial
-    }
+//    fun cancelSearch() {
+//        searchJob?.cancel()
+//        _findWeatherMusicUiState.value = UiState.Initial
+//    }
 
     override fun onCleared() {
         super.onCleared()
