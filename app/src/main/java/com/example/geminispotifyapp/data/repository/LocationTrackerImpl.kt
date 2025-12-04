@@ -14,6 +14,7 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.location.FusedLocationProviderClient
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.coroutines.resume
 
 
@@ -24,6 +25,7 @@ sealed class LocationResult {
     data class Error(val exception: Exception? = null) : LocationResult()
 }
 
+@Singleton
 class LocationTrackerImpl @Inject constructor(
     private val locationClient: FusedLocationProviderClient,
     private val application: Application
