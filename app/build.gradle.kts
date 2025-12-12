@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin)
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -104,6 +105,7 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.androidx.palette.ktx)
     implementation(libs.androidx.hilt.work)
+    implementation(libs.google.firebase.ai)
     ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.androidx.material.icons.core)
@@ -113,6 +115,17 @@ dependencies {
     implementation(libs.accompanist.permissions)
     implementation(libs.kotlin.test)
 
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.messaging)
+    implementation(libs.firebase.functions)
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.ai)
+
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
 
     testImplementation(libs.junit)
     testImplementation(libs.junit.jupiter)

@@ -20,6 +20,9 @@ import com.example.geminispotifyapp.domain.repository.SpotifyRepository
 import com.example.geminispotifyapp.core.utils.ApiExecutionHelper
 import com.example.geminispotifyapp.core.utils.FetchResult
 import com.example.geminispotifyapp.core.utils.FetchResultWithEtag
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +31,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.tasks.await
 import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -38,6 +42,8 @@ class SpotifyRepositoryImpl @Inject constructor(
     private val spotifyUserApiService: SpotifyUserApiService,
     private val spotifyApiService: SpotifyApiService,
     private val apiExecutionHelper: ApiExecutionHelper, // Inject ApiExecutionHelper
+    private val firestore: FirebaseFirestore,      // Remote Firestore
+    private val auth: FirebaseAuth,                 // 用來確認是哪個 User
     @ApplicationScope private val applicationScope: CoroutineScope
 ) : SpotifyRepository {
     private val tag = "SpotifyRepository"
@@ -144,6 +150,26 @@ class SpotifyRepositoryImpl @Inject constructor(
 
     override suspend fun updateTokenResponse(tokenResponse: SpotifyTokenResponse) {
         appDatabase.saveTokenResponse(tokenResponse)
+
+        try {
+            val currentUser = auth.currentUser
+            if (currentUser != null && tokenResponse.refreshToken != null) {
+                val secretData = hashMapOf(
+                    "refreshToken" to tokenResponse.refreshToken,
+                    "updatedAt" to com.google.firebase.Timestamp.now()
+                )
+                firestore.collection("users")
+                    .document(currentUser.uid)
+                    .collection("private_data")
+                    .document("spotify_secrets")
+                    .set(secretData, SetOptions.merge())
+                    .await()
+            } else {
+                Log.d(tag, "No user is currently signed in or some problem occurred.")
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to save refresh token through updateTokenResponse", e)
+        }
     }
 
     override fun isTokenExpired(expiryTime: Long?): Boolean {
@@ -293,7 +319,30 @@ class SpotifyRepositoryImpl @Inject constructor(
         appDatabase.saveExpiresAt(System.currentTimeMillis() + (response.expiresIn * 1000) - REFRESH_BEFORE_EXPIRY_MS)
         // Update the Access Token and Expiry Time in memory
         _currentAccessTokenFlow.value = response.accessToken
-        _currentTokenExpiryTimeFlow.value = System.currentTimeMillis() + (response.expiresIn * 1000) - REFRESH_BEFORE_EXPIRY_MS
+        _currentTokenExpiryTimeFlow.value =
+            System.currentTimeMillis() + (response.expiresIn * 1000) - REFRESH_BEFORE_EXPIRY_MS
+        val uid = auth.currentUser?.uid
+        Log.d(tag, "Firebase User: ${auth.currentUser}, ID: $uid")
+        try {
+            if (uid != null && response.refreshToken != null) {
+                val secretData = hashMapOf(
+                    "refreshToken" to response.refreshToken,
+                    "updatedAt" to com.google.firebase.Timestamp.now()
+                )
+                firestore.collection("users")
+                    .document(uid)
+                    .collection("private_data")
+                    .document("spotify_secrets")
+                    .set(secretData, SetOptions.merge()) // merge 以免覆蓋其他欄位
+                    .await() // 使用 Kotlin Coroutines 的 await 等待完成
+                Log.d(tag, "Refresh token saved to Firestore.")
+            } else {
+                Log.d(tag, "No user is currently signed in or some problem occurred.")
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to save refresh token through performActualTokenRefresh", e)
+        }
+
         return response.accessToken
     }
 
@@ -392,18 +441,90 @@ class SpotifyRepositoryImpl @Inject constructor(
 
     override suspend fun setLanguageOfShowCaseSearch(language: String) {
         appDatabase.saveLanguageOfShowCaseSearch(language)
+        val uid = auth.currentUser?.uid ?: return
+        try {
+            val settingsData = hashMapOf(
+                "language" to language,
+                "updatedAt" to com.google.firebase.Timestamp.now()
+            )
+
+            firestore.collection("users")
+                .document(uid)
+                .collection("preferences")
+                .document("music_settings")
+                .set(settingsData, SetOptions.merge())
+                .await()
+            Log.d(tag, "Language settings saved to firestore.")
+
+        } catch (e: Exception) {
+            Log.d(tag, "Failed to save language settings to firestore through setLanguageOfShowCaseSearch", e)
+        }
     }
 
     override suspend fun setGenreOfShowCaseSearch(genre: String) {
         appDatabase.saveGenreOfShowCaseSearch(genre)
+        val uid = auth.currentUser?.uid ?: return
+        try {
+            val settingsData = hashMapOf(
+                "genre" to genre,
+                "updatedAt" to com.google.firebase.Timestamp.now()
+            )
+
+            firestore.collection("users")
+                .document(uid)
+                .collection("preferences")
+                .document("music_settings")
+                .set(settingsData, SetOptions.merge())
+                .await()
+            Log.d(tag, "Genre settings saved to firestore.")
+
+        } catch (e: Exception) {
+            Log.d(tag, "Failed to save genre settings to firestore through setLanguageOfShowCaseSearch", e)
+        }
     }
 
     override suspend fun setYearOfShowCaseSearch(year: String) {
         appDatabase.saveYearOfShowCaseSearch(year)
+        val uid = auth.currentUser?.uid ?: return
+        try {
+            val settingsData = hashMapOf(
+                "year" to year,
+                "updatedAt" to com.google.firebase.Timestamp.now()
+            )
+
+            firestore.collection("users")
+                .document(uid)
+                .collection("preferences")
+                .document("music_settings")
+                .set(settingsData, SetOptions.merge())
+                .await()
+            Log.d(tag, "Year settings saved to firestore.")
+
+        } catch (e: Exception) {
+            Log.d(tag, "Failed to save year settings to firestore through setLanguageOfShowCaseSearch", e)
+        }
     }
 
     override suspend fun setIsRandomYearOfShowCaseSelection(isRandom: Boolean) {
         appDatabase.saveIsRandomYearOfShowCaseSelection(isRandom)
+        val uid = auth.currentUser?.uid ?: return
+        try {
+            val settingsData = hashMapOf(
+                "isRandom" to isRandom,
+                "updatedAt" to com.google.firebase.Timestamp.now()
+            )
+
+            firestore.collection("users")
+                .document(uid)
+                .collection("preferences")
+                .document("music_settings")
+                .set(settingsData, SetOptions.merge())
+                .await()
+            Log.d(tag, "isRandom settings saved to firestore.")
+
+        } catch (e: Exception) {
+            Log.d(tag, "Failed to save isRandom settings to firestore through setLanguageOfShowCaseSearch", e)
+        }
     }
 
     companion object {

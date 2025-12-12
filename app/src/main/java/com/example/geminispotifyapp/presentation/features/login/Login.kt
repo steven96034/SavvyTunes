@@ -41,6 +41,7 @@ import com.example.geminispotifyapp.core.utils.toast
 @Composable
 fun LoginPage(viewModel: LoginViewModel = hiltViewModel()) {
     val isAuthenticated by viewModel.isAuthenticated.collectAsStateWithLifecycle()
+    val isUserLoggedInFirebase by viewModel.isUserLoggedInFirebase.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val tag = "LoginPage"
 
@@ -65,13 +66,36 @@ fun LoginPage(viewModel: LoginViewModel = hiltViewModel()) {
 
     LoginContent(
         onAuthSpotifyClick = { viewModel.onLoginClicked() },
-        isAuthenticated = isAuthenticated
+        isAuthenticated = isAuthenticated,
+        onLoginTestClick = { viewModel.performFirebaseLoginTest() },
+        isUserLoggedInFirebase = isUserLoggedInFirebase
     )
 }
 
 @Composable
-fun LoginContent(onAuthSpotifyClick: () -> Unit, isAuthenticated: Boolean, modifier: Modifier = Modifier) {
-    if (!isAuthenticated) {
+fun LoginContent(
+    onAuthSpotifyClick: () -> Unit,
+    isAuthenticated: Boolean,
+    modifier: Modifier = Modifier,
+    onLoginTestClick: () -> Unit,
+    isUserLoggedInFirebase: Boolean
+) {
+    if (!isUserLoggedInFirebase) {
+        Column(
+            modifier = modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Button(
+                onClick = { onLoginTestClick() },
+                contentPadding = PaddingValues(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("Auth to log in with Firebase to save your data.")
+            }
+        }
+    }
+    else if (!isAuthenticated) {
         Column(
             modifier = modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
@@ -117,6 +141,8 @@ fun LoginContent(onAuthSpotifyClick: () -> Unit, isAuthenticated: Boolean, modif
 fun LoginPagePreview() {
     LoginContent(
         onAuthSpotifyClick = {},
-        isAuthenticated = false
+        isAuthenticated = false,
+        onLoginTestClick = {},
+        isUserLoggedInFirebase = true
     )
 }

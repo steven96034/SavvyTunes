@@ -18,8 +18,11 @@ import com.example.geminispotifyapp.core.utils.FetchResult
 import com.example.geminispotifyapp.presentation.MainScreen
 import com.example.geminispotifyapp.core.utils.GlobalErrorHandler
 import com.example.geminispotifyapp.core.utils.StringSimilarityCalculator.calculateSimilarity
-import com.google.ai.client.generativeai.type.GenerateContentResponse
+import com.google.firebase.ai.type.GenerateContentResponse
+//import com.google.ai.client.generativeai.type.GenerateContentResponse
 import com.google.ai.client.generativeai.type.ServerException
+import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.functions.functions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,6 +35,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
+import com.google.firebase.Firebase
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.CancellationException
@@ -150,6 +154,7 @@ class FindMusicViewModel @Inject constructor(
 
     fun onDataInputChange(newData: String) {
         _dataInput.value = newData
+        //callPythonBackend()
     }
 
     fun onSelectedSuggestedTrackChange(track: SpotifyTrack?) {
@@ -660,6 +665,38 @@ class FindMusicViewModel @Inject constructor(
                     uiEventManager.sendEvent(UiEvent.Unauthorized(uiEvent.message))
                 }
                 else -> {}
+            }
+        }
+    }
+
+    private fun callPythonBackend() {
+        viewModelScope.launch {
+            try {
+                val functions: FirebaseFunctions = Firebase.functions // Specify the region if not us-central1
+                val callable = functions.getHttpsCallable("get_python_secret_data")
+                callable.call()
+                    .addOnSuccessListener { result ->
+                        // Success：result.data includes the response data
+
+                        // Due to the backend Python function returning a dict, it will be parsed as a Map in Kotlin
+                        val data = result.data as? Map<String, Any>
+
+                        if (data != null) {
+                            // Extract "message" field
+                            val message = data["message"] as? String
+
+                            if (message != null) {
+                                Log.d("CloudFunction", "Successfully received message: $message")
+                            } else {
+                                Log.e("CloudFunction", "Returned data format error or missing \"message\" field")
+                            }
+                        }
+                    }
+                    .addOnFailureListener { exception ->
+                        Log.e("CloudFunction", "Failed to call cloud function", exception)
+                    }
+            } catch (e: Exception) {
+                Log.e("CloudFunction", "Error calling cloud function", e)
             }
         }
     }
