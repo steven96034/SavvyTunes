@@ -67,7 +67,7 @@ fun LoginPage(viewModel: LoginViewModel = hiltViewModel()) {
     LoginContent(
         onAuthSpotifyClick = { viewModel.onLoginClicked() },
         isAuthenticated = isAuthenticated,
-        onLoginTestClick = { viewModel.performFirebaseLoginTest() },
+        onGoogleLoginClick = { viewModel.handleGoogleLogin(context) },
         isUserLoggedInFirebase = isUserLoggedInFirebase
     )
 }
@@ -77,7 +77,7 @@ fun LoginContent(
     onAuthSpotifyClick: () -> Unit,
     isAuthenticated: Boolean,
     modifier: Modifier = Modifier,
-    onLoginTestClick: () -> Unit,
+    onGoogleLoginClick: () -> Unit,
     isUserLoggedInFirebase: Boolean
 ) {
     if (!isUserLoggedInFirebase) {
@@ -87,7 +87,7 @@ fun LoginContent(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Button(
-                onClick = { onLoginTestClick() },
+                onClick = { onGoogleLoginClick() },
                 contentPadding = PaddingValues(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
@@ -142,7 +142,7 @@ fun LoginPagePreview() {
     LoginContent(
         onAuthSpotifyClick = {},
         isAuthenticated = false,
-        onLoginTestClick = {},
+        onGoogleLoginClick = {},
         isUserLoggedInFirebase = true
     )
 }
