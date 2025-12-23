@@ -72,7 +72,7 @@ private fun ProfileContent(
                 UserProfileDetails(userProfile = fetchResult.data, onOpenLinkFailed = { exception -> onOpenLinkFailed(exception) }, logOut = logOut)
             }
             is FetchResult.Error -> {
-                ErrorStateView(errorData = fetchResult.errorData, onRetry = onRetry)
+                ErrorStateView(errorData = fetchResult.errorData, onRetry = onRetry, logOut = logOut)
             }
         }
     }
@@ -200,7 +200,8 @@ private fun ProfileInfoItem(label: String, value: String?) {
 @Composable
 private fun ErrorStateView(
     errorData: ApiError,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    logOut: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -222,6 +223,23 @@ private fun ErrorStateView(
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = onRetry) {
             Text("Retry")
+        }
+        Spacer(modifier = Modifier.height(32.dp))
+        Text(
+            text = "If you encounter some error, please try Log Out and Log In again.",
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.labelMedium,
+        )
+        Button(onClick = logOut) {
+            Row {
+                Text(text = "Log Out")
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Logout,
+                    contentDescription = "Logout with Spotify",
+                    modifier = Modifier.height(20.dp)
+                )
+            }
         }
     }
 }

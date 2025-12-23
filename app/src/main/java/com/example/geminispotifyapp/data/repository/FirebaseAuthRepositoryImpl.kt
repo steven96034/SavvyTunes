@@ -1,19 +1,24 @@
 package com.example.geminispotifyapp.data.repository
 
 import android.util.Log
+import com.example.geminispotifyapp.data.local.AppDatabase
 import com.example.geminispotifyapp.domain.repository.FirebaseAuthRepository
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class FirebaseAuthRepositoryImpl @Inject constructor(
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
-    private val messaging: FirebaseMessaging
+    private val messaging: FirebaseMessaging,
+    private val appDatabase: AppDatabase
 ) : FirebaseAuthRepository {
 
     override suspend fun syncUserDataAfterLogin() {
@@ -43,6 +48,37 @@ class FirebaseAuthRepositoryImpl @Inject constructor(
 
             Log.d("FirebaseAuthRepository", "User data synced successfully")
 
+            // Sync user preferences from firestore to local database
+            try {
+                withContext(Dispatchers.IO) {
+                    // Tasks.await() is safe to be called here
+                    val snapshot = Tasks.await(
+                        firestore.collection("users").document(user.uid)
+                            .collection("preferences").document("music_settings").get()
+                    )
+                    val genre = snapshot.getString("genre")
+                    val language = snapshot.getString("language")
+                    val year = snapshot.getString("year")
+                    val isRandom = snapshot.getBoolean("isRandom")
+
+                    if (genre != null) {
+                        appDatabase.saveGenreOfShowCaseSearch(genre)
+                    }
+                    if (language != null) {
+                        appDatabase.saveLanguageOfShowCaseSearch(language)
+                    }
+                    if (year != null) {
+                        appDatabase.saveYearOfShowCaseSearch(year)
+                    }
+                    if (isRandom != null) {
+                        appDatabase.saveIsRandomYearOfShowCaseSelection(isRandom)
+                    }
+                    Log.d("FirebaseAuthRepository", "User prefs synced successfully")
+                }
+            } catch (e: Exception) {
+                Log.e("FirebaseAuthRepository", "Firestore rescue failed when fetching refresh token.", e)
+            }
+
         } catch (e: Exception) {
             e.printStackTrace()
             // Handle error, e.g., FCM token retrieval failed or network issue
@@ -64,6 +100,22 @@ class FirebaseAuthRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(e)
+        }
+    }
+
+    override suspend fun updateLastActiveTime() {
+        // Update the lastActiveAt field in Firestore if the user is logged in
+        val uid = auth.currentUser?.uid ?: return
+        try {
+            val updateData = mapOf(
+                "lastActiveAt" to com.google.firebase.Timestamp.now()
+            )
+            firestore.collection("users")
+                .document(uid)
+                .set(updateData, SetOptions.merge())
+                .await()
+        } catch (e: Exception) {
+            Log.d("FirebaseAuthRepository", "Error updating last active time: ${e.message}")
         }
     }
 }

@@ -3,6 +3,7 @@ package com.example.geminispotifyapp
 import android.app.Application
 import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.work.BackoffPolicy
 import androidx.work.Configuration
 import androidx.work.Constraints
@@ -10,6 +11,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.example.geminispotifyapp.core.utils.AppLifecycleObserver
 import com.example.geminispotifyapp.data.worker.SpotifyMetadataWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
@@ -33,8 +35,13 @@ class MainApplication : Application(), Configuration.Provider {
             .setWorkerFactory(workerFactory)
             .build()
 
+    @Inject
+    lateinit var appLifecycleObserver: AppLifecycleObserver
+
     override fun onCreate() {
         super.onCreate()
+        // Register the observer to update the last active time (whatever it's cold start or warm start)
+        ProcessLifecycleOwner.get().lifecycle.addObserver(appLifecycleObserver)
         // 4. Schedule the task here
         Log.d("MainApplication", "Scheduling weekly metadata fetch")
         scheduleWeeklyMetadataFetch()

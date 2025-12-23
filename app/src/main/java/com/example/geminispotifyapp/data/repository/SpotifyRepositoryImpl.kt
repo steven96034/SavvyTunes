@@ -20,10 +20,12 @@ import com.example.geminispotifyapp.domain.repository.SpotifyRepository
 import com.example.geminispotifyapp.core.utils.ApiExecutionHelper
 import com.example.geminispotifyapp.core.utils.FetchResult
 import com.example.geminispotifyapp.core.utils.FetchResultWithEtag
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -43,7 +46,7 @@ class SpotifyRepositoryImpl @Inject constructor(
     private val spotifyApiService: SpotifyApiService,
     private val apiExecutionHelper: ApiExecutionHelper, // Inject ApiExecutionHelper
     private val firestore: FirebaseFirestore,      // Remote Firestore
-    private val auth: FirebaseAuth,                 // 用來確認是哪個 User
+    private val auth: FirebaseAuth,                 // Check current user
     @ApplicationScope private val applicationScope: CoroutineScope
 ) : SpotifyRepository {
     private val tag = "SpotifyRepository"
@@ -101,21 +104,42 @@ class SpotifyRepositoryImpl @Inject constructor(
             if (!isRefreshing) { // Avoid multiple concurrent refreshes inside of tokenRefreshMutex
                 isRefreshing = true
                 try {
-                    // *** 修正點：將 refresh token 的獲取和檢查移到 try-catch 之外 ***
                     val refreshToken = appDatabase.getRefreshToken()
                     if (refreshToken == null) {
                         // Use ApiError.Unauthorized to indicate that the user needs to re-authenticate.
                         Log.e(tag, "Refresh token not found. User needs to re-authenticate.")
-                        // 直接拋出，不會再被下面的 catch 捕捉
                         throw ApiError.Unauthorized("Refresh token not found. Needs to re-authenticate.")
                     }
 
-                    // *** 現在 try-catch 只包裹實際的網路請求 ***
                     try {
                         val newTokens = performActualTokenRefresh(refreshToken)
                         return@withLock newTokens
                     } catch (e: Exception) {
-                        if (e is HttpException && e.code() == 401) {
+                        if (e is ApiError.BadRequest && e.message?.contains("invalid_grant") == true) {
+                            // Local refresh failed (Refresh Token expired/replaced)
+                            // Get latest refresh token from Firestore (Server-side may have been updated)
+
+                            Log.w(tag, "Local refresh token failed. Trying to fetch from Firestore...")
+                            try {
+                                val serverRefreshToken = fetchRefreshTokenFromFirestore()
+
+                                if (serverRefreshToken != null) {
+                                    // For later check if the refresh token is revoked.
+                                    appDatabase.saveRefreshToken("")
+                                    val newAccessToken =
+                                        performActualTokenRefresh(serverRefreshToken)
+                                    if (appDatabase.getRefreshToken() != "") {
+                                        appDatabase.saveRefreshToken(serverRefreshToken)
+                                    }
+                                    Log.i(tag, "Rescued! Token updated from Firestore.")
+                                    return@withLock newAccessToken
+                                }
+                            } catch (rescueException: Exception) {
+                                Log.e(tag, "Firestore rescue failed.", rescueException)
+                            }
+                            throw ApiError.Unauthorized("Failed to refresh token: Refresh token revoked. Need to re-authenticate.")
+                        }
+                        else if (e is HttpException && e.code() == 401) {
                             // Because the request that refresh access token has received HTTP 401 Unauthorized, that usually means refresh_token is invalid or revoked.
                             Log.e(tag, "HTTP 401 on refreshing token. Refresh token might be invalid.", e)
 
@@ -141,6 +165,23 @@ class SpotifyRepositoryImpl @Inject constructor(
                 currentAccessToken
                     ?: throw IllegalStateException("Failed to get access token after refresh.")
             }
+        }
+    }
+
+    private suspend fun fetchRefreshTokenFromFirestore(): String? {
+        val uid = auth.currentUser?.uid ?: return null
+        return try {
+            withContext(Dispatchers.IO) {
+                // Tasks.await() is safe to be called here
+                val snapshot = Tasks.await(
+                    firestore.collection("users").document(uid)
+                        .collection("private_data").document("spotify_secrets").get()
+                )
+                snapshot.getString("refreshToken")
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Firestore rescue failed when fetching refresh token.", e)
+            null
         }
     }
 
@@ -333,8 +374,8 @@ class SpotifyRepositoryImpl @Inject constructor(
                     .document(uid)
                     .collection("private_data")
                     .document("spotify_secrets")
-                    .set(secretData, SetOptions.merge()) // merge 以免覆蓋其他欄位
-                    .await() // 使用 Kotlin Coroutines 的 await 等待完成
+                    .set(secretData, SetOptions.merge())
+                    .await()
                 Log.d(tag, "Refresh token saved to Firestore.")
             } else {
                 Log.d(tag, "No user is currently signed in or some problem occurred.")

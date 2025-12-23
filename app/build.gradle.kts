@@ -106,6 +106,7 @@ dependencies {
     implementation(libs.androidx.palette.ktx)
     implementation(libs.androidx.hilt.work)
     implementation(libs.google.firebase.ai)
+    implementation(libs.androidx.lifecycle.process)
     ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.androidx.material.icons.core)
