@@ -23,15 +23,19 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
@@ -85,10 +89,22 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberPermissionState
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Recommend
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
@@ -100,6 +116,7 @@ import coil.request.ImageRequest
 import coil.size.Size
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.geminispotifyapp.R
+import com.example.geminispotifyapp.data.remote.model.TrackFromCloudRecommendation
 import com.example.geminispotifyapp.data.repository.WeatherResponse
 import com.example.geminispotifyapp.presentation.ui.theme.SpotifyGrey
 import com.example.geminispotifyapp.presentation.ui.theme.SpotifyWhite
@@ -112,7 +129,7 @@ import java.text.DecimalFormat
 import kotlin.math.abs
 
 
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel
@@ -122,6 +139,7 @@ fun HomeScreen(
     val showGpsDialog by viewModel.showGpsDialog.collectAsStateWithLifecycle()
 
     val uiState by viewModel.findWeatherMusicUiState.collectAsStateWithLifecycle()
+    val recommendationUiState by viewModel.recommendationUiState.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
 
     // Detect portrait orientation
@@ -144,25 +162,49 @@ fun HomeScreen(
         }
     }
 
-    HomeContent(
-        currentWeatherData = currentWeatherData,
-        uiState = uiState,
-        isPortrait = isPortrait,
-        permissionStatus = locationPermissionState.status,
-        showGpsDialog = showGpsDialog,
-        onRequestPermissionClick = { locationPermissionState.launchPermissionRequest() },
-        onGpsDialogDismiss = { viewModel.onGpsDialogDismiss() },
-        onOpenLocationSettingsClick = {
-            viewModel.onGpsDialogDismiss()
-            val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
-            settingResultLauncher.launch(intent)
-        },
-        getWeatherDisplayInfo = { wmoCode: Int, isDay: Boolean -> viewModel.weatherIconRepository.getWeatherDisplayInfo(wmoCode, isDay) },
-        onRetry = { viewModel.fetchLocationAndWeather() },
-        onRefresh = { viewModel.refreshHome() },
-        isRefreshing = isRefreshing,
-        navigateToSettings = { viewModel.navigateToSettings() }
+    var showBottomSheet by rememberSaveable { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
     )
+    // --- Modal Bottom Sheet ---
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            sheetState = sheetState,
+            modifier = Modifier.fillMaxHeight(0.95f)
+        ) {
+            RecommendationSheetContent(uiState = recommendationUiState)
+        }
+    }
+    Scaffold (floatingActionButton = {
+        FloatingButton(
+            onClick = {
+                viewModel.fetchLatestRecommendation()
+                showBottomSheet = true
+            },
+            modifier = Modifier.padding(bottom = 80.dp)
+        )
+    }) { paddingValues ->
+        HomeContent(
+            currentWeatherData = currentWeatherData,
+            uiState = uiState,
+            isPortrait = isPortrait,
+            permissionStatus = locationPermissionState.status,
+            showGpsDialog = showGpsDialog,
+            onRequestPermissionClick = { locationPermissionState.launchPermissionRequest() },
+            onGpsDialogDismiss = { viewModel.onGpsDialogDismiss() },
+            onOpenLocationSettingsClick = {
+                viewModel.onGpsDialogDismiss()
+                val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                settingResultLauncher.launch(intent)
+            },
+            getWeatherDisplayInfo = { wmoCode: Int, isDay: Boolean -> viewModel.weatherIconRepository.getWeatherDisplayInfo(wmoCode, isDay) },
+            onRetry = { viewModel.fetchLocationAndWeather() },
+            onRefresh = { viewModel.refreshHome() },
+            isRefreshing = isRefreshing,
+            navigateToSettings = { viewModel.navigateToSettings() }
+        )
+    }
 }
 
 @OptIn(
@@ -203,6 +245,10 @@ fun HomeContent(
             }
         )
     }
+
+
+
+    //FloatingButton({ showBottomSheet = true })
 
     var hasRequestedPermissionAtLeastOnce by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -1002,5 +1048,117 @@ fun VerticalPagerIndicator(
                     }
             )
         }
+    }
+}
+
+@Composable
+fun RecommendationSheetContent(uiState: RecommendationUiState) {
+    when (uiState) {
+        is RecommendationUiState.Loading -> {
+            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        is RecommendationUiState.Empty -> {
+            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                Text("So far there is no recommendation, please try again later.")
+            }
+        }
+        is RecommendationUiState.Error -> {
+            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                Text("Error occurred: ${uiState.message}", color = MaterialTheme.colorScheme.error)
+            }
+        }
+        is RecommendationUiState.Success -> {
+            val recommendation = uiState.data
+
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Text(
+                    text = "📅 ${recommendation.id}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = recommendation.summary,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                LazyColumn(
+                    contentPadding = PaddingValues(bottom = 32.dp)
+                ) {
+                    items(recommendation.tracks) { track ->
+                        RecommendationTrackItem(track = track)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RecommendationTrackItem(track: TrackFromCloudRecommendation) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AsyncImage(
+            model = track.imageUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentScale = ContentScale.Crop
+        )
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = track.name,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = track.artist,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        val context = LocalContext.current
+        Spacer(modifier = Modifier.height(4.dp))
+        IconButton(
+            onClick = {
+                val intent = Intent(Intent.ACTION_VIEW, track.uri.toUri())
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                if (intent.resolveActivity(context.packageManager) != null) {
+                    context.startActivity(intent)
+                }
+            }
+        ) {
+            Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Play")
+        }
+    }
+}
+
+@Composable
+fun FloatingButton(onClick: () -> Unit, modifier: Modifier) {
+    SmallFloatingActionButton(
+        onClick = { onClick() },
+        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.secondary,
+        modifier = modifier
+    ) {
+        Icon(Icons.Filled.Recommend, "Small floating action button of recommendation.")
     }
 }

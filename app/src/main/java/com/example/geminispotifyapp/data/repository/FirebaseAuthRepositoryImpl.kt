@@ -2,11 +2,13 @@ package com.example.geminispotifyapp.data.repository
 
 import android.util.Log
 import com.example.geminispotifyapp.data.local.AppDatabase
+import com.example.geminispotifyapp.data.remote.model.WeeklyRecommendation
 import com.example.geminispotifyapp.domain.repository.FirebaseAuthRepository
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.Dispatchers
@@ -116,6 +118,31 @@ class FirebaseAuthRepositoryImpl @Inject constructor(
                 .await()
         } catch (e: Exception) {
             Log.d("FirebaseAuthRepository", "Error updating last active time: ${e.message}")
+        }
+    }
+
+    override suspend fun getLatestRecommendation(): Result<WeeklyRecommendation?> {
+        val uid = auth.currentUser?.uid ?: return Result.failure(Exception("User not logged in"))
+
+        return try {
+            // From recommendations collection, order by generatedAt in descending order, only take the first one (latest data)
+            val snapshot = firestore.collection("users")
+                .document(uid)
+                .collection("recommendations")
+                .orderBy("generatedAt", Query.Direction.DESCENDING)
+                .limit(1)
+                .get()
+                .await()
+
+            if (snapshot.isEmpty) {
+                Result.success(null)
+            } else {
+                val doc = snapshot.documents[0]
+                val recommendation = doc.toObject(WeeklyRecommendation::class.java)?.copy(id = doc.id)
+                Result.success(recommendation)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }

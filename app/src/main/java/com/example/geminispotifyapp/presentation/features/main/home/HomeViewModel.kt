@@ -4,11 +4,15 @@ import android.location.Location
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.geminispotifyapp.core.utils.FetchResult
 import com.example.geminispotifyapp.core.utils.UiState
 import com.example.geminispotifyapp.data.remote.model.SpotifyTrack
 import com.example.geminispotifyapp.core.utils.UiEvent
 import com.example.geminispotifyapp.core.utils.UiEventManager
+import com.example.geminispotifyapp.data.remote.model.WeeklyRecommendation
 import com.example.geminispotifyapp.data.repository.WeatherResponse
+import com.example.geminispotifyapp.domain.repository.FirebaseAuthRepository
+import com.example.geminispotifyapp.domain.repository.SpotifyRepository
 import com.example.geminispotifyapp.domain.repository.WeatherDataRepository
 import com.example.geminispotifyapp.domain.repository.WeatherIconRepository
 import com.example.geminispotifyapp.domain.usecase.FindWeatherRelatedMusic
@@ -17,6 +21,7 @@ import com.example.geminispotifyapp.presentation.SettingsScreen
 import com.google.ai.client.generativeai.type.ServerException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,6 +52,13 @@ sealed class HomeDataState {
     object MissingPermission: HomeDataState()
 }
 
+sealed interface RecommendationUiState {
+    data object Loading : RecommendationUiState
+    data object Empty : RecommendationUiState
+    data class Success(val data: WeeklyRecommendation) : RecommendationUiState
+    data class Error(val message: String) : RecommendationUiState
+}
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val uiEventManager: UiEventManager,
@@ -54,6 +66,8 @@ class HomeViewModel @Inject constructor(
     val weatherIconRepository: WeatherIconRepository,
     private val weatherDataRepository: WeatherDataRepository,
     private val getLocationAndWeatherUseCase: GetLocationAndWeatherUseCase,
+    private val spotifyRepository: SpotifyRepository,
+    private val firebaseAuthRepository: FirebaseAuthRepository
 ): ViewModel() {
     private val _weatherDataJson = MutableStateFlow<WeatherResponse?>(null)
     val weatherDataJson: StateFlow<WeatherResponse?> = _weatherDataJson.asStateFlow()
@@ -64,16 +78,34 @@ class HomeViewModel @Inject constructor(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing
 
+    private val _recommendationUiState = MutableStateFlow<RecommendationUiState>(RecommendationUiState.Loading)
+    val recommendationUiState = _recommendationUiState.asStateFlow()
+
     init {
-        observeJsonWeatherData()
+        viewModelScope.launch {
+            // Ensure that all launched child coroutines complete before the current coroutine ends.
+            coroutineScope {
+                // Do not wait for the result of the tasks.
+                launch { testTokensIfValid() }
+                launch { observeJsonWeatherData() }
+            }
+        }
     }
 
-    private fun observeJsonWeatherData() {
-        viewModelScope.launch {
-            weatherDataRepository.weatherData.collect { weatherResponse ->
-                _weatherDataJson.value = weatherResponse
-                Log.d("HomeViewModel", "JSON Weather Data Updated: $weatherResponse")
-            }
+    // Test if the refresh/access tokens are valid by fetching user profile.
+    private suspend fun testTokensIfValid() {
+        val result = spotifyRepository.getUserProfile()
+        if (result is FetchResult.Success) {
+            Log.d("HomeViewModel", "Tokens Valid: ${result.data}")
+        } else if (result is FetchResult.Error) {
+            Log.d("HomeViewModel", "Tokens Error: ${result.errorData}")
+        }
+    }
+
+    private suspend fun observeJsonWeatherData() {
+        weatherDataRepository.weatherData.collect { weatherResponse ->
+            _weatherDataJson.value = weatherResponse
+            Log.d("HomeViewModel", "JSON Weather Data Updated: $weatherResponse")
         }
     }
 
@@ -246,5 +278,31 @@ class HomeViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         searchJob?.cancel()
+    }
+
+
+
+    fun fetchLatestRecommendation() {
+        if (_recommendationUiState.value is RecommendationUiState.Success) return
+        Log.d("HomeViewModel", "Fetching latest recommendation")
+
+        viewModelScope.launch {
+            _recommendationUiState.value = RecommendationUiState.Loading
+
+            firebaseAuthRepository.getLatestRecommendation()
+                .onSuccess { recommendation ->
+                    if (recommendation != null) {
+                        _recommendationUiState.value = RecommendationUiState.Success(recommendation)
+                        Log.d("HomeViewModel", "Latest recommendation fetched: $recommendation")
+                    } else {
+                        _recommendationUiState.value = RecommendationUiState.Empty
+                        Log.d("HomeViewModel", "No latest recommendation found")
+                    }
+                }
+                .onFailure { e ->
+                    _recommendationUiState.value = RecommendationUiState.Error(e.localizedMessage ?: "Unknown error")
+                    Log.e("HomeViewModel", "Error fetching latest recommendation", e)
+                }
+        }
     }
 }

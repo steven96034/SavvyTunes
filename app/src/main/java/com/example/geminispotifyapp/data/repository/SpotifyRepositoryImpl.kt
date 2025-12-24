@@ -125,12 +125,9 @@ class SpotifyRepositoryImpl @Inject constructor(
 
                                 if (serverRefreshToken != null) {
                                     // For later check if the refresh token is revoked.
-                                    appDatabase.saveRefreshToken("")
+                                    appDatabase.saveRefreshToken(serverRefreshToken)
                                     val newAccessToken =
                                         performActualTokenRefresh(serverRefreshToken)
-                                    if (appDatabase.getRefreshToken() != "") {
-                                        appDatabase.saveRefreshToken(serverRefreshToken)
-                                    }
                                     Log.i(tag, "Rescued! Token updated from Firestore.")
                                     return@withLock newAccessToken
                                 }
@@ -143,7 +140,7 @@ class SpotifyRepositoryImpl @Inject constructor(
                             // Because the request that refresh access token has received HTTP 401 Unauthorized, that usually means refresh_token is invalid or revoked.
                             Log.e(tag, "HTTP 401 on refreshing token. Refresh token might be invalid.", e)
 
-                            // Clear all session tokens to try to resign in. -
+                            // Clear all session tokens to try to resign in.
                             applicationScope.launch {
                                 _currentAccessTokenFlow.value = null
                                 _currentTokenExpiryTimeFlow.value = null
