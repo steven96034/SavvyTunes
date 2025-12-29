@@ -26,8 +26,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -81,11 +83,19 @@ class HomeViewModel @Inject constructor(
     private val _recommendationUiState = MutableStateFlow<RecommendationUiState>(RecommendationUiState.Loading)
     val recommendationUiState = _recommendationUiState.asStateFlow()
 
+    private val _showBottomSheet = MutableStateFlow(false)
+    val showBottomSheet: StateFlow<Boolean> = _showBottomSheet.asStateFlow()
+
+    fun setBottomSheetVisibility(isVisible: Boolean) {
+        _showBottomSheet.value = isVisible
+    }
+
     init {
         viewModelScope.launch {
             // Ensure that all launched child coroutines complete before the current coroutine ends.
             coroutineScope {
                 // Do not wait for the result of the tasks.
+                launch { checkIfEverydayRecommendationSeenAndTriggerModalBottomSheet() }
                 launch { testTokensIfValid() }
                 launch { observeJsonWeatherData() }
             }
@@ -304,5 +314,32 @@ class HomeViewModel @Inject constructor(
                     Log.e("HomeViewModel", "Error fetching latest recommendation", e)
                 }
         }
+    }
+
+
+    private suspend fun checkIfEverydayRecommendationSeenAndTriggerModalBottomSheet() {
+        // 1. Check if today's recommendation is already seen.
+        val lastUpdated = firebaseAuthRepository.lastUpdatedEverydayRecommendationDateFlow.first()
+        val todayId = LocalDate.now().toString()
+        if (lastUpdated == todayId) {
+            Log.d("HomeViewModel", "Today's recommendation already seen.")
+            return
+        }
+        val now = LocalDateTime.now()
+        // Set generation start time (08:05)
+        val generationStartTime = now.toLocalDate().atTime(8, 5)
+        // Set buffer end time (08:15) for cloud function with deleted spotify data everyday mechanism (for future works)
+        // val bufferEndTime = now.toLocalDate().atTime(8, 15)
+
+        // 2. Check if current time is Before 8:05 a.m.
+        if (now.isBefore(generationStartTime)) {
+            Log.d("HomeViewModel", "Too early for today's list. Showing past data when clicking bottom sheet button.")
+            return
+        }
+
+        // 3. Trigger fetching data function automatically when the first time user opens the app after 8:05 a.m..
+        Log.d("HomeViewModel", "Triggering fetching data from firestore and modal bottom sheet.")
+        setBottomSheetVisibility(true)
+        fetchLatestRecommendation()
     }
 }

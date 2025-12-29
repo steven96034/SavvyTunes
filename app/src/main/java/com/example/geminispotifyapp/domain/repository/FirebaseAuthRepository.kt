@@ -1,8 +1,10 @@
 package com.example.geminispotifyapp.domain.repository
 
 import com.example.geminispotifyapp.data.remote.model.WeeklyRecommendation
+import kotlinx.coroutines.flow.Flow
 
 interface FirebaseAuthRepository {
+    val lastUpdatedEverydayRecommendationDateFlow: Flow<String>
     // This function will sync user data to Firestore after login
     suspend fun syncUserDataAfterLogin()
     // Use Google ID Token to log in Firebase

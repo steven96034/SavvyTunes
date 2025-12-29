@@ -38,6 +38,8 @@ class AppDatabase @Inject constructor(
         val SHOW_CASE_GENRE_KEY = stringPreferencesKey("show_case_genre")
         val SHOW_CASE_YEAR_KEY = stringPreferencesKey("show_case_year")
         val IS_RANDOM_YEAR_OF_SHOW_CASE_SELECTION = booleanPreferencesKey("is_random_year_of_show_case_selection")
+
+        val LAST_UPDATED_EVERYDAY_RECOMMENDATION_DATE = stringPreferencesKey("last_updated_everyday_recommendation_date")
     }
 
     suspend fun saveCodeVerifier(codeVerifier: String) {
@@ -229,6 +231,16 @@ class AppDatabase @Inject constructor(
     suspend fun saveIsRandomYearOfShowCaseSelection(isRandom: Boolean) {
         dataStore.edit { preferences ->
             preferences[IS_RANDOM_YEAR_OF_SHOW_CASE_SELECTION] = isRandom
+        }
+    }
+
+    val lastUpdatedEverydayRecommendationDateFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[LAST_UPDATED_EVERYDAY_RECOMMENDATION_DATE] ?: ""
+    }
+
+    suspend fun saveLastUpdatedEverydayRecommendationDate(date: String) {
+        dataStore.edit { preferences ->
+            preferences[LAST_UPDATED_EVERYDAY_RECOMMENDATION_DATE] = date
         }
     }
 }

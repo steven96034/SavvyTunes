@@ -12,6 +12,7 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -139,10 +140,18 @@ class FirebaseAuthRepositoryImpl @Inject constructor(
             } else {
                 val doc = snapshot.documents[0]
                 val recommendation = doc.toObject(WeeklyRecommendation::class.java)?.copy(id = doc.id)
+                setLatestRecommendationOfDate(recommendation?.id)
                 Result.success(recommendation)
             }
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    override val lastUpdatedEverydayRecommendationDateFlow: Flow<String> = appDatabase.lastUpdatedEverydayRecommendationDateFlow
+    private suspend fun setLatestRecommendationOfDate(date: String?) {
+        if (date.isNullOrEmpty()) return
+        Log.d("FirebaseAuthRepository", "setLatestRecommendationOfDate: $date")
+        appDatabase.saveLastUpdatedEverydayRecommendationDate(date)
     }
 }

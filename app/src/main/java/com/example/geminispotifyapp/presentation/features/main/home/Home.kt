@@ -99,7 +99,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextLinkStyles
@@ -142,6 +141,8 @@ fun HomeScreen(
     val recommendationUiState by viewModel.recommendationUiState.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
 
+    val showBottomSheet by viewModel.showBottomSheet.collectAsStateWithLifecycle()
+
     // Detect portrait orientation
     val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
 
@@ -162,25 +163,24 @@ fun HomeScreen(
         }
     }
 
-    var showBottomSheet by rememberSaveable { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
     // --- Modal Bottom Sheet ---
     if (showBottomSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showBottomSheet = false },
+            onDismissRequest = { viewModel.setBottomSheetVisibility(false) },
             sheetState = sheetState,
             modifier = Modifier.fillMaxHeight(0.95f)
         ) {
-            RecommendationSheetContent(uiState = recommendationUiState)
+            RecommendationSheetContent(uiState = recommendationUiState, onRefresh = { viewModel.fetchLatestRecommendation() })
         }
     }
     Scaffold (floatingActionButton = {
         FloatingButton(
             onClick = {
                 viewModel.fetchLatestRecommendation()
-                showBottomSheet = true
+                viewModel.setBottomSheetVisibility(true)
             },
             modifier = Modifier.padding(bottom = 80.dp)
         )
@@ -1052,7 +1052,7 @@ fun VerticalPagerIndicator(
 }
 
 @Composable
-fun RecommendationSheetContent(uiState: RecommendationUiState) {
+fun RecommendationSheetContent(uiState: RecommendationUiState, onRefresh: () -> Unit) {
     when (uiState) {
         is RecommendationUiState.Loading -> {
             Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
@@ -1067,6 +1067,9 @@ fun RecommendationSheetContent(uiState: RecommendationUiState) {
         is RecommendationUiState.Error -> {
             Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                 Text("Error occurred: ${uiState.message}", color = MaterialTheme.colorScheme.error)
+                Button(onClick = onRefresh) {
+                    Text("Retry for daily recommendation.")
+                }
             }
         }
         is RecommendationUiState.Success -> {
@@ -1074,7 +1077,7 @@ fun RecommendationSheetContent(uiState: RecommendationUiState) {
 
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Text(
-                    text = "📅 ${recommendation.id}",
+                    text = "📅  ${recommendation.id}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.secondary
                 )
