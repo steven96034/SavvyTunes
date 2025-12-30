@@ -318,28 +318,51 @@ class HomeViewModel @Inject constructor(
 
 
     private suspend fun checkIfEverydayRecommendationSeenAndTriggerModalBottomSheet() {
+        val zoneId = java.time.ZoneId.systemDefault()
+        val nowLocal = java.time.ZonedDateTime.now(zoneId)
+        val nowUtc = java.time.ZonedDateTime.now(java.time.ZoneId.of("UTC"))
+
+        val todayId = nowLocal.toLocalDate().toString()
+
         // 1. Check if today's recommendation is already seen.
-        val lastUpdated = firebaseAuthRepository.lastUpdatedEverydayRecommendationDateFlow.first()
-        val todayId = LocalDate.now().toString()
-        if (lastUpdated == todayId) {
-            Log.d("HomeViewModel", "Today's recommendation already seen.")
-            return
-        }
-        val now = LocalDateTime.now()
-        // Set generation start time (08:05)
-        val generationStartTime = now.toLocalDate().atTime(8, 5)
-        // Set buffer end time (08:15) for cloud function with deleted spotify data everyday mechanism (for future works)
-        // val bufferEndTime = now.toLocalDate().atTime(8, 15)
-
-        // 2. Check if current time is Before 8:05 a.m.
-        if (now.isBefore(generationStartTime)) {
-            Log.d("HomeViewModel", "Too early for today's list. Showing past data when clicking bottom sheet button.")
+        val lastViewedId = firebaseAuthRepository.lastUpdatedEverydayRecommendationDateFlow.first()
+        if (lastViewedId == todayId) {
+            Log.d("HomeViewModel", "User has already seen today's recommendation ($todayId). Stop.")
             return
         }
 
-        // 3. Trigger fetching data function automatically when the first time user opens the app after 8:05 a.m..
-        Log.d("HomeViewModel", "Triggering fetching data from firestore and modal bottom sheet.")
-        setBottomSheetVisibility(true)
-        fetchLatestRecommendation()
+        // 2. Modify the definition of server generation time
+        // The cloud function is executed at UTC 20:00 (and save ID of "tomorrow")
+        // Which means that the ID of "2025-12-30" (todayId) is generated at "2025-12-29" (Yesterday)
+        val yesterdayId = nowLocal.minusDays(1).toLocalDate().toString()
+
+        // To calculate "Today's data" should be ready at what time? Yesterday's UTC 20:00
+        val serverGenerationTimeForToday = LocalDate.parse(todayId)
+            .minusDays(1) // Push back for a day
+            .atTime(20, 5) // UTC 20:00 + 5 mins buffer
+            .atZone(java.time.ZoneId.of("UTC"))
+
+        val isLocalTimeUnlocked = nowLocal.hour >= 8
+        val isServerDataReady = nowUtc.isAfter(serverGenerationTimeForToday)
+
+        // 3. Decide the target (Strategy)
+        val targetDateId = if (isLocalTimeUnlocked && isServerDataReady) {
+            todayId
+        } else {
+            // If today is locked or not ready, fallback to yesterday
+            Log.d("HomeViewModel", "Today is locked or not ready. Fallback to yesterday.")
+            yesterdayId
+        }
+
+        // 4. Final comparison (Handle fallback situation)
+        if (lastViewedId != targetDateId) {
+            Log.i("HomeViewModel", "New content found ($targetDateId)!")
+            Log.d("HomeViewModel", "Triggering fetching data from firestore and modal bottom sheet.")
+            setBottomSheetVisibility(true)
+            // Can use targetDateId to specifically fetch data from firestore for the date
+            fetchLatestRecommendation()
+        } else {
+            Log.d("HomeViewModel", "User has already seen the fallback target ($targetDateId).")
+        }
     }
 }
