@@ -15,9 +15,10 @@ import com.example.geminispotifyapp.core.utils.UiEventManager
 import com.example.geminispotifyapp.data.remote.api.GeminiApi
 import com.example.geminispotifyapp.domain.usecase.SearchForSpecificTrackUseCase
 import com.example.geminispotifyapp.core.utils.FetchResult
-import com.example.geminispotifyapp.presentation.MainScreen
 import com.example.geminispotifyapp.core.utils.GlobalErrorHandler
 import com.example.geminispotifyapp.core.utils.StringSimilarityCalculator.calculateSimilarity
+import com.example.geminispotifyapp.data.remote.model.SimilarTracksAndArtistsResponse
+import com.example.geminispotifyapp.presentation.MainScreen
 import com.google.firebase.ai.type.GenerateContentResponse
 //import com.google.ai.client.generativeai.type.GenerateContentResponse
 import com.google.ai.client.generativeai.type.ServerException
@@ -36,6 +37,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import com.google.firebase.Firebase
+import com.google.gson.Gson
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.CancellationException
@@ -54,7 +57,8 @@ class FindMusicViewModel @Inject constructor(
     private val uiEventManager: UiEventManager,
     private val globalErrorHandler: GlobalErrorHandler,
     private val searchForSpecificTrackUseCase: SearchForSpecificTrackUseCase,
-    private val geminiApi: GeminiApi
+    private val geminiApi: GeminiApi,
+    private val gson: Gson
 ) : ViewModel() {
     // For Search State
     private var _searchSimilarUiState: MutableStateFlow<UiState<SpotifyDataList>> =
@@ -68,17 +72,6 @@ class FindMusicViewModel @Inject constructor(
     private var _searchByIdUiState: MutableStateFlow<UiState<SpotifyDataList>> =
         MutableStateFlow(UiState.Initial)
     val searchByIdUiState: StateFlow<UiState<SpotifyDataList>> = _searchByIdUiState.asStateFlow()
-
-    // For Gemini API
-    private var relatedTracks = mutableListOf<String>()
-    private var relatedArtists = mutableListOf<String>()
-
-    // For Spotify API (Not-Found List is for debug.)
-    private val trackTempList: MutableList<SpotifyTrack> = mutableListOf()
-    private val trackNotFoundList: MutableList<String> = mutableListOf()
-
-    private val artistTempList: MutableList<SpotifyArtist> = mutableListOf()
-    private val artistNotFoundList: MutableList<String> = mutableListOf()
 
     // For Input Data (Revealed in Layout)
     private var _trackInput = MutableStateFlow("")
@@ -459,78 +452,72 @@ class FindMusicViewModel @Inject constructor(
                 val numOfSearch = searchSimilarNum.value
                 Log.d(tag, "numOfSearch: $numOfSearch, $searchSimilarNum")
                 withContext(Dispatchers.IO) {
+                    val prompt = """Rules to respond: 
+                             List $numOfSearch related genres of music tracks and $numOfSearch related genres of artists/bands based on the following song data:
+                             - Song Name: $track
+                             - Artists/Bands Name: $artist
+                             
+                             Strict Output Requirements:
+                             1. Response related music tracks with the song name, its album name and its artists/bands name.
+                             2. Response related music artists/bands with artists/bands name and their most famous song name and album name.
+                             3. Ensure 'albumName' is accurate.
+                             4. 'artists' must be a list of strings (e.g., if a song features someone, list them as separate strings).
+                             5. Do NOT include track numbers, album names, or any markdown formatting (like ```json).
+                             6. Return the result strictly adhering to the provided JSON schema.
+                                    """
                     // Song name and album name for artists list is redundant for now, more precise for future.
-                    responseSimilar = geminiApi.askGemini(
-                        """Please list $numOfSearch music tracks of related genres of $track##$artist, where the format mentioned is: Song Name##Artists Name.
+                    responseSimilar = geminiApi.askGeminiFindMusic(prompt)
+                    """ Old prompt:
+                       ""${'"'}Please list ${'$'}numOfSearch music tracks of related genres of ${'$'}track##${'$'}artist, where the format mentioned is: Song Name##Artists Name.
                                 List only one related music track in each row using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,                               
                                     if there is more than one artist, just separate them with comma, also do not use blank row to separate each track(only use one row for each track). 
-                                Also, list most related $numOfSearch music artists/band name of the song genre mentioned before, while followed by the famous song name and its album of the artists/band. 
+                                Also, list most related ${'$'}numOfSearch music artists/band name of the song genre mentioned before, while followed by the famous song name and its album of the artists/band. 
                                 List only one related music artist name in each row using format: Artists Name##Song Name##Album Name, responding the name of artists by English, also do not use blank row to separate each artist(only use one row for each artist)
                                 Other response rule: Do not use No., and do not respond any other statement, neither.
-                                    Use one blank row to separate the response of related music tracks and the response of related music artists."""
-                    )
-                    Log.d(tag, "response: ${responseSimilar.text}")
+                                    Use one blank row to separate the response of related music tracks and the response of related music artists.""${'"'} 
+                    """
                     geminiFinishedTime = System.currentTimeMillis()
                     Log.d(
                         tag,
                         "Gemini response takes time: ${System.currentTimeMillis() - startTime}ms"
                     )
-                    responseSimilar.text?.trimIndent()?.let { outputContent ->
-                        Log.d(tag, "trimmed response: $outputContent")
-                        relatedArtists.clear()
-                        relatedTracks.clear()
+                    var outputContent =
+                        responseSimilar.text?.trimIndent() ?: throw Exception("Failed to get a valid response from Gemini.")
+                    // Though Schema mode usually does not return Markdown (```json), it's still a good practice to clean the logic
+                    if (outputContent.startsWith("```")) {
+                        outputContent = outputContent.replace(Regex("^```json|^```|```$"), "").trim()
+                    }
+                    Log.d(tag, "trimmed response: $outputContent")
 
-                        val lines = outputContent.split("\n")
-                        val blankLineIndex = lines.indexOf("")
+                    val resultObj = gson.fromJson(outputContent, SimilarTracksAndArtistsResponse::class.java)
+                    Log.d(tag, "resultObj: $resultObj")
 
-                        if (blankLineIndex != -1) {
-                            // First $numOfSearch rows: tracks
-                            relatedTracks.addAll(
-                                lines.subList(
-                                    0,
-                                    minOf(numOfSearch, blankLineIndex)
-                                )
-                            )
-                            // Last $numOfSearch rows: artists
-                            relatedArtists.addAll(
-                                lines.subList(
-                                    blankLineIndex + 1,
-                                    minOf(blankLineIndex + numOfSearch + 1, lines.size)
-                                )
-                            )
-                        } else {
-                            Log.e(tag, "Response format error")
-                            //fallback to all tracks
-                            relatedTracks.addAll(lines.subList(0, minOf(numOfSearch, lines.size)))
-                        }
-                        Log.d(tag, "relatedTracks: $relatedTracks")
-                        Log.d(tag, "relatedArtists: $relatedArtists")
+                    val similarTracksByGenre = resultObj.similarTracks
+                    val similarArtistsByGenre = resultObj.similarArtists
+
+                    val trackTempList = mutableListOf<SpotifyTrack>()
+                    val trackNotFoundList = mutableListOf<String>()
+                    val artistTempList = mutableListOf<SpotifyArtist>()
+                    val artistNotFoundList = mutableListOf<String>()
 
 
-                        trackTempList.clear()
-                        trackNotFoundList.clear()
-                        artistTempList.clear()
-                        artistNotFoundList.clear()
-
-                        val batchSize = 20
+                    val batchSize = 20
+                    coroutineScope {
                         // Deal with the batch query of relatedTracks
-                        relatedTracks.chunked(batchSize).forEach { trackBatch ->
+                        similarTracksByGenre.chunked(batchSize).forEach { trackBatch ->
                             val deferredTrackResults = trackBatch.map { trackInfo ->
                                 async { // Inherit Dispatchers.IO
-                                    val parts = trackInfo.split("##")
-                                    if (parts.size == 3) {
-                                        val trackName = parts[0].trim()
-                                        val albumName = parts[1].trim()
-                                        val artistName = parts[2].trim()
-                                        searchForSpecificTrackUseCase(trackName, albumName, artistName)
+                                    //val parts = trackInfo.split("##")
+                                    if (trackInfo.trackName.isNotEmpty() && trackInfo.albumName.isNotEmpty() && trackInfo.artists.isNotEmpty()) {
+                                        val artists = trackInfo.artists.joinToString(",")
+                                        searchForSpecificTrackUseCase(trackInfo.trackName, trackInfo.albumName, artists)
                                     } else {
                                         Log.e(tag, "Unexpected track format: $trackInfo")
-                                        Pair(null, trackInfo) // Format error also consider as not found
+                                        Pair(null, trackInfo.toString()) // Format error also consider as not found
                                     }
                                 }
                             }
-                            // Wait for all tracks to be fetched
-                            @Suppress("UNCHECKED_CAST")
+                            // Wait for all tracks in the chunk to be fetched
                             val trackResults = deferredTrackResults.awaitAll()
                             Log.d(tag, "Chunk search finished.")
                             trackResults.forEach { result ->
@@ -543,60 +530,52 @@ class FindMusicViewModel @Inject constructor(
                             }
                         }
 
-                        // Deal with the batch query of relatedArtists
-                        relatedArtists.chunked(batchSize).forEach { artistBatch ->
-                            val deferredArtistResults = artistBatch.map { artistInfo ->
-                                async {
-                                    val parts = artistInfo.split("##")
-                                    if (parts.size == 3) {
-                                        val artistName = parts[0].trim()
+                        // Deal with the batch query of relatedTracksOfEmotion
+                        similarArtistsByGenre.chunked(batchSize).forEach { artistsBatch ->
+                            val deferredTrackResults = artistsBatch.map { trackInfo ->
+                                async { // Inherit Dispatchers.IO
+                                    //val parts = trackInfo.split("##")
+                                    if (trackInfo.trackName.isNotEmpty() && trackInfo.albumName.isNotEmpty() && trackInfo.artists.isNotEmpty()) {
+                                        val artists = trackInfo.artists.joinToString(",")
                                         // We only need artistName for now
-                                        // val trackName = parts[1].trim()
-                                        // val albumName = parts[2].trim()
-                                        searchForSpecificArtists(artistName)
+                                        //searchForSpecificTrackUseCase(trackInfo.trackName, trackInfo.albumName, artists)
+                                        searchForSpecificArtists(artists)
                                     } else {
-                                        Log.e(tag, "Unexpected artist format: $artistInfo")
-                                        Pair(null, artistInfo)
+                                        Log.e(tag, "Unexpected track format: $trackInfo")
+                                        Pair(null, trackInfo.toString()) // Format error also consider as not found
                                     }
                                 }
                             }
-                            // Wait for all artists to be fetched
-                            @Suppress("UNCHECKED_CAST")
-                            val artistResults = deferredArtistResults.awaitAll()
+                            // Wait for all tracks in the chunk to be fetched
+                            val artistsResult = deferredTrackResults.awaitAll()
                             Log.d(tag, "Chunk search finished.")
-                            artistResults.forEach { result ->
-                                val (artistObj, notFoundId) = result
-                                if (artistObj != null) {
-                                    artistTempList.add(artistObj)
+                            artistsResult.forEach { result ->
+                                val (artist, notFoundId) = result
+                                if (artist != null) {
+                                    artistTempList.add(artist)
                                 } else if (notFoundId != null) {
                                     artistNotFoundList.add(notFoundId)
                                 }
                             }
                         }
-
-
-                        Log.d(tag, "trackNotFoundList: $trackNotFoundList")
-                        Log.d(tag, "artistNotFoundList: $artistNotFoundList")
-                        Log.d(tag, "trackTempList: ${trackTempList.joinToString { it.name }}")
-                        Log.d(tag, "artistTempList: ${artistTempList.joinToString { it.name }}")
-
-                        // TODO: for albums data
-                        val data = SpotifyDataList(
-                            trackTempList.toList(),
-                            artistTempList.toList(),
-                            null,
-                            null
-                        )
-                        _searchSimilarUiState.value = UiState.Success(data)
-                        uiEventManager.sendEvent(UiEvent.ShowSnackbarWithAction("Search successfully completed.", MainScreen.FindMusic.label))
-
-                        Log.d(tag, "Tracks and Artists Data: $data")
                     }
-                } ?: if (isActive) { // If response.text is null
-                    _searchSimilarUiState.value =
-                        UiState.Error("Failed to get a valid response from Gemini.")
-                } else {
-                    Log.d(tag, "Response is null.")
+
+                    Log.d(tag, "trackNotFoundList: $trackNotFoundList")
+                    Log.d(tag, "artistNotFoundList: $artistNotFoundList")
+                    Log.d(tag, "trackTempList: ${trackTempList.joinToString { it.name }}")
+                    Log.d(tag, "artistTempList: ${artistTempList.joinToString { it.name }}")
+
+                    val data = SpotifyDataList(
+                        trackTempList.toList(),
+                        artistTempList.toList(),
+                        null,
+                        null
+                    )
+
+                    _searchSimilarUiState.value = UiState.Success(data)
+                    uiEventManager.sendEvent(UiEvent.ShowSnackbarWithAction("Search successfully completed.", MainScreen.FindMusic.label))
+
+                    Log.d(tag, "Tracks and Artists Data: $data")
                 }
             }
             catch (e: ServerException) {

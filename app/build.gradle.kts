@@ -93,7 +93,6 @@ dependencies {
     implementation (libs.converter.gson)
     implementation(libs.okhttp)
     implementation (libs.okhttp3.logging.interceptor)
-    implementation(libs.converter.gson)
     implementation(libs.play.services.auth)
     implementation(libs.androidx.espresso.core)
     implementation(libs.androidx.security.crypto)

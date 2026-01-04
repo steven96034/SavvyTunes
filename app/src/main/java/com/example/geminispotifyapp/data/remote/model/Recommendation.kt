@@ -16,3 +16,22 @@ data class TrackFromCloudRecommendation(
     val imageUrl: String? = null,
     val uri: String = ""
 )
+
+// Corresponds to trackItemSchema
+data class TrackRecommendation(
+    val trackName: String,
+    val albumName: String,
+    val artists: List<String>
+)
+
+// Corresponds to homeJsonSchema
+data class RecommendationResponse(
+    val weatherTracks: List<TrackRecommendation>,
+    val emotionTracks: List<TrackRecommendation>
+)
+
+// Corresponds to findMusicJsonSchema
+data class SimilarTracksAndArtistsResponse(
+    val similarTracks: List<TrackRecommendation>,
+    val similarArtists: List<TrackRecommendation>
+)

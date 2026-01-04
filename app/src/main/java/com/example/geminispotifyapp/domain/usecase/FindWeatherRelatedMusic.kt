@@ -3,10 +3,12 @@ package com.example.geminispotifyapp.domain.usecase
 import android.util.Log
 import com.example.geminispotifyapp.core.utils.UiState
 import com.example.geminispotifyapp.data.remote.api.GeminiApi
+import com.example.geminispotifyapp.data.remote.model.RecommendationResponse
 import com.example.geminispotifyapp.data.remote.model.SpotifyTrack
 import com.example.geminispotifyapp.data.repository.WeatherResponse
 import com.example.geminispotifyapp.domain.repository.SpotifyRepository
 import com.example.geminispotifyapp.presentation.features.main.home.TwoTracksList
+import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -19,12 +21,12 @@ import java.util.Calendar
 import javax.inject.Inject
 import kotlin.collections.chunked
 import kotlin.collections.map
-import kotlin.text.split
 
 class FindWeatherRelatedMusic @Inject constructor(
     private val spotifyRepository: SpotifyRepository,
     private val geminiApi: GeminiApi,
-    private val searchForSpecificTrackUseCase: SearchForSpecificTrackUseCase
+    private val searchForSpecificTrackUseCase: SearchForSpecificTrackUseCase,
+    private val gson: Gson
 ) {
     operator fun invoke(weatherResponse: WeatherResponse): Flow<UiState<TwoTracksList>> = flow {
         val musicTag = "WeatherMusic"
@@ -65,8 +67,32 @@ class FindWeatherRelatedMusic @Inject constructor(
             val wmo = currentJsonWeather.weatherCode
             val temperature = currentJsonWeather.temperature.toFloat()
             val time = currentJsonWeather.time
+            // Set two random moods here
+            val moodList = listOf("happy", "sad", "energetic", "romantic", "melancholic", "nostalgic", "uplifting", "chill", "motivational", "reflective", "angry")
+            val mood = moodList.shuffled().take(2).joinToString(" or ")
+            Log.d(musicTag, "mood: $mood")
 
-            val prompt = """Rules to respond: List only one related music of track$genreOfQuery$yearOfQuery in each row$languageOfQuery using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,
+            val prompt = """Rules to respond: 
+                             Recommend related music tracks of songs based on the following user preferences:
+                             - Genres: $genreOfQuery
+                             - Year: Around $yearOfQuery
+                             - Language: $languageOfQuery
+                             - Mood: $mood
+
+                             Also, below is the main query of weather condition:
+                             The current weather represented in WMO weather interpretation code is $wmo, the current temperature is $temperature, and current time is $time.
+                             Please recommend $numOfQuery related music tracks of aforementioned weather condition.
+                             Also, recommend $numOfQuery related music tracks of the related emotion of this weather and current time.
+                             
+                             Strict Output Requirements:
+                             1. Select songs that perfectly match the weather condition, genre and language, others are minor factors that should be considered.
+                             2. Ensure 'albumName' is accurate.
+                             3. 'artists' must be a list of strings (e.g., if a song features someone, list them as separate strings).
+                             4. Do NOT include track numbers, album names, or any markdown formatting (like ```json).
+                             5. Return the result strictly adhering to the provided JSON schema.
+                                    """
+            """ Old prompt:
+                Rules to respond: List only one related music of track$genreOfQuery$yearOfQuery in each row$languageOfQuery using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,
                              if there is more than one artist, just separate them with comma, also do not use blank row to separate each track(only use one row for each track).
                              Use one blank row to separate the response of aforementioned weather condition and the response of related emotion of this weather.
                              Other response rule: Do not use No., and do not respond any other statement, neither.
@@ -75,46 +101,26 @@ class FindWeatherRelatedMusic @Inject constructor(
                              The current weather represented in WMO weather interpretation code is $wmo, the current temperature is $temperature, and current time is $time.
                              Please recommend $numOfQuery related music tracks of aforementioned weather condition, where the format mentioned is: Song Name##Album Name##Artists Name.
                              Also, recommend $numOfQuery related music tracks of the related emotion of this weather and time, where the format mentioned is: Song Name##Album Name##Artists Name.
-                             Notice: List only one related music track in each row using format: Song Name##Album Name##Artists Name
-                                    """
+                             Notice: List only one related music track in each row using format: Song Name##Album Name##Artists Name 
+                """
 
-            val responseRelated = geminiApi.askGemini(prompt)
+            val responseRelated = geminiApi.askGeminiHome(prompt)
 
-            val outputContent = responseRelated.text?.trimIndent()
+            var outputContent = responseRelated.text?.trimIndent()
             if (outputContent == null) {
                 emit(UiState.Error("Failed to get a valid response from Gemini."))
                 return@flow // End the Flow
             }
-            Log.d(musicTag, "trimmed response: $outputContent")
-            val relatedTracksOfCondition = mutableListOf<String>()
-            val relatedTracksOfEmotion = mutableListOf<String>()
-
-            val lines = outputContent.split("\n")
-            val blankLineIndex = lines.indexOf("")
-
-            if (blankLineIndex != -1) {
-                // First $numOfSearch rows: weather condition
-                relatedTracksOfCondition.addAll(
-                    lines.subList(
-                        0,
-                        minOf(numOfShowCaseSearch, blankLineIndex)
-                    )
-                )
-                // Last $numOfSearch rows: emotion and time
-                relatedTracksOfEmotion.addAll(
-                    lines.subList(
-                        blankLineIndex + 1,
-                        minOf(blankLineIndex + numOfShowCaseSearch + 1, lines.size)
-                    )
-                )
-            } else {
-                Log.e(musicTag, "Response format error")
-                // fallback to all tracks
-                relatedTracksOfCondition.addAll(lines.subList(0, minOf(numOfShowCaseSearch, lines.size)))
+            // Though Schema mode usually does not return Markdown (```json), it is a good practice to clean the logic
+            if (outputContent.startsWith("```")) {
+                outputContent = outputContent.replace(Regex("^```json|^```|```$"), "").trim()
             }
-            Log.d(musicTag, "relatedTracks: $relatedTracksOfCondition")
-            Log.d(musicTag, "relatedArtists: $relatedTracksOfEmotion")
+            Log.d(musicTag, "trimmed response: $outputContent")
 
+            val resultObj = gson.fromJson(outputContent, RecommendationResponse::class.java)
+            Log.d(musicTag, "resultObj: $resultObj")
+            val relatedTracksOfCondition = resultObj.weatherTracks
+            val relatedTracksOfEmotion = resultObj.emotionTracks
 
             val conditionTempList = mutableListOf<SpotifyTrack>()
             val conditionNotFoundList = mutableListOf<String>()
@@ -122,26 +128,23 @@ class FindWeatherRelatedMusic @Inject constructor(
             val emotionNotFoundList = mutableListOf<String>()
 
 
-            val batchSize = 5
+            val batchSize = 20
             coroutineScope {
                 // Deal with the batch query of relatedTracks
                 relatedTracksOfCondition.chunked(batchSize).forEach { trackBatch ->
                     val deferredTrackResults = trackBatch.map { trackInfo ->
                         async { // Inherit Dispatchers.IO
-                            val parts = trackInfo.split("##")
-                            if (parts.size == 3) {
-                                val trackName = parts[0].trim()
-                                val albumName = parts[1].trim()
-                                val artistName = parts[2].trim()
-                                searchForSpecificTrackUseCase(trackName, albumName, artistName)
+                            //val parts = trackInfo.split("##")
+                            if (trackInfo.trackName.isNotEmpty() && trackInfo.albumName.isNotEmpty() && trackInfo.artists.isNotEmpty()) {
+                                val artists = trackInfo.artists.joinToString(",")
+                                searchForSpecificTrackUseCase(trackInfo.trackName, trackInfo.albumName, artists)
                             } else {
                                 Log.e(musicTag, "Unexpected track format: $trackInfo")
-                                Pair(null, trackInfo) // Format error also consider as not found
+                                Pair(null, trackInfo.toString()) // Format error also consider as not found
                             }
                         }
                     }
                     // Wait for all tracks in the chunk to be fetched
-                    @Suppress("UNCHECKED_CAST")
                     val trackResults = deferredTrackResults.awaitAll()
                     Log.d(musicTag, "Chunk search finished.")
                     trackResults.forEach { result ->
@@ -158,20 +161,17 @@ class FindWeatherRelatedMusic @Inject constructor(
                 relatedTracksOfEmotion.chunked(batchSize).forEach { trackBatch ->
                     val deferredTrackResults = trackBatch.map { trackInfo ->
                         async { // Inherit Dispatchers.IO
-                            val parts = trackInfo.split("##")
-                            if (parts.size == 3) {
-                                val trackName = parts[0].trim()
-                                val albumName = parts[1].trim()
-                                val artistName = parts[2].trim()
-                                searchForSpecificTrackUseCase(trackName, albumName, artistName)
+                            //val parts = trackInfo.split("##")
+                            if (trackInfo.trackName.isNotEmpty() && trackInfo.albumName.isNotEmpty() && trackInfo.artists.isNotEmpty()) {
+                                val artists = trackInfo.artists.joinToString(",")
+                                searchForSpecificTrackUseCase(trackInfo.trackName, trackInfo.albumName, artists)
                             } else {
                                 Log.e(musicTag, "Unexpected track format: $trackInfo")
-                                Pair(null, trackInfo) // Format error also consider as not found
+                                Pair(null, trackInfo.toString()) // Format error also consider as not found
                             }
                         }
                     }
                     // Wait for all tracks in the chunk to be fetched
-                    @Suppress("UNCHECKED_CAST")
                     val trackResults = deferredTrackResults.awaitAll()
                     Log.d(musicTag, "Chunk search finished.")
                     trackResults.forEach { result ->
