@@ -467,15 +467,6 @@ class FindMusicViewModel @Inject constructor(
                                     """
                     // Song name and album name for artists list is redundant for now, more precise for future.
                     responseSimilar = geminiApi.askGeminiFindMusic(prompt)
-                    """ Old prompt:
-                       ""${'"'}Please list ${'$'}numOfSearch music tracks of related genres of ${'$'}track##${'$'}artist, where the format mentioned is: Song Name##Artists Name.
-                                List only one related music track in each row using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,                               
-                                    if there is more than one artist, just separate them with comma, also do not use blank row to separate each track(only use one row for each track). 
-                                Also, list most related ${'$'}numOfSearch music artists/band name of the song genre mentioned before, while followed by the famous song name and its album of the artists/band. 
-                                List only one related music artist name in each row using format: Artists Name##Song Name##Album Name, responding the name of artists by English, also do not use blank row to separate each artist(only use one row for each artist)
-                                Other response rule: Do not use No., and do not respond any other statement, neither.
-                                    Use one blank row to separate the response of related music tracks and the response of related music artists.""${'"'} 
-                    """
                     geminiFinishedTime = System.currentTimeMillis()
                     Log.d(
                         tag,

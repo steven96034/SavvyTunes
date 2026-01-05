@@ -60,9 +60,9 @@ class FindWeatherRelatedMusic @Inject constructor(
             Log.d(musicTag, "numOfShowCaseSearch: $numOfShowCaseSearch, languageOfShowCaseSearch: $languageOfShowCaseSearch, genreOfShowCaseSearch: $genreOfShowCaseSearch, yearOfShowCaseSearch: $yearOfShowCaseSearch")
 
             val numOfQuery = "$numOfShowCaseSearch"
-            val languageOfQuery = if (languageOfShowCaseSearch != "") ", where the tracks should be written in $languageOfShowCaseSearch," else ", where the tracks should be written/included in a great variety of languages,"
-            val genreOfQuery = if (genreOfShowCaseSearch != "") " (with genre $genreOfShowCaseSearch)" else ""
-            val yearOfQuery = if (yearOfShowCaseSearch != "") " around A.D. $yearOfSearch" else ""
+            val languageOfQuery = if (languageOfShowCaseSearch != "") "$languageOfShowCaseSearch," else "no specific language, "
+            val genreOfQuery = if (genreOfShowCaseSearch != "") " (with genre $genreOfShowCaseSearch)" else "no specific genre"
+            val yearOfQuery = if (yearOfShowCaseSearch != "") " Around A.D. $yearOfSearch" else "no specific year"
 
             val wmo = currentJsonWeather.weatherCode
             val temperature = currentJsonWeather.temperature.toFloat()
@@ -72,10 +72,10 @@ class FindWeatherRelatedMusic @Inject constructor(
             val mood = moodList.shuffled().take(2).joinToString(" or ")
             Log.d(musicTag, "mood: $mood")
 
-            val prompt = """Rules to respond: 
+            val prompt = """ Rules to respond: 
                              Recommend related music tracks of songs based on the following user preferences:
                              - Genres: $genreOfQuery
-                             - Year: Around $yearOfQuery
+                             - Year: $yearOfQuery
                              - Language: $languageOfQuery
                              - Mood: $mood
 
@@ -90,21 +90,15 @@ class FindWeatherRelatedMusic @Inject constructor(
                              3. 'artists' must be a list of strings (e.g., if a song features someone, list them as separate strings).
                              4. Do NOT include track numbers, album names, or any markdown formatting (like ```json).
                              5. Return the result strictly adhering to the provided JSON schema.
-                                    """
-            """ Old prompt:
-                Rules to respond: List only one related music of track$genreOfQuery$yearOfQuery in each row$languageOfQuery using format: Song Name##Album Name##Artists Name, while followed by its album and the artists,
-                             if there is more than one artist, just separate them with comma, also do not use blank row to separate each track(only use one row for each track).
-                             Use one blank row to separate the response of aforementioned weather condition and the response of related emotion of this weather.
-                             Other response rule: Do not use No., and do not respond any other statement, neither.
-
-                             Below is the main query:
-                             The current weather represented in WMO weather interpretation code is $wmo, the current temperature is $temperature, and current time is $time.
-                             Please recommend $numOfQuery related music tracks of aforementioned weather condition, where the format mentioned is: Song Name##Album Name##Artists Name.
-                             Also, recommend $numOfQuery related music tracks of the related emotion of this weather and time, where the format mentioned is: Song Name##Album Name##Artists Name.
-                             Notice: List only one related music track in each row using format: Song Name##Album Name##Artists Name 
-                """
+                         """
+            val startTime = System.currentTimeMillis()
 
             val responseRelated = geminiApi.askGeminiHome(prompt)
+
+            Log.d(
+                musicTag,
+                "Gemini response takes time: ${System.currentTimeMillis() - startTime}ms"
+            )
 
             var outputContent = responseRelated.text?.trimIndent()
             if (outputContent == null) {
@@ -193,6 +187,11 @@ class FindWeatherRelatedMusic @Inject constructor(
             val data = TwoTracksList(
                 conditionTempList.toList(),
                 emotionTempList.toList(),
+            )
+
+            Log.d(
+                musicTag,
+                "Search job finished. Overall time: ${(System.currentTimeMillis() - startTime)}ms"
             )
             emit(UiState.Success(data))
 
