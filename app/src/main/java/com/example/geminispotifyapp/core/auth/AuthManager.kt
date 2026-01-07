@@ -21,7 +21,8 @@ class AuthManager @Inject constructor(
         /**
          *  **Important**: Replace `YOUR_CLIENT_ID` with your actual Spotify Client ID from the Spotify Developer Dashboard.
          */
-        const val CLIENT_ID = BuildConfig.SPOTIFY_WEB_API_KEY
+        const val CLIENT_ID = BuildConfig.SPOTIFY_WEB_API_CLIENT_ID
+
 
         /**
          *  **Important**: The redirect URI must exactly match the one configured in the Spotify Developer Dashboard.

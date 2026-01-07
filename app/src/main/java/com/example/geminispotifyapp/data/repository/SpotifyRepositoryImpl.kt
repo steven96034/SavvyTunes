@@ -345,7 +345,7 @@ class SpotifyRepositoryImpl @Inject constructor(
     // Only call from getAccessToken() to refresh token
     private suspend fun performActualTokenRefresh(refreshToken: String): String {
         // Call refresh token API from Spotify
-        val clientId = BuildConfig.SPOTIFY_WEB_API_KEY
+        val clientId = BuildConfig.SPOTIFY_WEB_API_CLIENT_ID
 
         val response = spotifyApiService.refreshAccessToken(
             refreshToken = refreshToken,

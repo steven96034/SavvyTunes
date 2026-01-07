@@ -32,11 +32,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField(
-                "String",
-                "SPOTIFY_SDK_API_KEY",
-                "\"${System.getenv("SPOTIFY_SDK_API_KEY") ?: project.properties["SPOTIFY_SDK_API_KEY"]}\""
-            )
         }
     }
     compileOptions {
