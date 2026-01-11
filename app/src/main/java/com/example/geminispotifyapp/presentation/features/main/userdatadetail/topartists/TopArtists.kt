@@ -41,7 +41,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +60,7 @@ import coil.compose.AsyncImage
 import com.example.geminispotifyapp.R
 import com.example.geminispotifyapp.data.remote.model.SpotifyArtist
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.geminispotifyapp.data.remote.interceptor.ApiError
 import com.example.geminispotifyapp.presentation.features.main.userdatadetail.DropDownMenuTemplate
 import com.example.geminispotifyapp.presentation.features.main.userdatadetail.Period
@@ -71,10 +71,10 @@ import com.example.geminispotifyapp.presentation.ui.theme.GeminiSpotifyAppTheme
 
 @Composable
 fun TopArtistsScreen(onArtistClick: (SpotifyArtist) -> Unit, viewModel: TopArtistsViewModel) {
-    val uiState by viewModel.downLoadState.collectAsState()
-    val refreshing by viewModel.isRefreshing.collectAsState()
-    val artistPeriodSelection by viewModel.artistPeriodSelection.collectAsState()
-    val dataNum by viewModel.userDataNum.collectAsState()
+    val uiState by viewModel.downLoadState.collectAsStateWithLifecycle()
+    val refreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val artistPeriodSelection by viewModel.artistPeriodSelection.collectAsStateWithLifecycle()
+    val dataNum by viewModel.userDataNum.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
         viewModel.fetchTopArtistsIfNeeded()
     }

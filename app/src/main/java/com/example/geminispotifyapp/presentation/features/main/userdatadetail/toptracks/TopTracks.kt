@@ -41,7 +41,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,6 +63,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.geminispotifyapp.data.remote.interceptor.ApiError
@@ -86,10 +86,10 @@ import kotlin.time.DurationUnit
 
 @Composable
 fun TopTracksScreen(onTrackClick: (SpotifyTrack) -> Unit, viewModel: TopTracksViewModel) {
-    val uiState by viewModel.downLoadState.collectAsState()
-    val refreshing by viewModel.isRefreshing.collectAsState()
-    val trackPeriodSelection by viewModel.trackPeriodSelection.collectAsState()
-    val userDataNum by viewModel.userDataNum.collectAsState()
+    val uiState by viewModel.downLoadState.collectAsStateWithLifecycle()
+    val refreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val trackPeriodSelection by viewModel.trackPeriodSelection.collectAsStateWithLifecycle()
+    val userDataNum by viewModel.userDataNum.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
         viewModel.fetchTopTracksIfNeeded()
     }

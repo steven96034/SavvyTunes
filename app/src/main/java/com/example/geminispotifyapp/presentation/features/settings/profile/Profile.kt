@@ -13,7 +13,6 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,11 +30,12 @@ import com.example.geminispotifyapp.data.remote.model.UserProfileResponse
 import com.example.geminispotifyapp.core.utils.FetchResult
 import com.example.geminispotifyapp.data.remote.interceptor.ApiError
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.geminispotifyapp.R
 
 @Composable
 fun ProfileScreen(paddingValues: PaddingValues, viewModel: ProfileViewModel =  hiltViewModel()) {
-    val userProfileState by viewModel.userProfileState.collectAsState()
+    val userProfileState by viewModel.userProfileState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.fetchUserProfileIfNeeded()

@@ -34,7 +34,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +53,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.geminispotifyapp.core.utils.UiState
@@ -75,22 +75,22 @@ fun FindMusicScreen(
     onTrackClick: (SpotifyTrack) -> Unit, 
     viewModel: FindMusicViewModel
 ) { 
-    val similarUiState by viewModel.searchSimilarUiState.collectAsState()
-    val trackInput by viewModel.trackInput.collectAsState()
-    val artistInput by viewModel.artistInput.collectAsState()
-    val dataInput by viewModel.dataInput.collectAsState()
+    val similarUiState by viewModel.searchSimilarUiState.collectAsStateWithLifecycle()
+    val trackInput by viewModel.trackInput.collectAsStateWithLifecycle()
+    val artistInput by viewModel.artistInput.collectAsStateWithLifecycle()
+    val dataInput by viewModel.dataInput.collectAsStateWithLifecycle()
 
-    val suggestedUiState by viewModel.searchDataUiState.collectAsState()
-    val selectedSuggestedTrack by viewModel.selectedSuggestedTrack.collectAsState()
-    val hasSelectedTrackAndInputDoesNotChange by viewModel.hasSelectedTrackAndInputDoesNotChange.collectAsState()
-    val hasSelectedArtistAndInputDoesNotChange by viewModel.hasSelectedArtistAndInputDoesNotChange.collectAsState()
-    val hasSelectedDataAndInputDoesNotChange by viewModel.hasSelectedDataAndInputDoesNotChange.collectAsState()
-    val hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange by viewModel.hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange.collectAsState()
+    val suggestedUiState by viewModel.searchDataUiState.collectAsStateWithLifecycle()
+    val selectedSuggestedTrack by viewModel.selectedSuggestedTrack.collectAsStateWithLifecycle()
+    val hasSelectedTrackAndInputDoesNotChange by viewModel.hasSelectedTrackAndInputDoesNotChange.collectAsStateWithLifecycle()
+    val hasSelectedArtistAndInputDoesNotChange by viewModel.hasSelectedArtistAndInputDoesNotChange.collectAsStateWithLifecycle()
+    val hasSelectedDataAndInputDoesNotChange by viewModel.hasSelectedDataAndInputDoesNotChange.collectAsStateWithLifecycle()
+    val hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange by viewModel.hasSelectedTrackOfArtistOrAlbumAndInputDoesNotChange.collectAsStateWithLifecycle()
 
-    val searchByIdUiState by viewModel.searchByIdUiState.collectAsState()
-    val selectedAlbum by viewModel.selectedAlbum.collectAsState()
+    val searchByIdUiState by viewModel.searchByIdUiState.collectAsStateWithLifecycle()
+    val selectedAlbum by viewModel.selectedAlbum.collectAsStateWithLifecycle()
 
-    val searchButtonAnimationTrigger by viewModel.searchButtonAnimationTrigger.collectAsState()
+    val searchButtonAnimationTrigger by viewModel.searchButtonAnimationTrigger.collectAsStateWithLifecycle()
 
 
     FindMusicPage(

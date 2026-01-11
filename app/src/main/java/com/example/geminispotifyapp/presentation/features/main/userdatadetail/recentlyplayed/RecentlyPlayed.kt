@@ -42,7 +42,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +64,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.geminispotifyapp.data.remote.interceptor.ApiError
 import com.example.geminispotifyapp.R
@@ -85,10 +85,10 @@ import kotlin.time.DurationUnit
 
 @Composable
 fun RecentlyPlayedScreen(onHistoryClick: (UiPlayHistoryObject) -> Unit, viewModel: RecentlyPlayedViewModel) {
-    val uiState by viewModel.downLoadState.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
-    val displayedRecentlyPlayed by viewModel.displayedRecentlyPlayed.collectAsState()
-    val userDataNum by viewModel.userDataNum.collectAsState()
+    val uiState by viewModel.downLoadState.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val displayedRecentlyPlayed by viewModel.displayedRecentlyPlayed.collectAsStateWithLifecycle()
+    val userDataNum by viewModel.userDataNum.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.fetchRecentlyPlayedIfNeeded()

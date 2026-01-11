@@ -118,7 +118,7 @@ class FindMusicViewModel @Inject constructor(
     val searchSimilarNum: StateFlow<Int> = spotifyRepository.searchSimilarNumFlow
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.Eagerly,
+            started = SharingStarted.WhileSubscribed(5000),
             initialValue = 20
         )
 
