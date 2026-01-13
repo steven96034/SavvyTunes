@@ -1,6 +1,7 @@
 package com.example.geminispotifyapp.domain.repository
 
 import com.example.geminispotifyapp.data.remote.model.WeeklyRecommendation
+import com.google.firebase.auth.AuthResult
 import kotlinx.coroutines.flow.Flow
 
 interface FirebaseAuthRepository {
@@ -13,4 +14,6 @@ interface FirebaseAuthRepository {
     suspend fun updateLastActiveTime()
     // Get latest recommendation from Firestore
     suspend fun getLatestRecommendation(): Result<WeeklyRecommendation?>
+    suspend fun signUpWithEmail(email: String, password: String): Result<AuthResult>
+    suspend fun loginWithEmail(email: String, password: String): Result<AuthResult>
 }

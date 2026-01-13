@@ -151,6 +151,7 @@ fun UserSettingsContent(
             "Classical",
             "Country",
             "Electronic",
+            "Instrumental",
             "R&B",
             "Reggae",
             "Blues",
@@ -163,7 +164,7 @@ fun UserSettingsContent(
             "Disco",
             "Techno",
             "House",
-            "Ambient"
+            "Ambient",
         )
     }
     val currentYear = remember { Calendar.getInstance().get(Calendar.YEAR) }

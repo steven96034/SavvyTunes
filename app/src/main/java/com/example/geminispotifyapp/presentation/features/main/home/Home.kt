@@ -65,7 +65,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -99,6 +98,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextLinkStyles
@@ -202,7 +202,8 @@ fun HomeScreen(
             onRetry = { viewModel.fetchLocationAndWeather() },
             onRefresh = { viewModel.refreshHome() },
             isRefreshing = isRefreshing,
-            navigateToSettings = { viewModel.navigateToSettings() }
+            navigateToSettings = { viewModel.navigateToSettings() },
+            paddingValues = paddingValues
         )
     }
 }
@@ -226,7 +227,8 @@ fun HomeContent(
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
     isRefreshing: Boolean,
-    navigateToSettings: () -> Unit
+    navigateToSettings: () -> Unit,
+    paddingValues: PaddingValues
 ) {
     if (showGpsDialog) {
         AlertDialog(
@@ -245,10 +247,6 @@ fun HomeContent(
             }
         )
     }
-
-
-
-    //FloatingButton({ showBottomSheet = true })
 
     var hasRequestedPermissionAtLeastOnce by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -485,6 +483,7 @@ fun HomeContent(
                                     }
                                 },
                                 text = {
+                                    if (isPortrait)
                                     Column (
                                         modifier = Modifier.fillMaxSize(),
                                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -496,6 +495,23 @@ fun HomeContent(
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
+                                    }
+                                    else {
+                                        Row (
+                                            modifier = Modifier.fillMaxSize(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text(
+                                                text = "Recommendation for ",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(vertical = 2.dp).padding(start = 4.dp)
+                                            )
+                                            Text(
+                                                text = title,
+                                                modifier = Modifier.padding(vertical = 2.dp).padding(end = 4.dp)
+                                            )
+                                        }
                                     }
                                 }
                             )
@@ -775,7 +791,8 @@ fun TrackShowcase(
                             actualImageWidth = result.drawable.intrinsicWidth
                             actualImageHeight = result.drawable.intrinsicHeight
                             Palette.from(result.drawable.toBitmap()).generate { palette ->
-                                val dominantColor = palette?.dominantSwatch?.rgb ?: return@generate
+                                val targetSwatch = palette?.dominantSwatch ?: palette?.mutedSwatch ?: palette?.vibrantSwatch
+                                val dominantColor = targetSwatch?.rgb ?: return@generate
                                 cardColor = Color(dominantColor)
                             }
                         })
@@ -1060,15 +1077,37 @@ fun RecommendationSheetContent(uiState: RecommendationUiState, onRefresh: () -> 
             }
         }
         is RecommendationUiState.Empty -> {
-            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                Text("So far there is no recommendation, please try again later.")
+            Box(Modifier.fillMaxWidth().height(500.dp), contentAlignment = Alignment.Center) {
+                Column (
+                    modifier = Modifier.fillMaxWidth(0.8f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        "So far there is no recommendation.",
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        "Maybe you will get one tomorrow!",
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
         is RecommendationUiState.Error -> {
-            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                Text("Error occurred: ${uiState.message}", color = MaterialTheme.colorScheme.error)
-                Button(onClick = onRefresh) {
-                    Text("Retry for daily recommendation.")
+            Box(Modifier.fillMaxWidth().height(500.dp), contentAlignment = Alignment.Center) {
+                Column (
+                    modifier = Modifier.fillMaxWidth(0.8f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        "Error occurred: ${uiState.message}",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Button(onClick = onRefresh) {
+                        Text("Retry for daily recommendation.")
+                    }
                 }
             }
         }

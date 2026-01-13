@@ -5,6 +5,7 @@ import com.example.geminispotifyapp.data.local.AppDatabase
 import com.example.geminispotifyapp.data.remote.model.WeeklyRecommendation
 import com.example.geminispotifyapp.domain.repository.FirebaseAuthRepository
 import com.google.android.gms.tasks.Tasks
+import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
@@ -102,6 +103,26 @@ class FirebaseAuthRepositoryImpl @Inject constructor(
             Result.success(true)
         } catch (e: Exception) {
             e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun loginWithEmail(email: String, password: String): Result<AuthResult> {
+        return try {
+            val result = auth.signInWithEmailAndPassword(email, password).await()
+            Result.success(result)
+        } catch (e: Exception) {
+            // Common errors: wrong password, user doesn't exist, invalid email format
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun signUpWithEmail(email: String, password: String): Result<AuthResult> {
+        return try {
+            val result = auth.createUserWithEmailAndPassword(email, password).await()
+            Result.success(result)
+        } catch (e: Exception) {
+            // Common errors: Email already in use, invalid email format
             Result.failure(e)
         }
     }

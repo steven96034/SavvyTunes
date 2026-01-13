@@ -33,17 +33,12 @@ class LocationTrackerImpl @Inject constructor(
 
     @SuppressLint("MissingPermission")
     override suspend fun getCurrentLocation(): LocationResult {
-        val hasAccessFineLocationPermission = ContextCompat.checkSelfPermission(
-            application,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-
         val hasAccessCoarseLocationPermission = ContextCompat.checkSelfPermission(
             application,
             Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
 
-        if (!hasAccessCoarseLocationPermission && !hasAccessFineLocationPermission) {
+        if (!hasAccessCoarseLocationPermission) {
             return LocationResult.MissingPermission
         }
 
@@ -56,7 +51,7 @@ class LocationTrackerImpl @Inject constructor(
         }
 
         val currentLocationRequest = CurrentLocationRequest.Builder()
-            .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+            .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
             .build()
 
         return suspendCancellableCoroutine { cont ->
@@ -68,7 +63,7 @@ class LocationTrackerImpl @Inject constructor(
                     } else { // Location is null, try to get current location
                         cont.context.let {
                             locationClient.getCurrentLocation(currentLocationRequest, cont.context.let { null }).addOnCompleteListener { currentTask ->
-                                if(currentTask.isSuccessful && currentTask.result != null){
+                                if (currentTask.isSuccessful && currentTask.result != null){
                                     cont.resume(LocationResult.Success(currentTask.result))
                                 } else {
                                     cont.resume(LocationResult.Error(currentTask.exception ?: Exception("Failed to get current location.")))

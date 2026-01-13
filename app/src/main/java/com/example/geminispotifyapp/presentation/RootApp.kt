@@ -410,7 +410,7 @@ fun AppContainer(
                         title = {
                             val title = dynamicAppBarTitle
                                 ?: screenLabelsByRoute[currentDestinationRoute]
-                                ?: "Music Explorer by Gemini"
+                                ?: "Savvy Tunes"
 
                             Log.d(
                                 "Main Scaffold",

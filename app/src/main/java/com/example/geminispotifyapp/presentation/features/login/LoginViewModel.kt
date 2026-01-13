@@ -2,6 +2,9 @@ package com.example.geminispotifyapp.presentation.features.login
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
@@ -80,6 +83,56 @@ class LoginViewModel @Inject constructor(
 
             } catch (e: Exception) {
                 Log.e("LoginViewModel", "Log in with Firebase failed: ${e.message}", e)
+            }
+        }
+    }
+
+
+    var isLoading by mutableStateOf(false)
+    var errorMessage by mutableStateOf<String?>(null)
+
+    fun onLoginWithMailClick(email: String, password: String) {
+        if (email.isBlank() || password.isBlank()) {
+            errorMessage = "Please type in your email and password"
+            return
+        }
+
+        viewModelScope.launch {
+            isLoading = true
+            errorMessage = null
+
+            val result = firebaseAuthRepository.loginWithEmail(email, password)
+
+            result.onSuccess {
+                isLoading = false
+                _isUserLoggedInFirebase.value = isUserLoggedInFirebase()
+            }.onFailure { e ->
+                isLoading = false
+                errorMessage = e.localizedMessage ?: "Log in Failed"
+                Log.d("LoginViewModel", "onLoginWithMailClick: ${e.message}")
+            }
+        }
+    }
+
+    fun onSignUpWithMailClick(email: String, password: String) {
+        if (email.isBlank() || password.isBlank()) {
+            errorMessage = "Please type in your email and password"
+            return
+        }
+
+        viewModelScope.launch {
+            isLoading = true
+            errorMessage = null
+
+            val result = firebaseAuthRepository.signUpWithEmail(email, password)
+
+            result.onSuccess {
+                isLoading = false
+                _isUserLoggedInFirebase.value = isUserLoggedInFirebase()
+            }.onFailure { e ->
+                isLoading = false
+                errorMessage = e.localizedMessage ?: "Sign up Failed"
+                Log.d("LoginViewModel", "onSignUpWithMailClick: ${e.message}")
             }
         }
     }
