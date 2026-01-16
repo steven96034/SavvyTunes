@@ -44,7 +44,7 @@ class UserSettingsViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = 15
+            initialValue = 25
         )
 
     val languageOfShowCaseSearch: StateFlow<String> = spotifyRepository.languageOfShowCaseSearchFlow
@@ -72,7 +72,7 @@ class UserSettingsViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = false
+            initialValue = true
         )
 
     suspend fun setSearchSimilarNum(searchNum: Int) {

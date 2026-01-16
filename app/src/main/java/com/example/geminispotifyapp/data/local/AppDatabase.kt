@@ -185,7 +185,7 @@ class AppDatabase @Inject constructor(
 
     // Showcase Search Settings
     val numOfShowCaseSearchFlow: Flow<Int> = dataStore.data.map { preferences ->
-        preferences[SHOW_CASE_SEARCH_NUM_KEY] ?: 15
+        preferences[SHOW_CASE_SEARCH_NUM_KEY] ?: 25
     }
 
     suspend fun saveNumOfShowCaseSearch(num: Int) {
@@ -225,7 +225,7 @@ class AppDatabase @Inject constructor(
     }
 
     val isRandomYearOfShowCaseSelectionFlow: Flow<Boolean> = dataStore.data.map { preferences ->
-        preferences[IS_RANDOM_YEAR_OF_SHOW_CASE_SELECTION] ?: false
+        preferences[IS_RANDOM_YEAR_OF_SHOW_CASE_SELECTION] ?: true
     }
 
     suspend fun saveIsRandomYearOfShowCaseSelection(isRandom: Boolean) {

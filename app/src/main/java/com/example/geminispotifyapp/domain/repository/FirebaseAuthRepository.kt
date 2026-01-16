@@ -16,4 +16,5 @@ interface FirebaseAuthRepository {
     suspend fun getLatestRecommendation(): Result<WeeklyRecommendation?>
     suspend fun signUpWithEmail(email: String, password: String): Result<AuthResult>
     suspend fun loginWithEmail(email: String, password: String): Result<AuthResult>
+    suspend fun signOut()
 }

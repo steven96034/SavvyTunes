@@ -10,6 +10,7 @@ import com.example.geminispotifyapp.core.utils.UiEventManager
 import com.example.geminispotifyapp.core.utils.FetchResult
 import com.example.geminispotifyapp.presentation.LOGIN_ROUTE
 import com.example.geminispotifyapp.core.utils.GlobalErrorHandler
+import com.example.geminispotifyapp.domain.repository.FirebaseAuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +22,8 @@ import javax.inject.Inject
 class ProfileViewModel @Inject constructor(
     private val spotifyRepository: SpotifyRepository,
     private val globalErrorHandler: GlobalErrorHandler,
-    private val uiEventManager: UiEventManager
+    private val uiEventManager: UiEventManager,
+    private val firebaseAuthRepository: FirebaseAuthRepository
 ) : ViewModel() {
 
     private val _userProfileState = MutableStateFlow<FetchResult<UserProfileResponse>>(FetchResult.Initial)
@@ -66,6 +68,7 @@ class ProfileViewModel @Inject constructor(
 
     fun logOut() {
         viewModelScope.launch {
+            firebaseAuthRepository.signOut()
             spotifyRepository.performLogOutAndCleanUp()
             uiEventManager.sendEvent(UiEvent.Navigate(LOGIN_ROUTE))
             uiEventManager.sendEvent(UiEvent.ShowSnackbar("You have logged out."))

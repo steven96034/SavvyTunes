@@ -12,10 +12,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.domain.repository.SpotifyRepository
 import com.example.geminispotifyapp.core.auth.AuthManager
+import com.example.geminispotifyapp.core.auth.EmailAuthManager
+import com.example.geminispotifyapp.core.utils.toast
 import com.example.geminispotifyapp.domain.repository.FirebaseAuthRepository
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import com.google.firebase.auth.ActionCodeSettings
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -34,7 +37,8 @@ class LoginViewModel @Inject constructor(
     spotifyRepository: SpotifyRepository,
     private val authManager: AuthManager,
     private val firebaseAuthRepository: FirebaseAuthRepository,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val emailAuthManager: EmailAuthManager // Inject EmailAuthManager
 ): ViewModel() {
     private val _navigateToUrlEvent = MutableSharedFlow<String>()
     val navigateToUrlEvent = _navigateToUrlEvent.asSharedFlow()
@@ -56,12 +60,34 @@ class LoginViewModel @Inject constructor(
     }
 
     private val WEB_CLIENT_ID = "679870767238-6j8p7qjih4tsm5ui1e9ethlade16tldv.apps.googleusercontent.com"
-    private val _isUserLoggedInFirebase = MutableStateFlow(isUserLoggedInFirebase())
+    private val _isUserLoggedInFirebase = MutableStateFlow(auth.currentUser != null)
     val isUserLoggedInFirebase: StateFlow<Boolean> = _isUserLoggedInFirebase
     // Check if the user has logged in
-    fun isUserLoggedInFirebase(): Boolean {
-        return auth.currentUser != null
+    fun refreshAuthState() {
+        _isUserLoggedInFirebase.value = auth.currentUser != null
     }
+
+    fun handleAnonymousLogin() {
+        viewModelScope.launch {
+            try {
+                auth.signInAnonymously()
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            // Sign in success, update UI with the signed-in user\'s information
+                            Log.d("LoginViewModel", "signInAnonymously:success")
+                            refreshAuthState()
+                        } else {
+                            // If sign in fails, display a message to the user.
+                            Log.w("LoginViewModel", "signInAnonymously:failure", task.exception)
+                            refreshAuthState()
+                        }
+                    }
+            } catch (e: Exception) {
+                Log.d("LoginViewModel", "asGuestMode: ${e.message}")
+            }
+        }
+    }
+
 
     // Simulate login (actual project needs Google Sign-In or FirebaseUI)
     // In order to easily test Firestore writing, just write a simple anonymous login or Email login
@@ -77,7 +103,7 @@ class LoginViewModel @Inject constructor(
                 // After login successfully, sync data immediately
                 firebaseAuthRepository.syncUserDataAfterLogin()
 
-                _isUserLoggedInFirebase.value = isUserLoggedInFirebase()
+                refreshAuthState()
 
                 Log.d("LoginViewModel", "Log in with Firebase success(${_isUserLoggedInFirebase.value})！")
 
@@ -91,9 +117,9 @@ class LoginViewModel @Inject constructor(
     var isLoading by mutableStateOf(false)
     var errorMessage by mutableStateOf<String?>(null)
 
-    fun onLoginWithMailClick(email: String, password: String) {
+    fun onLoginWithMailClick(email: String, password: String, context: Context) {
         if (email.isBlank() || password.isBlank()) {
-            errorMessage = "Please type in your email and password"
+            toast(context, "Please type in your email and password.")
             return
         }
 
@@ -105,18 +131,18 @@ class LoginViewModel @Inject constructor(
 
             result.onSuccess {
                 isLoading = false
-                _isUserLoggedInFirebase.value = isUserLoggedInFirebase()
+                refreshAuthState()
             }.onFailure { e ->
                 isLoading = false
-                errorMessage = e.localizedMessage ?: "Log in Failed"
+                toast(context, "Log in Failed. Please try again.")
                 Log.d("LoginViewModel", "onLoginWithMailClick: ${e.message}")
             }
         }
     }
 
-    fun onSignUpWithMailClick(email: String, password: String) {
-        if (email.isBlank() || password.isBlank()) {
-            errorMessage = "Please type in your email and password"
+    fun onSignUpWithMailClick(email: String, context: Context) {
+        if (email.isBlank()) {
+            toast(context, "Please type in your email.")
             return
         }
 
@@ -124,16 +150,28 @@ class LoginViewModel @Inject constructor(
             isLoading = true
             errorMessage = null
 
-            val result = firebaseAuthRepository.signUpWithEmail(email, password)
+            val actionCodeSettings = ActionCodeSettings.newBuilder()
+                .setHandleCodeInApp(true)
+                .setUrl("https://savvy-tunes.firebaseapp.com/finishSignUp") // Your deep link/website URL for email sign-in
+                .setAndroidPackageName(
+                    "com.example.geminispotifyapp", // Your Android package name
+                    true, // Install if not already installed
+                    null // Minimum app version (optional)
+                )
+                .build()
 
-            result.onSuccess {
-                isLoading = false
-                _isUserLoggedInFirebase.value = isUserLoggedInFirebase()
-            }.onFailure { e ->
-                isLoading = false
-                errorMessage = e.localizedMessage ?: "Sign up Failed"
-                Log.d("LoginViewModel", "onSignUpWithMailClick: ${e.message}")
-            }
+            auth.sendSignInLinkToEmail(email, actionCodeSettings)
+                .addOnCompleteListener { task ->
+                    isLoading = false
+                    if (task.isSuccessful) {
+                        Log.d("LoginViewModel", "Email verification link sent to $email")
+                        toast(context, "Verification link sent to $email. Please check your inbox to complete sign up.")
+                        emailAuthManager.savePendingEmail(email)
+                    } else {
+                        toast(context, "Failed to send verification link. Please try again.")
+                        Log.e("LoginViewModel", "Failed to send verification link: ${task.exception?.message}", task.exception)
+                    }
+                }
         }
     }
 
@@ -183,7 +221,7 @@ class LoginViewModel @Inject constructor(
                                 .onFailure {
                                     Log.d("LoginViewModel", "Firebase Auth Failed: ${it.message}")
                                 }
-                            _isUserLoggedInFirebase.value = isUserLoggedInFirebase()
+                            refreshAuthState()
 
                         } catch (e: GoogleIdTokenParsingException) {
                             Log.d("LoginViewModel", "Cannot analyze Google ID Token: ${e.message}")
@@ -191,11 +229,7 @@ class LoginViewModel @Inject constructor(
                     } else {
                         Log.d("LoginViewModel", "Receive unexpected CustomCredential type: ${credential.type}")
                     }
-                } else {
-                    // If want to support Passkey or PasswordCredential in the future,can handle them here
-                    Log.d("LoginViewModel", "Receive non-CustomCredential object: ${credential::class.java.simpleName}")
                 }
-
             } catch (e: Exception) {
                 // User canceled the login or an error occurred (e.g., No Credential)
                 e.printStackTrace()

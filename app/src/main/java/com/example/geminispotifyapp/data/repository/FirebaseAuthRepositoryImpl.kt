@@ -127,6 +127,16 @@ class FirebaseAuthRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun signOut() {
+        try {
+            auth.signOut()
+            Log.d("FirebaseAuthRepository", "User logged out successfully")
+        } catch (e: Exception) {
+            Log.d("FirebaseAuthRepository", "Error logging out: ${e.message}")
+            throw e
+        }
+    }
+
     override suspend fun updateLastActiveTime() {
         // Update the lastActiveAt field in Firestore if the user is logged in
         val uid = auth.currentUser?.uid ?: return
