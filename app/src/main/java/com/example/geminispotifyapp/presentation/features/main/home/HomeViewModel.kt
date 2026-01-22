@@ -5,10 +5,12 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.geminispotifyapp.core.utils.FetchResult
+import com.example.geminispotifyapp.core.utils.GlobalErrorHandler
 import com.example.geminispotifyapp.core.utils.UiState
 import com.example.geminispotifyapp.data.remote.model.SpotifyTrack
 import com.example.geminispotifyapp.core.utils.UiEvent
 import com.example.geminispotifyapp.core.utils.UiEventManager
+import com.example.geminispotifyapp.data.remote.interceptor.ApiError
 import com.example.geminispotifyapp.data.remote.model.WeeklyRecommendation
 import com.example.geminispotifyapp.data.repository.WeatherResponse
 import com.example.geminispotifyapp.domain.repository.FirebaseAuthRepository
@@ -69,8 +71,10 @@ class HomeViewModel @Inject constructor(
     private val weatherDataRepository: WeatherDataRepository,
     private val getLocationAndWeatherUseCase: GetLocationAndWeatherUseCase,
     private val spotifyRepository: SpotifyRepository,
-    private val firebaseAuthRepository: FirebaseAuthRepository
+    private val firebaseAuthRepository: FirebaseAuthRepository,
+    private val globalErrorHandler: GlobalErrorHandler
 ): ViewModel() {
+    private val tag = "HomeViewModel"
     private val _weatherDataJson = MutableStateFlow<WeatherResponse?>(null)
     val weatherDataJson: StateFlow<WeatherResponse?> = _weatherDataJson.asStateFlow()
 
@@ -106,16 +110,17 @@ class HomeViewModel @Inject constructor(
     private suspend fun testTokensIfValid() {
         val result = spotifyRepository.getUserProfile()
         if (result is FetchResult.Success) {
-            Log.d("HomeViewModel", "Tokens Valid: ${result.data}")
+            Log.d(tag, "Tokens Valid: ${result.data}")
         } else if (result is FetchResult.Error) {
-            Log.d("HomeViewModel", "Tokens Error: ${result.errorData}")
+            handleApiError(result.errorData)
+            Log.d(tag, "Tokens Error: ${result.errorData}")
         }
     }
 
     private suspend fun observeJsonWeatherData() {
         weatherDataRepository.weatherData.collect { weatherResponse ->
             _weatherDataJson.value = weatherResponse
-            Log.d("HomeViewModel", "JSON Weather Data Updated: $weatherResponse")
+            Log.d(tag, "JSON Weather Data Updated: $weatherResponse")
         }
     }
 
@@ -294,7 +299,7 @@ class HomeViewModel @Inject constructor(
 
     fun fetchLatestRecommendation() {
         if (_recommendationUiState.value is RecommendationUiState.Success) return
-        Log.d("HomeViewModel", "Fetching latest recommendation")
+        Log.d(tag, "Fetching latest recommendation")
 
         viewModelScope.launch {
             _recommendationUiState.value = RecommendationUiState.Loading
@@ -303,15 +308,15 @@ class HomeViewModel @Inject constructor(
                 .onSuccess { recommendation ->
                     if (recommendation != null) {
                         _recommendationUiState.value = RecommendationUiState.Success(recommendation)
-                        Log.d("HomeViewModel", "Latest recommendation fetched: $recommendation")
+                        Log.d(tag, "Latest recommendation fetched: $recommendation")
                     } else {
                         _recommendationUiState.value = RecommendationUiState.Empty
-                        Log.d("HomeViewModel", "No latest recommendation found")
+                        Log.d(tag, "No latest recommendation found")
                     }
                 }
                 .onFailure { e ->
                     _recommendationUiState.value = RecommendationUiState.Error(e.localizedMessage ?: "Unknown error")
-                    Log.e("HomeViewModel", "Error fetching latest recommendation", e)
+                    Log.e(tag, "Error fetching latest recommendation", e)
                 }
         }
     }
@@ -327,7 +332,7 @@ class HomeViewModel @Inject constructor(
         // 1. Check if today's recommendation is already seen.
         val lastViewedId = firebaseAuthRepository.lastUpdatedEverydayRecommendationDateFlow.first()
         if (lastViewedId == todayId) {
-            Log.d("HomeViewModel", "User has already seen today's recommendation ($todayId). Stop.")
+            Log.d(tag, "User has already seen today's recommendation ($todayId). Stop.")
             return
         }
 
@@ -350,19 +355,43 @@ class HomeViewModel @Inject constructor(
             todayId
         } else {
             // If today is locked or not ready, fallback to yesterday
-            Log.d("HomeViewModel", "Today is locked or not ready. Fallback to yesterday.")
+            Log.d(tag, "Today is locked or not ready. Fallback to yesterday.")
             yesterdayId
         }
 
         // 4. Final comparison (Handle fallback situation)
         if (lastViewedId != targetDateId) {
-            Log.i("HomeViewModel", "New content found ($targetDateId)!")
-            Log.d("HomeViewModel", "Triggering fetching data from firestore and modal bottom sheet.")
+            Log.i(tag, "New content found ($targetDateId)!")
+            Log.d(tag, "Triggering fetching data from firestore and modal bottom sheet.")
             setBottomSheetVisibility(true)
             // Can use targetDateId to specifically fetch data from firestore for the date
             fetchLatestRecommendation()
         } else {
-            Log.d("HomeViewModel", "User has already seen the fallback target ($targetDateId).")
+            Log.d(tag, "User has already seen the fallback target ($targetDateId).")
+        }
+    }
+
+    private fun handleApiError(error: ApiError) {
+        viewModelScope.launch {
+            val uiEvent = globalErrorHandler.processError(error, tag)
+            when (uiEvent) {
+                is UiEvent.ShowSnackbar -> {
+                    uiEventManager.sendEvent(UiEvent.ShowSnackbar(uiEvent.message))
+                }
+                is UiEvent.ShowSnackbarDetail -> {
+                    uiEventManager.sendEvent(UiEvent.ShowSnackbarDetail(uiEvent.message, uiEvent.detail))
+                }
+                is UiEvent.Navigate -> {
+                    uiEventManager.sendEvent(UiEvent.Navigate(uiEvent.route))
+                }
+                is UiEvent.ShowSnackbarWithAction -> {
+                    uiEventManager.sendEvent(UiEvent.ShowSnackbarWithAction(uiEvent.message, uiEvent.actionLabel))
+                }
+                is UiEvent.Unauthorized -> {
+                    uiEventManager.sendEvent(UiEvent.Unauthorized(uiEvent.message))
+                }
+                else -> {}
+            }
         }
     }
 }
