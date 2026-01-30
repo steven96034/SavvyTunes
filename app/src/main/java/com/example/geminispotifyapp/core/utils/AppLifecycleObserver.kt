@@ -25,7 +25,7 @@ class AppLifecycleObserver @Inject constructor(
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastUpdateTimestamp > UPDATE_COOLDOWN) {
             CoroutineScope(Dispatchers.IO).launch {
-                firebaseAuthRepository.updateLastActiveTime()
+                firebaseAuthRepository.updateLastActiveTimeAndTimeZone()
                 lastUpdateTimestamp = currentTime
             }
         }

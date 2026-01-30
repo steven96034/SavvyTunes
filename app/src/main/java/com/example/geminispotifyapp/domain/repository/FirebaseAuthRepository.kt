@@ -11,10 +11,11 @@ interface FirebaseAuthRepository {
     // Use Google ID Token to log in Firebase
     suspend fun signInWithGoogle(idToken: String): Result<Boolean>
     // Update last active time in Firestore
-    suspend fun updateLastActiveTime()
+    suspend fun updateLastActiveTimeAndTimeZone()
     // Get latest recommendation from Firestore
     suspend fun getLatestRecommendation(): Result<WeeklyRecommendation?>
     suspend fun signUpWithEmail(email: String, password: String): Result<AuthResult>
     suspend fun loginWithEmail(email: String, password: String): Result<AuthResult>
     suspend fun signOut()
+    suspend fun updateFcmToken(token: String)
 }

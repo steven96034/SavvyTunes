@@ -8,6 +8,7 @@ import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
@@ -17,7 +18,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class FirebaseAuthRepositoryImpl @Inject constructor(
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
@@ -41,7 +44,7 @@ class FirebaseAuthRepositoryImpl @Inject constructor(
                 "email" to (user.email ?: ""),
                 "displayName" to name,
                 "fcmToken" to fcmToken,
-                "lastActiveAt" to com.google.firebase.Timestamp.now(),
+                "lastActiveAt" to FieldValue.serverTimestamp(),
             )
 
             // 3. Write to Firestore (use merge to avoid overwriting existing data)
@@ -137,19 +140,25 @@ class FirebaseAuthRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun updateLastActiveTime() {
+    override suspend fun updateLastActiveTimeAndTimeZone() {
         // Update the lastActiveAt field in Firestore if the user is logged in
         val uid = auth.currentUser?.uid ?: return
+
+        val timeZone = java.util.TimeZone.getDefault()
+        val offsetWithDST = (timeZone.rawOffset + timeZone.dstSavings) / 3600000.0
+
         try {
             val updateData = mapOf(
-                "lastActiveAt" to com.google.firebase.Timestamp.now()
+                "timeZoneId" to timeZone.id,
+                "timeZoneOffset" to offsetWithDST,
+                "lastActiveAt" to FieldValue.serverTimestamp()
             )
             firestore.collection("users")
                 .document(uid)
                 .set(updateData, SetOptions.merge())
                 .await()
         } catch (e: Exception) {
-            Log.d("FirebaseAuthRepository", "Error updating last active time: ${e.message}")
+            Log.d("FirebaseAuthRepository", "Error updating last active time and time zone: ${e.message}")
         }
     }
 
@@ -176,6 +185,33 @@ class FirebaseAuthRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    override suspend fun updateFcmToken(token: String) {
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            try {
+                val uid = currentUser.uid
+
+                val data = mapOf(
+                    "fcmToken" to token,
+                    "lastActiveAt" to FieldValue.serverTimestamp()
+                )
+
+                firestore.collection("users")
+                    .document(uid)
+                    .set(data, SetOptions.merge())
+                    .await()
+            } catch (e: Exception) {
+                Log.d(
+                    "FirebaseAuthRepository",
+                    "Error updating FCM token: ${e.message}"
+                )
+            }
+        } else {
+            // If user is not logged in, choose to save the token to DataStore for later login (TBD)
+            Log.w("FirebaseAuthRepository", "User not logged in, skipping token update")
         }
     }
 

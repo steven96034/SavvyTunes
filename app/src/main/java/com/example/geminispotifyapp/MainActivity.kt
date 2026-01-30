@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             GeminiSpotifyAppTheme {
                 Surface(
-                    modifier = Modifier.Companion.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
                     RootApp()
