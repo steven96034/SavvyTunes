@@ -24,6 +24,8 @@ interface SpotifyRepository {
     val genreOfShowCaseSearchFlow: Flow<String>
     val yearOfShowCaseSearchFlow: Flow<String>
     val isRandomYearOfShowCaseSelectionFlow: Flow<Boolean>
+    val isWelcomeFlowCompletedFlow: Flow<Boolean>
+
 
 
     suspend fun getAccessToken(): String
@@ -92,4 +94,5 @@ interface SpotifyRepository {
     suspend fun setGenreOfShowCaseSearch(genre: String)
     suspend fun setYearOfShowCaseSearch(year: String)
     suspend fun setIsRandomYearOfShowCaseSelection(isRandom: Boolean)
+    suspend fun setIsWelcomeFlowCompleted(completed: Boolean)
 }

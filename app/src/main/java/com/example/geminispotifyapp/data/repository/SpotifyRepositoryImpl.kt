@@ -69,6 +69,8 @@ class SpotifyRepositoryImpl @Inject constructor(
     override val yearOfShowCaseSearchFlow: Flow<String> = appDatabase.yearOfShowCaseSearchFlow
     override val isRandomYearOfShowCaseSelectionFlow: Flow<Boolean> = appDatabase.isRandomYearOfShowCaseSelectionFlow
 
+    override val isWelcomeFlowCompletedFlow: Flow<Boolean> = appDatabase.isWelcomeFlowCompletedFlow
+
 
     init {
         // Launch coroutine in ApplicationScope to collect data from DataStore
@@ -563,6 +565,10 @@ class SpotifyRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.d(tag, "Failed to save isRandom settings to firestore through setLanguageOfShowCaseSearch", e)
         }
+    }
+
+    override suspend fun setIsWelcomeFlowCompleted(completed: Boolean) {
+        appDatabase.saveIsWelcomeFlowCompleted(completed)
     }
 
     companion object {

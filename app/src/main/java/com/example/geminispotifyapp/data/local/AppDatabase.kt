@@ -40,6 +40,8 @@ class AppDatabase @Inject constructor(
         val IS_RANDOM_YEAR_OF_SHOW_CASE_SELECTION = booleanPreferencesKey("is_random_year_of_show_case_selection")
 
         val LAST_UPDATED_EVERYDAY_RECOMMENDATION_DATE = stringPreferencesKey("last_updated_everyday_recommendation_date")
+
+        val IS_WELCOME_FLOW_COMPLETED = booleanPreferencesKey("is_welcome_flow_completed")
     }
 
     suspend fun saveCodeVerifier(codeVerifier: String) {
@@ -185,7 +187,7 @@ class AppDatabase @Inject constructor(
 
     // Showcase Search Settings
     val numOfShowCaseSearchFlow: Flow<Int> = dataStore.data.map { preferences ->
-        preferences[SHOW_CASE_SEARCH_NUM_KEY] ?: 25
+        preferences[SHOW_CASE_SEARCH_NUM_KEY] ?: 30
     }
 
     suspend fun saveNumOfShowCaseSearch(num: Int) {
@@ -242,5 +244,15 @@ class AppDatabase @Inject constructor(
         dataStore.edit { preferences ->
             preferences[LAST_UPDATED_EVERYDAY_RECOMMENDATION_DATE] = date
         }
+    }
+
+    suspend fun saveIsWelcomeFlowCompleted(completed: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[IS_WELCOME_FLOW_COMPLETED] = completed
+        }
+    }
+
+    val isWelcomeFlowCompletedFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[IS_WELCOME_FLOW_COMPLETED] ?: false
     }
 }

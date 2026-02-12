@@ -78,16 +78,20 @@ import com.example.geminispotifyapp.presentation.ui.theme.SpotifyGreen
 import com.example.geminispotifyapp.presentation.features.settings.aboutthisapp.AboutThisAppScreen
 import com.example.geminispotifyapp.presentation.features.settings.profile.ProfileScreen
 import com.example.geminispotifyapp.presentation.features.settings.usersettings.UserSettingsScreen
+import com.example.geminispotifyapp.presentation.features.welcome.WelcomeScreen
+import com.example.geminispotifyapp.presentation.features.welcome.WelcomeViewModel
 import kotlinx.coroutines.launch
 
 const val SPLASH_ROUTE = "splash_route"
 const val LOGIN_ROUTE = "login_route"
+const val WELCOME_ROUTE = "welcome_route"
 // For the main navigation graph (Pager and Settings)
 const val MAIN_GRAPH_ROUTE = "main_graph"
 // For only Pager layouts
 const val MAIN_APP_ROUTE = "main_app_route"
 const val START_PAGE_KEY_OF_MAIN_APP = "startPage"
 const val MAIN_APP_ROUTE_WITH_PARAM = "$MAIN_APP_ROUTE/{$START_PAGE_KEY_OF_MAIN_APP}"
+
 
 
 interface Screen {
@@ -136,19 +140,37 @@ val screenLabelsByRoute: Map<String, String> = allAppScreens.associate {
 fun RootApp() {
     val navController = rememberNavController()
     val loginViewModel: LoginViewModel = hiltViewModel()
+    val welcomeViewModel: WelcomeViewModel = hiltViewModel() // Correctly inject WelcomeViewModel
     val isAuthenticated by loginViewModel.isAuthenticated.collectAsStateWithLifecycle()
+    val isWelcomeFlowCompleted by welcomeViewModel.isWelcomeFlowCompletedFlow.collectAsStateWithLifecycle(initialValue = false) // Collect from WelcomeViewModel
     var initialAuthCheckCompleted by remember { mutableStateOf(false) }
 
-    LaunchedEffect(isAuthenticated, initialAuthCheckCompleted) {
+    LaunchedEffect(isAuthenticated, initialAuthCheckCompleted, isWelcomeFlowCompleted) {
         if (initialAuthCheckCompleted) {
-            val targetRoute = if (isAuthenticated) MAIN_APP_ROUTE_WITH_PARAM else LOGIN_ROUTE
-            navController.navigate(targetRoute) {
-                popUpTo(SPLASH_ROUTE) { inclusive = true }
-                anim {
-                    enter = R.anim.slide_in_left
-                    exit = R.anim.slide_out_right
-                    popEnter = R.anim.slide_in_left
-                    popExit = R.anim.slide_out_right
+            val targetRoute = if (isAuthenticated) {
+                if (isWelcomeFlowCompleted) {
+                    MAIN_APP_ROUTE_WITH_PARAM // Already completed welcome flow, go to main
+                } else {
+                    WELCOME_ROUTE // Authenticated, but welcome flow not completed
+                }
+            } else {
+                LOGIN_ROUTE
+            }
+
+            // Only navigate if the current destination is different, to avoid unnecessary re-navigations
+            // For MAIN_APP_ROUTE_WITH_PARAM, the currentDestination.route might be different due to the parameter.
+            val currentRouteBase = navController.currentDestination?.route?.substringBefore('/')
+            val isCurrentRouteMainAppWithParam = currentRouteBase == MAIN_APP_ROUTE && targetRoute == MAIN_APP_ROUTE_WITH_PARAM
+
+            if (navController.currentDestination?.route != targetRoute && !isCurrentRouteMainAppWithParam) { // The second condition ensures that if we are already on the main app route with a different start page, we don't block navigation
+                navController.navigate(targetRoute) {
+                    popUpTo(SPLASH_ROUTE) { inclusive = true }
+                    anim {
+                        enter = R.anim.slide_in_left
+                        exit = R.anim.slide_out_right
+                        popEnter = R.anim.slide_in_left
+                        popExit = R.anim.slide_out_right
+                    }
                 }
             }
         }
@@ -177,6 +199,14 @@ fun RootApp() {
                     viewModel = loginViewModel,
                 )
             }
+
+            composable(WELCOME_ROUTE) {
+                WelcomeScreen(
+                    navController = navController,
+                    viewModel = welcomeViewModel
+                )
+            }
+
             // Key modification: Wrap all main pages in a navigation block with a route
             navigation(
                 startDestination = MAIN_APP_ROUTE, // The start page of this graph is MainScreen
@@ -329,7 +359,7 @@ fun AppContainer(
                                         ) {
                                             Log.d(
                                                 tag,
-                                                "Animation starts because route is '${routeBeforeNavigation}'."
+                                                "Animation starts because route is '${routeBeforeNavigation}'.",
                                             )
                                             anim {
                                                 enter = R.anim.slide_in_left
@@ -340,7 +370,7 @@ fun AppContainer(
                                         } else {
                                             Log.d(
                                                 tag,
-                                                "Animation doesn't start and route is '${routeBeforeNavigation}'."
+                                                "Animation doesn't start and route is '${routeBeforeNavigation}'.",
                                             )
                                         }
                                     }
@@ -405,7 +435,7 @@ fun AppContainer(
                 .windowInsetsPadding(WindowInsets.navigationBars),
             containerColor = Color.Transparent,
             topBar = {
-                if (dynamicAppBarTitle != MainScreen.Home.label) {
+                if (dynamicAppBarTitle != MainScreen.Home.label && currentDestinationRoute != WELCOME_ROUTE) { // Do not show app bar for Welcome screen
                     TopAppBar(
                         title = {
                             val title = dynamicAppBarTitle
@@ -425,8 +455,7 @@ fun AppContainer(
                         },
                         scrollBehavior = scrollBehavior,
                         navigationIcon = {
-                            if (currentDestinationRoute in settingsItems.map { it.route }
-                            ) {
+                            if (currentDestinationRoute in settingsItems.map { it.route } ) {
                                 IconButton(onClick = { rootNavController.popBackStack() }) {
                                     Icon(
                                         Icons.AutoMirrored.Filled.ArrowBack,
@@ -437,6 +466,7 @@ fun AppContainer(
                         },
                         actions = {
                             val isLoginPage = currentDestinationRoute == LOGIN_ROUTE
+
                             if (!isLoginPage) {
                                 IconButton(onClick = { showMenu = !showMenu }) {
                                     Icon(

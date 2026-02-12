@@ -35,3 +35,10 @@ data class SimilarTracksAndArtistsResponse(
     val similarTracks: List<TrackRecommendation>,
     val similarArtists: List<TrackRecommendation>
 )
+
+// Corresponds to userPreferencesSchema
+data class WelcomeUserPreferenceResponse(
+    val genre: String,
+    val year: String,
+    val language: String
+)

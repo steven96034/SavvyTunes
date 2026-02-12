@@ -71,4 +71,27 @@ class GeminiApi @Inject constructor(){
         } catch (e: Exception) {
             throw e
         }
+    
+    private val userPreferencesSchema = Schema.obj(
+        mapOf(
+            "genre" to Schema.string(),
+            "year" to Schema.string(),
+            "language" to Schema.string()
+        )
+    )
+
+    val userPreferencesConfig = generationConfig {
+        temperature = 0.4f
+        responseMimeType = "application/json"
+        responseSchema = userPreferencesSchema
+    }
+
+    suspend fun askGeminiForUserPreferences(prompt: String): GenerateContentResponse =
+        try {
+            generativeModelBase
+                .generativeModel("gemini-2.5-flash", userPreferencesConfig)
+                .generateContent(prompt)
+        } catch (e: Exception) {
+            throw e
+        }
 }
