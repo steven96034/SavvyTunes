@@ -36,10 +36,6 @@ class WelcomeViewModel @Inject constructor(
 
     private val tag = "WelcomeViewModel"
 
-    init {
-        fetchAndProcessUserPreferences()
-    }
-
     fun fetchAndProcessUserPreferences() {
         _uiState.value = WelcomeUiState.Loading
         viewModelScope.launch {
@@ -116,6 +112,7 @@ class WelcomeViewModel @Inject constructor(
     }
 
     fun onNavigateToMainApp() {
+        _uiState.value = WelcomeUiState.Loading
         viewModelScope.launch {
             spotifyRepository.setIsWelcomeFlowCompleted(true) // Ensure it's marked as completed
         }

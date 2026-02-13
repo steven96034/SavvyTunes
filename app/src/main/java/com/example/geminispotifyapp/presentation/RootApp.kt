@@ -142,7 +142,7 @@ fun RootApp() {
     val loginViewModel: LoginViewModel = hiltViewModel()
     val welcomeViewModel: WelcomeViewModel = hiltViewModel() // Correctly inject WelcomeViewModel
     val isAuthenticated by loginViewModel.isAuthenticated.collectAsStateWithLifecycle()
-    val isWelcomeFlowCompleted by welcomeViewModel.isWelcomeFlowCompletedFlow.collectAsStateWithLifecycle(initialValue = false) // Collect from WelcomeViewModel
+    val isWelcomeFlowCompleted by welcomeViewModel.isWelcomeFlowCompletedFlow.collectAsStateWithLifecycle() // Collect from WelcomeViewModel
     var initialAuthCheckCompleted by remember { mutableStateOf(false) }
 
     LaunchedEffect(isAuthenticated, initialAuthCheckCompleted, isWelcomeFlowCompleted) {
@@ -230,7 +230,7 @@ fun RootApp() {
                     )
                 }
                 composable(SettingsScreen.Settings.route) {
-                    UserSettingsScreen()
+                    UserSettingsScreen(navController = navController)
                 }
                 composable(SettingsScreen.Profile.route) {
                     ProfileScreen(rootPaddingValues)

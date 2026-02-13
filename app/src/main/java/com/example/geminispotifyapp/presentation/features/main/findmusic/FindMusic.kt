@@ -26,12 +26,17 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,7 +57,9 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -210,124 +217,104 @@ fun FindMusicPage(
     )
 
     LazyColumn(
-        verticalArrangement = Arrangement.Top,
         modifier = Modifier
             .fillMaxSize()
-            .padding(6.dp, 0.dp, 6.dp, 12.dp),
-        contentPadding = PaddingValues(bottom = 80.dp) // For the bottom navigation bar
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(top = 24.dp, bottom = 80.dp)
     ) {
         item {
-            Row (
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column (
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                Text(
+                    text = "Find Music",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        shadow = Shadow(
+                            color = SpotifyGreen.copy(alpha = 0.5f),
+                            blurRadius = 30f
+                        )
+                    ),
+                    fontWeight = FontWeight.ExtraBold,
+                    color = SpotifyWhite,
+                    letterSpacing = 2.sp
+                )
+                Text(
+                    text = "POWERED BY SPOTIFY & GEMINI",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SpotifyGreen,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
+                )
+
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Find Music",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            shadow = Shadow(
-                                color = Color.LightGray.copy(alpha = 0.7f),
-                                blurRadius = 10f
-                            )
-                        ),
-                        fontWeight = FontWeight.Bold,
-                        color = SpotifyGreen,
-                        modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp)
-                    )
-                    Text(
-                        text = "Powered by Spotify and Gemini",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.LightGray,
-                        modifier = Modifier.padding(bottom = 4.dp)
+                        text = "Select a track below to find similar vibes tailored for you.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(12.dp)
                     )
                 }
             }
+            Spacer(Modifier.padding(4.dp))
         }
+
         item {
-            Text(
-                text = "Find similar tracks and artists! Select a track to search for similar tracks and artists in Spotify!",
-                style = MaterialTheme.typography.labelLarge,
-                color = Color.Gray,
-                modifier = Modifier.padding(horizontal = 12.dp)
-            )
-        }
-        item {
-            HorizontalDivider(modifier = Modifier.padding(8.dp))
-        }
-        item {
-            OutlinedTextField(
-                value = dataInput,
-                onValueChange = {
-                    onDataInputChange(it)
-                    onHasSelectedDataAndInputDoesNotChangeSet(false)
-                    onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(false)
-                },
-                trailingIcon = {
-                    if (dataInput.isNotEmpty()) {
-                        Icon(
-                            Icons.Filled.Clear,
-                            contentDescription = "Clear text",
-                            modifier = Modifier.clickable { onDataInputChange("") }
-                        )
-                    }
-                },
-                label = { Text("Input Any Name (track, artist, or album)") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp)
-            )
-        }
-        item {
-            Row(
-                horizontalArrangement = Arrangement.SpaceAround,
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+                ),
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                OutlinedTextField(
-                    value = trackInput,
-                    onValueChange = {
-                        onTrackInputChange(it)
-                        onHasSelectedTrackAndInputDoesNotChangeSet(false)
-                        onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(false) // Use the new function
-                    },
-                    trailingIcon = {
-                        if (trackInput.isNotEmpty()) {
-                            Icon(
-                                Icons.Filled.Clear,
-                                contentDescription = "Clear text",
-                                modifier = Modifier.clickable { onTrackInputChange("") }
-                            )
-                        }
-                    },
-                    label = { Text("Track Name") },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 4.dp)
-                )
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                ) {
+                    SearchTextField(
+                        value = dataInput,
+                        onValueChange = {
+                            onDataInputChange(it)
+                            onHasSelectedDataAndInputDoesNotChangeSet(false)
+                            onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(false)
+                        },
+                        label = "Search Everything (Track, Artist, Album)",
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                OutlinedTextField(
-                    value = artistInput,
-                    onValueChange = {
-                        onArtistInputChange(it)
-                        onHasSelectedArtistAndInputDoesNotChangeSet(false)
-                        onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(false) // Use the new function
-                    },
-                    trailingIcon = {
-                        if (artistInput.isNotEmpty()) {
-                            Icon(
-                                Icons.Filled.Clear,
-                                contentDescription = "Clear text",
-                                modifier = Modifier.clickable { onArtistInputChange("") }
-                            )
-                        }
-                    },
-                    label = { Text("Artist Name") },
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 4.dp)
-                )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        SearchTextField(
+                            value = trackInput,
+                            onValueChange = {
+                                onTrackInputChange(it)
+                                onHasSelectedTrackAndInputDoesNotChangeSet(false)
+                                onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(false)
+                            },
+                            label = "Track Name",
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        SearchTextField(
+                            value = artistInput,
+                            onValueChange = {
+                                onArtistInputChange(it)
+                                onHasSelectedArtistAndInputDoesNotChangeSet(false)
+                                onHasSelectedTrackOfArtistOrAlbumAndInputDoesNotChangeSet(false)
+                            },
+                            label = "Artist Name",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
         }
         var suggestedData: SpotifyDataList?
@@ -722,6 +709,40 @@ fun FindMusicPage(
             }
         }
     }
+}
+
+@Composable
+fun SearchTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = SpotifyGreen,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+            focusedLabelColor = SpotifyGreen,
+            cursorColor = SpotifyGreen
+        ),
+        trailingIcon = {
+            if (value.isNotEmpty()) {
+                IconButton(onClick = { onValueChange("") }) {
+                    Icon(
+                        imageVector = Icons.Filled.Clear,
+                        contentDescription = "Clear text",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        label = { Text(label) },
+        singleLine = true,
+        modifier = modifier
+    )
 }
 
 @Composable

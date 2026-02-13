@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -103,5 +104,11 @@ class UserSettingsViewModel @Inject constructor(
 
     suspend fun setIsRandomYearOfShowCaseSelection(isRandom: Boolean) {
         spotifyRepository.setIsRandomYearOfShowCaseSelection(isRandom)
+    }
+
+    fun resetWelcomeFlowCompleted() {
+        viewModelScope.launch {
+            spotifyRepository.setIsWelcomeFlowCompleted(false)
+        }
     }
 }

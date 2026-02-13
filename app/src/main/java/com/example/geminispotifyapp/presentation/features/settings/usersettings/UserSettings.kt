@@ -19,6 +19,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -55,6 +57,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
+import com.example.geminispotifyapp.presentation.WELCOME_ROUTE
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Locale
@@ -62,7 +66,8 @@ import java.util.Locale
 
 @Composable
 fun UserSettingsScreen(
-    viewModel: UserSettingsViewModel = hiltViewModel()
+    viewModel: UserSettingsViewModel = hiltViewModel(),
+    navController: NavController
 ) {
     val searchSimilarNum by viewModel.searchSimilarNum.collectAsStateWithLifecycle()
     val userDataNum by viewModel.userDataNum.collectAsStateWithLifecycle()
@@ -95,7 +100,13 @@ fun UserSettingsScreen(
         onLanguageOfShowCaseSearchChange = { newValue -> scope.launch { viewModel.setLanguageOfShowCaseSearch(newValue) } },
         onGenreOfShowCaseSearchChange = { newValue -> scope.launch { viewModel.setGenreOfShowCaseSearch(newValue) } },
         onYearOfShowCaseSearchChange = { newValue -> scope.launch { viewModel.setYearOfShowCaseSearch(newValue) } },
-        onIsRandomYearOfShowCaseSelection = { newValue -> scope.launch { viewModel.setIsRandomYearOfShowCaseSelection(newValue) } }
+        onIsRandomYearOfShowCaseSelection = { newValue -> scope.launch { viewModel.setIsRandomYearOfShowCaseSelection(newValue) } },
+        onResetWelcomeFlowClick = {
+            viewModel.resetWelcomeFlowCompleted()
+            navController.navigate(WELCOME_ROUTE) {
+                popUpTo(navController.graph.startDestinationId) { inclusive = true } 
+            }
+        }
     )
 }
 
@@ -119,7 +130,8 @@ fun UserSettingsContent(
     onLanguageOfShowCaseSearchChange: (String) -> Unit,
     onGenreOfShowCaseSearchChange: (String) -> Unit,
     onYearOfShowCaseSearchChange: (String) -> Unit,
-    onIsRandomYearOfShowCaseSelection: (Boolean) -> Unit
+    onIsRandomYearOfShowCaseSelection: (Boolean) -> Unit,
+    onResetWelcomeFlowClick: () -> Unit
 ) {
     val countryCodes = remember { Locale.getISOCountries() }
     val countries = remember(countryCodes) {
@@ -216,7 +228,9 @@ fun UserSettingsContent(
             state = pagerState,
             modifier = Modifier.weight(1f) // Let HorizontalPager occupy all remaining vertical space
         ) { page ->
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) { // Let LazyColumn occupy its parent space
+            LazyColumn(modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)) { // Let LazyColumn occupy its parent space
                 when (page) {
                     0 -> {
                         item {
@@ -468,6 +482,18 @@ fun UserSettingsContent(
                                 }
                             }
                         }
+                        item {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Button(
+                                onClick = onResetWelcomeFlowClick,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Text("Tap to Regenerate Your Music Taste!")
+                            }
+                        }
                     }
                     1 -> {
                         item {
@@ -685,6 +711,7 @@ fun UserSettingsScreenPreview() {
         onLanguageOfShowCaseSearchChange = {},
         onGenreOfShowCaseSearchChange = {},
         onYearOfShowCaseSearchChange = {},
-        onIsRandomYearOfShowCaseSelection = {}
+        onIsRandomYearOfShowCaseSelection = {},
+        onResetWelcomeFlowClick = {}
     )
 }

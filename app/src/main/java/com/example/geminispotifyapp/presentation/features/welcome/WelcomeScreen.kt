@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +51,11 @@ fun WelcomeScreen(
     navController: NavController,
     viewModel: WelcomeViewModel = hiltViewModel()
 ) {
+    LaunchedEffect(Unit) {
+        if (!viewModel.isWelcomeFlowCompletedFlow.value)
+            viewModel.fetchAndProcessUserPreferences()
+    }
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(
