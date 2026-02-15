@@ -1,7 +1,12 @@
 package com.example.geminispotifyapp.presentation.features.settings.usersettings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,8 +22,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -32,10 +39,13 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -46,18 +56,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.example.geminispotifyapp.core.utils.findActivity
+import com.example.geminispotifyapp.core.utils.openAppNotificationSettings
 import com.example.geminispotifyapp.presentation.WELCOME_ROUTE
 import kotlinx.coroutines.launch
 import java.util.Calendar
@@ -79,6 +98,56 @@ fun UserSettingsScreen(
     val isRandomYearOfShowCaseSelection by viewModel.isRandomYearOfShowCaseSelection.collectAsStateWithLifecycle()
 
     val searchText by viewModel.searchText.collectAsStateWithLifecycle()
+
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    var isSystemPermissionGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    var showEnableDialog by remember { mutableStateOf(false) }
+    var showDisableDialog by remember { mutableStateOf(false) }
+
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        isSystemPermissionGranted = isGranted
+        viewModel.syncNotificationPermissionState(isGranted)
+
+        if (!isGranted) {
+            val activity = context.findActivity()
+            val shouldShowRationale = ActivityCompat.shouldShowRequestPermissionRationale(
+                activity!!,
+                Manifest.permission.POST_NOTIFICATIONS
+            )
+            if (!shouldShowRationale) {
+                showEnableDialog = true
+            }
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val currentStatus = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+
+                isSystemPermissionGranted = currentStatus
+                viewModel.syncNotificationPermissionState(currentStatus)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val scope = rememberCoroutineScope()
 
@@ -106,8 +175,38 @@ fun UserSettingsScreen(
             navController.navigate(WELCOME_ROUTE) {
                 popUpTo(navController.graph.startDestinationId) { inclusive = true } 
             }
+        },
+        isNotificationEnabled = isSystemPermissionGranted,
+        onNotificationToggle = { shouldCheck ->
+            if (shouldCheck) {
+                if (!isSystemPermissionGranted) {
+                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            } else {
+                showDisableDialog = true
+            }
         }
     )
+
+    if (showEnableDialog) {
+        EnableNotificationDialog(
+            onDismiss = { showEnableDialog = false },
+            onConfirm = {
+                showEnableDialog = false
+                context.openAppNotificationSettings()
+            }
+        )
+    }
+
+    if (showDisableDialog) {
+        DisableNotificationDialog(
+            onDismiss = { showDisableDialog = false },
+            onConfirm = {
+                showDisableDialog = false
+                context.openAppNotificationSettings()
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -131,7 +230,9 @@ fun UserSettingsContent(
     onGenreOfShowCaseSearchChange: (String) -> Unit,
     onYearOfShowCaseSearchChange: (String) -> Unit,
     onIsRandomYearOfShowCaseSelection: (Boolean) -> Unit,
-    onResetWelcomeFlowClick: () -> Unit
+    onResetWelcomeFlowClick: () -> Unit,
+    isNotificationEnabled: Boolean,
+    onNotificationToggle: (Boolean) -> Unit
 ) {
     val countryCodes = remember { Locale.getISOCountries() }
     val countries = remember(countryCodes) {
@@ -683,11 +784,105 @@ fun UserSettingsContent(
                                 }
                             }
                         }
+                        item {
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
+                        item {
+                            NotificationSettingItem(
+                                isChecked = isNotificationEnabled,
+                                onCheckedChange = onNotificationToggle,
+                                modifier = Modifier.background(
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                            )
+                        }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+fun NotificationSettingItem(
+    isChecked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp, horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Daily Recommendations",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = if (isChecked)
+                    "You'll get notified when your daily mix is ready."
+                else "Enable to get notified about your daily mix.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Switch(
+            checked = isChecked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+            )
+        )
+    }
+}
+
+@Composable
+fun EnableNotificationDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Enable Notifications") },
+        text = { Text("Notifications are blocked by system settings. Please enable them manually to receive updates.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Open Settings", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun DisableNotificationDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Disable Notifications") },
+        text = { Text("To disable notifications, you need to modify permissions in your device settings.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Go to Settings", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable
@@ -712,6 +907,8 @@ fun UserSettingsScreenPreview() {
         onGenreOfShowCaseSearchChange = {},
         onYearOfShowCaseSearchChange = {},
         onIsRandomYearOfShowCaseSelection = {},
-        onResetWelcomeFlowClick = {}
+        onResetWelcomeFlowClick = {},
+        isNotificationEnabled = false,
+        onNotificationToggle = {}
     )
 }

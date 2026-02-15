@@ -2,6 +2,7 @@ package com.example.geminispotifyapp.presentation.features.main.home
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.net.Uri
 import android.provider.Settings
@@ -89,14 +90,17 @@ import com.google.accompanist.permissions.rememberPermissionState
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Recommend
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalConfiguration
@@ -105,8 +109,13 @@ import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.geminispotifyapp.data.remote.interceptor.ApiError
 import com.example.geminispotifyapp.core.utils.UiState
 import com.example.geminispotifyapp.data.remote.model.SpotifyTrack
@@ -115,6 +124,9 @@ import coil.request.ImageRequest
 import coil.size.Size
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.geminispotifyapp.R
+import com.example.geminispotifyapp.core.utils.findActivity
+import com.example.geminispotifyapp.core.utils.openAppNotificationSettings
+import com.example.geminispotifyapp.core.utils.toast
 import com.example.geminispotifyapp.data.remote.model.TrackFromCloudRecommendation
 import com.example.geminispotifyapp.data.repository.WeatherResponse
 import com.example.geminispotifyapp.presentation.ui.theme.SpotifyGrey
@@ -142,6 +154,7 @@ fun HomeScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
 
     val showBottomSheet by viewModel.showBottomSheet.collectAsStateWithLifecycle()
+    val isNotificationPromptDismissed by viewModel.isNotificationPromptDismissed.collectAsStateWithLifecycle()
 
     // Detect portrait orientation
     val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -173,7 +186,12 @@ fun HomeScreen(
             sheetState = sheetState,
             modifier = Modifier.fillMaxHeight(0.95f)
         ) {
-            RecommendationSheetContent(uiState = recommendationUiState, onRefresh = { viewModel.fetchLatestRecommendation() })
+            RecommendationSheetContent(
+                uiState = recommendationUiState,
+                onRefresh = { viewModel.fetchLatestRecommendation() },
+                isPromptDismissed = isNotificationPromptDismissed,
+                onDismissClicked = { viewModel.dismissNotificationPrompt() }
+            )
         }
     }
     Scaffold (floatingActionButton = {
@@ -296,7 +314,7 @@ fun HomeContent(
                                     "We need location permission to get your approximate location, so we can provide weather information and music recommendation, please allow us access."
                                 } else {
                                     // Situation 1: First time of asking for permission.
-                                    "Location permission is required to continue."
+                                    "Location permission is required to continue your personalized music recommendation."
                                 }
                                 Text(textToShow, textAlign = TextAlign.Center)
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -505,11 +523,15 @@ fun HomeContent(
                                             Text(
                                                 text = "Recommendation for ",
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(vertical = 2.dp).padding(start = 4.dp)
+                                                modifier = Modifier
+                                                    .padding(vertical = 2.dp)
+                                                    .padding(start = 4.dp)
                                             )
                                             Text(
                                                 text = title,
-                                                modifier = Modifier.padding(vertical = 2.dp).padding(end = 4.dp)
+                                                modifier = Modifier
+                                                    .padding(vertical = 2.dp)
+                                                    .padding(end = 4.dp)
                                             )
                                         }
                                     }
@@ -1069,15 +1091,25 @@ fun VerticalPagerIndicator(
 }
 
 @Composable
-fun RecommendationSheetContent(uiState: RecommendationUiState, onRefresh: () -> Unit) {
+fun RecommendationSheetContent(
+    uiState: RecommendationUiState,
+    onRefresh: () -> Unit,
+    isPromptDismissed: Boolean,
+    onDismissClicked: () -> Unit
+    ) {
+    val context = LocalContext.current
     when (uiState) {
         is RecommendationUiState.Loading -> {
-            Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier
+                .fillMaxWidth()
+                .height(200.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         }
         is RecommendationUiState.Empty -> {
-            Box(Modifier.fillMaxWidth().height(500.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier
+                .fillMaxWidth()
+                .height(500.dp), contentAlignment = Alignment.Center) {
                 Column (
                     modifier = Modifier.fillMaxWidth(0.8f),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -1091,11 +1123,22 @@ fun RecommendationSheetContent(uiState: RecommendationUiState, onRefresh: () -> 
                         "Maybe you will get one tomorrow!",
                         color = MaterialTheme.colorScheme.primary
                     )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                    )
+                    NotificationPermissionCard(
+                        isPromptDismissed,
+                        onDismissClicked,
+                        { toast(context = context, "Notification permission granted!") }
+                    )
                 }
             }
         }
         is RecommendationUiState.Error -> {
-            Box(Modifier.fillMaxWidth().height(500.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier
+                .fillMaxWidth()
+                .height(500.dp), contentAlignment = Alignment.Center) {
                 Column (
                     modifier = Modifier.fillMaxWidth(0.8f),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -1108,6 +1151,15 @@ fun RecommendationSheetContent(uiState: RecommendationUiState, onRefresh: () -> 
                     Button(onClick = onRefresh) {
                         Text("Retry for daily recommendation.")
                     }
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                    )
+                    NotificationPermissionCard(
+                        isPromptDismissed,
+                        onDismissClicked,
+                        { toast(context = context, "Notification permission granted!") }
+                    )
                 }
             }
         }
@@ -1126,7 +1178,13 @@ fun RecommendationSheetContent(uiState: RecommendationUiState, onRefresh: () -> 
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                NotificationPermissionCard(
+                    isPromptDismissed,
+                    onDismissClicked,
+                    { toast(context = context, "Notification permission granted!") }
+                )
 
                 LazyColumn(
                     contentPadding = PaddingValues(bottom = 32.dp)
@@ -1202,5 +1260,154 @@ fun FloatingButton(onClick: () -> Unit, modifier: Modifier) {
         modifier = modifier
     ) {
         Icon(Icons.Filled.Recommend, "Small floating action button of recommendation.")
+    }
+}
+
+@Composable
+fun NotificationPermissionCard(
+    isPromptDismissed: Boolean,
+    onDismissClicked: () -> Unit,
+    onPermissionGranted: () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    var isGranted by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    // Early return if already granted
+    if (isGranted || isPromptDismissed) {
+        return
+    }
+
+    var isPermanentlyDenied by remember { mutableStateOf(false) }
+
+    // Function for refreshing permission status (from settings)
+    fun refreshPermissionStatus() {
+        val permission = Manifest.permission.POST_NOTIFICATIONS
+        val currentlyGranted = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+
+        if (currentlyGranted) {
+            isGranted = true
+            onPermissionGranted()
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshPermissionStatus()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { wasGranted ->
+            if (wasGranted) {
+                isGranted = true
+                onPermissionGranted()
+            } else {
+                val activity = context.findActivity()
+                if (activity != null) {
+                    val shouldShowRationale = ActivityCompat.shouldShowRequestPermissionRationale(
+                        activity,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    )
+                    if (!shouldShowRationale) {
+                        isPermanentlyDenied = true
+                    }
+                }
+            }
+        }
+    )
+
+    // UI (Only when "isGranted == false" would be executed.)
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        ),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (isPermanentlyDenied) Icons.Default.Settings else Icons.Default.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = if (isPermanentlyDenied) "Notifications are Blocked" else "Don't Miss Your Daily Mix",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = if (isPermanentlyDenied)
+                    "You've previously blocked notifications. To get your daily playlist, please enable notifications in Settings."
+                else
+                    "Get notified as soon as your personalized playlist is ready every morning.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = {
+                        if (isPermanentlyDenied) {
+                            context.openAppNotificationSettings()
+                        } else {
+                            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = if (isPermanentlyDenied) "Go to Settings" else "Turn on Notifications",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                TextButton(
+                    onClick = onDismissClicked,
+                    modifier = Modifier.weight(0.5f),
+                ) {
+                    Text(
+                        text = "Not Now",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
     }
 }

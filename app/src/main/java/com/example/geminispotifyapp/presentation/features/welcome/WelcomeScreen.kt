@@ -51,12 +51,13 @@ fun WelcomeScreen(
     navController: NavController,
     viewModel: WelcomeViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
     LaunchedEffect(Unit) {
-        if (!viewModel.isWelcomeFlowCompletedFlow.value)
+        if (!viewModel.isWelcomeFlowCompletedFlow.value && uiState is WelcomeUiState.Loading)
             viewModel.fetchAndProcessUserPreferences()
     }
 
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier

@@ -42,6 +42,8 @@ class AppDatabase @Inject constructor(
         val LAST_UPDATED_EVERYDAY_RECOMMENDATION_DATE = stringPreferencesKey("last_updated_everyday_recommendation_date")
 
         val IS_WELCOME_FLOW_COMPLETED = booleanPreferencesKey("is_welcome_flow_completed")
+
+        val KEY_NOTIFICATION_PROMPT_DISMISSED = booleanPreferencesKey("notification_prompt_dismissed")
     }
 
     suspend fun saveCodeVerifier(codeVerifier: String) {
@@ -246,13 +248,24 @@ class AppDatabase @Inject constructor(
         }
     }
 
+    val isWelcomeFlowCompletedFlow: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[IS_WELCOME_FLOW_COMPLETED] ?: false
+    }
+
     suspend fun saveIsWelcomeFlowCompleted(completed: Boolean) {
         dataStore.edit { preferences ->
             preferences[IS_WELCOME_FLOW_COMPLETED] = completed
         }
     }
 
-    val isWelcomeFlowCompletedFlow: Flow<Boolean> = dataStore.data.map { preferences ->
-        preferences[IS_WELCOME_FLOW_COMPLETED] ?: false
+    val isNotificationPromptDismissedFlow: Flow<Boolean> = dataStore.data
+        .map { preferences ->
+            preferences[KEY_NOTIFICATION_PROMPT_DISMISSED] ?: false
+        }
+
+    suspend fun setNotificationPromptDismissed(dismissed: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[KEY_NOTIFICATION_PROMPT_DISMISSED] = dismissed
+        }
     }
 }

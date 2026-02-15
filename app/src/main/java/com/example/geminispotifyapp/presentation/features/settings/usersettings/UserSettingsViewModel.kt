@@ -111,4 +111,13 @@ class UserSettingsViewModel @Inject constructor(
             spotifyRepository.setIsWelcomeFlowCompleted(false)
         }
     }
+
+    fun syncNotificationPermissionState(isSystemGranted: Boolean) {
+        viewModelScope.launch {
+            // Logic Definition：
+            // System has permission = User wants to notify = Prompt Dismissed (False) / Enabled (True)
+            // System has no permission = User has disabled notifications = Prompt Dismissed (True)
+            spotifyRepository.setNotificationPromptDismissed(!isSystemGranted)
+        }
+    }
 }

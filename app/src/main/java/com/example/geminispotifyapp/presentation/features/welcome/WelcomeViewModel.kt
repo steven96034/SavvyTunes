@@ -54,7 +54,7 @@ class WelcomeViewModel @Inject constructor(
                     if (tracks.isNotEmpty()) {
                         // 2. Create prompt for Gemini
                         val promptBuilder = StringBuilder()
-                        promptBuilder.append("Based on the following Spotify top tracks, suggest a preferred music genre, a typical year range for these songs, and a language preference. Respond only in JSON format with 'genre', 'year', and 'language' fields:\n")
+                        promptBuilder.append("Based on the following Spotify top tracks, suggest the most one preferred music genre, one typical year for these songs, and one language preference. Do not respond with more than one genre, year, or language. Respond only in JSON format with 'genre', 'year', and 'language' fields:\n")
                         tracks.forEachIndexed { index, track ->
                             promptBuilder.append("${index + 1}. Track: ${track.name}, Artist: ${track.artists.joinToString { it.name }}, Album: ${track.album.name}\n")
                         }

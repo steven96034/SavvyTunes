@@ -70,6 +70,8 @@ class SpotifyRepositoryImpl @Inject constructor(
     override val isRandomYearOfShowCaseSelectionFlow: Flow<Boolean> = appDatabase.isRandomYearOfShowCaseSelectionFlow
 
     override val isWelcomeFlowCompletedFlow: Flow<Boolean> = appDatabase.isWelcomeFlowCompletedFlow
+    override val isNotificationPromptDismissedFlow: Flow<Boolean> = appDatabase.isNotificationPromptDismissedFlow
+
 
 
     init {
@@ -569,6 +571,10 @@ class SpotifyRepositoryImpl @Inject constructor(
 
     override suspend fun setIsWelcomeFlowCompleted(completed: Boolean) {
         appDatabase.saveIsWelcomeFlowCompleted(completed)
+    }
+
+    override suspend fun setNotificationPromptDismissed(dismissed: Boolean) {
+        appDatabase.setNotificationPromptDismissed(dismissed)
     }
 
     companion object {

@@ -25,6 +25,8 @@ interface SpotifyRepository {
     val yearOfShowCaseSearchFlow: Flow<String>
     val isRandomYearOfShowCaseSelectionFlow: Flow<Boolean>
     val isWelcomeFlowCompletedFlow: Flow<Boolean>
+    val isNotificationPromptDismissedFlow: Flow<Boolean>
+
 
 
 
@@ -95,4 +97,5 @@ interface SpotifyRepository {
     suspend fun setYearOfShowCaseSearch(year: String)
     suspend fun setIsRandomYearOfShowCaseSelection(isRandom: Boolean)
     suspend fun setIsWelcomeFlowCompleted(completed: Boolean)
+    suspend fun setNotificationPromptDismissed(dismissed: Boolean)
 }

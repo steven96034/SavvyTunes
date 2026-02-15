@@ -19,17 +19,20 @@ import com.example.geminispotifyapp.domain.repository.WeatherDataRepository
 import com.example.geminispotifyapp.domain.repository.WeatherIconRepository
 import com.example.geminispotifyapp.domain.usecase.FindWeatherRelatedMusic
 import com.example.geminispotifyapp.domain.usecase.GetLocationAndWeatherUseCase
+import com.example.geminispotifyapp.presentation.MainScreen
 import com.example.geminispotifyapp.presentation.SettingsScreen
 import com.google.ai.client.generativeai.type.ServerException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -89,6 +92,19 @@ class HomeViewModel @Inject constructor(
 
     private val _showBottomSheet = MutableStateFlow(false)
     val showBottomSheet: StateFlow<Boolean> = _showBottomSheet.asStateFlow()
+
+    val isNotificationPromptDismissed: StateFlow<Boolean> = spotifyRepository.isNotificationPromptDismissedFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = true
+        )
+
+    fun dismissNotificationPrompt() {
+        viewModelScope.launch {
+            spotifyRepository.setNotificationPromptDismissed(true)
+        }
+    }
 
     fun setBottomSheetVisibility(isVisible: Boolean) {
         _showBottomSheet.value = isVisible
@@ -250,7 +266,7 @@ class HomeViewModel @Inject constructor(
                         uiEventManager.sendEvent(
                             UiEvent.ShowSnackbarWithAction(
                                 "Search successfully completed.",
-                                "View Results"
+                                MainScreen.Home.label
                             )
                         )
                     } else if (state is UiState.Error) {
