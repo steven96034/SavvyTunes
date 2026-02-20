@@ -11,7 +11,15 @@ import com.example.geminispotifyapp.data.remote.interceptor.ApiError
 import com.example.geminispotifyapp.data.repository.SpotifyRepositoryImpl
 import com.example.geminispotifyapp.core.utils.ApiExecutionHelper
 import com.example.geminispotifyapp.core.utils.FetchResultWithEtag
+import com.google.android.gms.tasks.Task
+import com.google.android.gms.tasks.Tasks
 import com.google.common.truth.Truth.assertThat
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FirebaseFirestore
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -21,6 +29,7 @@ import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.unmockkStatic
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
@@ -42,6 +51,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import retrofit2.HttpException
 import retrofit2.Response
 import java.io.IOException
+import kotlin.test.assertNull
 
 
 // Use JUnit 5 extension for MockK
@@ -58,6 +68,10 @@ class SpotifyRepositoryImplTest {
     private lateinit var spotifyApiService: SpotifyApiService
     @MockK
     private lateinit var apiExecutionHelper: ApiExecutionHelper
+    @MockK
+    private lateinit var firestore: FirebaseFirestore
+    @MockK
+    private lateinit var auth: FirebaseAuth
 
     // Use TestScope and TestDispatcher to control coroutine execution
     private val testDispatcher = StandardTestDispatcher()
@@ -82,12 +96,26 @@ class SpotifyRepositoryImplTest {
         every { appDatabase.languageOfShowCaseSearchFlow } returns flowOf("en")
         every { appDatabase.genreOfShowCaseSearchFlow } returns flowOf("pop")
         every { appDatabase.yearOfShowCaseSearchFlow } returns flowOf("2024")
+        every { appDatabase.isRandomYearOfShowCaseSelectionFlow } returns flowOf(true)
+        every { appDatabase.isWelcomeFlowCompletedFlow } returns flowOf(false)
+        every { appDatabase.isNotificationPromptDismissedFlow } returns flowOf(false)
+
+        // Mock Firebase Auth User
+        val mockFirebaseUser = mockk<FirebaseUser>()
+        every { mockFirebaseUser.uid } returns "test_user_id"
+        every { auth.currentUser } returns mockFirebaseUser
 
         // Mock all static methods of the Log class
         mockkStatic(Log::class)
-        // When Log.e is called anywhere, we tell MockK to do nothing and return 0 (because the return type of Log.e is Int)
+        mockkStatic(Tasks::class)
+        // When Log is called anywhere, we tell MockK to do nothing and return 0 (because the return type of Log is Int)
         every { Log.e(any(), any<String>()) } returns 0
         every { Log.e(any(), any<String>(), any()) } returns 0 // Handle the version with a Throwable parameter
+        every { Log.d(any(), any()) } returns 0
+        every { Log.i(any(), any()) } returns 0
+        every { Log.v(any(), any()) } returns 0
+        every { Log.w(any(), any<String>()) } returns 0
+        every { Log.w(any(), any<String>(), any()) } returns 0
 
         // Create the Repository instance, injecting mock objects and the test CoroutineScope
         repository = SpotifyRepositoryImpl(
@@ -95,7 +123,9 @@ class SpotifyRepositoryImplTest {
             spotifyUserApiService = spotifyUserApiService,
             spotifyApiService = spotifyApiService,
             apiExecutionHelper = apiExecutionHelper,
-            applicationScope = testScope
+            applicationScope = testScope,
+            firestore = firestore,
+            auth = auth,
         )
     }
 
@@ -103,6 +133,7 @@ class SpotifyRepositoryImplTest {
     fun tearDown() {
         // After each test, unmock the Log class. This is a good practice.
         unmockkStatic(Log::class)
+        unmockkStatic(Tasks::class)
     }
 
     @Nested
@@ -140,6 +171,8 @@ class SpotifyRepositoryImplTest {
                 spotifyUserApiService,
                 spotifyApiService,
                 apiExecutionHelper,
+                firestore,
+                auth,
                 testScope
             ) // Re-init to collect new flow
             advanceUntilIdle() // Let the coroutine in init complete
@@ -178,6 +211,8 @@ class SpotifyRepositoryImplTest {
                 spotifyUserApiService,
                 spotifyApiService,
                 apiExecutionHelper,
+                firestore,
+                auth,
                 testScope
             )
             advanceUntilIdle()
@@ -209,6 +244,8 @@ class SpotifyRepositoryImplTest {
                 spotifyUserApiService,
                 spotifyApiService,
                 apiExecutionHelper,
+                firestore,
+                auth,
                 testScope
             )
             advanceUntilIdle()
@@ -232,7 +269,96 @@ class SpotifyRepositoryImplTest {
             // Verify that even with two calls, the refresh API was only executed once, proving the Mutex works
             coVerify(exactly = 1) { spotifyApiService.refreshAccessToken(any(), any(), any()) }
         }
-    }
+
+        @Test
+        fun `fetchRefreshTokenFromFirestore WHEN called THEN retrieves token from Firestore and it is used successfully`() = runTest(testDispatcher) {
+            // 1. ARRANGE
+            val expectedToken = "valid_refresh_token_from_firestore"
+            val uid = "test_user_id"
+
+            val mockUsersCollection = mockk<CollectionReference>()
+            val mockUserDocument = mockk<DocumentReference>()
+            val mockPrivateDataCollection = mockk<CollectionReference>()
+            val mockSpotifySecretsDocument = mockk<DocumentReference>()
+
+            val mockTask = mockk<Task<DocumentSnapshot>>()
+            val mockSnapshot = mockk<DocumentSnapshot>()
+
+            every { firestore.collection("users") } returns mockUsersCollection
+            every { mockUsersCollection.document(uid) } returns mockUserDocument
+            every { mockUserDocument.collection("private_data") } returns mockPrivateDataCollection
+            every { mockPrivateDataCollection.document("spotify_secrets") } returns mockSpotifySecretsDocument
+
+            every { mockSpotifySecretsDocument.get() } returns mockTask
+
+            every { Tasks.await(mockTask) } returns mockSnapshot
+
+            every { mockSnapshot.getString("refreshToken") } returns expectedToken
+
+            // 2. ACT
+            val actualToken = repository.fetchRefreshTokenFromFirestore()
+
+            // 3. ASSERT
+            assertEquals(expectedToken, actualToken)
+        }
+
+        @Test
+        fun `fetchRefreshTokenFromFirestore WHEN called AND Firestore returns null THEN returns null`() = runTest(testDispatcher) {
+            // 1. ARRANGE
+            val mockCollection = mockk<CollectionReference>()
+            val mockDocument = mockk<DocumentReference>()
+            val mockSnapshot = mockk<DocumentSnapshot>()
+
+            every { firestore.collection("users") } returns mockCollection
+            every { mockCollection.document("test_user_id") } returns mockDocument
+            every { mockDocument.get() } returns Tasks.forResult(mockSnapshot)
+
+            every { mockSnapshot.getString("refreshToken") } returns null
+
+            // 2. ACT
+            val actualToken = repository.fetchRefreshTokenFromFirestore()
+
+            // 3. ASSERT
+            assertNull(actualToken)
+        }
+
+        @Test
+        fun `fetchRefreshTokenFromFirestore WHEN Firestore call fails THEN returns null`() = runTest(testDispatcher) {
+            // 1. ARRANGE
+            val uid = "test_user_id"
+
+            val mockUsersCollection = mockk<CollectionReference>()
+            val mockUserDocument = mockk<DocumentReference>()
+            val mockPrivateDataCollection = mockk<CollectionReference>()
+            val mockSpotifySecretsDocument = mockk<DocumentReference>()
+
+            val mockTask = mockk<Task<DocumentSnapshot>>()
+
+            every { firestore.collection("users") } returns mockUsersCollection
+            every { mockUsersCollection.document(uid) } returns mockUserDocument
+            every { mockUserDocument.collection("private_data") } returns mockPrivateDataCollection
+            every { mockPrivateDataCollection.document("spotify_secrets") } returns mockSpotifySecretsDocument
+
+            every { mockSpotifySecretsDocument.get() } returns mockTask
+
+            val firestoreException = Exception("Simulated Firestore Error")
+
+            every { Tasks.await(mockTask) } throws firestoreException
+
+            // 2. ACT
+            val actualToken = repository.fetchRefreshTokenFromFirestore()
+
+            // 3. ASSERT
+            assertNull(actualToken)
+
+            verify(exactly = 1) {
+                Log.e(
+                    any(),
+                    eq("Firestore rescue failed when fetching refresh token."),
+                    any()
+                )
+            }
+        }
     @Nested
     @DisplayName("Data Fetching Operations")
     inner class DataFetchingOperations {
@@ -325,6 +451,8 @@ class SpotifyRepositoryImplTest {
                 spotifyUserApiService,
                 spotifyApiService,
                 apiExecutionHelper,
+                firestore,
+                auth,
                 testScope
             )
             advanceUntilIdle() // Ensure the coroutine in the init block completes
@@ -490,4 +618,83 @@ class SpotifyRepositoryImplTest {
             assertThat(result).isTrue()
         }
     }
+
+    @Nested
+    @DisplayName("Flow Properties Test")
+    inner class FlowsTest {
+
+        @Test
+        fun `currentAccessTokenFlow SHOULD emit initial token from database`() = runTest(testDispatcher) {
+            // Arrange
+            val initialToken = "cached_initial_token"
+            coEvery { appDatabase.getAccessTokenFlow() } returns flowOf(initialToken)
+
+            // Re-initialize the repository to ensure it collects from the new mock flow
+            repository = SpotifyRepositoryImpl(
+                appDatabase, spotifyUserApiService, spotifyApiService, apiExecutionHelper, firestore, auth, testScope
+            )
+            advanceUntilIdle() // Allow init block to run
+
+            // Act & Assert
+            repository.currentAccessTokenFlow.test {
+                // The first item emitted should be the initial token
+                assertEquals(initialToken, awaitItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+        @Test
+        fun `userDataNumFlow SHOULD emit initial value from database`() = runTest(testDispatcher) {
+            // Arrange
+            val initialNum = 50
+            every { appDatabase.getUserDataNumFlow } returns flowOf(initialNum)
+
+            // Re-initialize the repository
+            repository = SpotifyRepositoryImpl(
+                appDatabase, spotifyUserApiService, spotifyApiService, apiExecutionHelper, firestore, auth, testScope
+            )
+            advanceUntilIdle()
+
+            // Act & Assert
+            repository.userDataNumFlow.test {
+                assertEquals(initialNum, awaitItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+        // Add similar tests for other Flow properties like:
+        // searchSimilarNumFlow, checkMarketIfPlayableFlow, numOfShowCaseSearchFlow, etc.
+        // The pattern is generally:
+        // 1. Mock the appDatabase Flow property to return a specific flow.
+        // 2. Re-initialize the repository (if needed, to ensure it collects from the new mock).
+        // 3. Use .test() on the repository's Flow property and assert the emitted values.
+
+        @Test
+        fun `searchSimilarNumFlow SHOULD emit initial value from database`() = runTest(testDispatcher) {
+            val initialNum = 15
+            every { appDatabase.searchSimilarNumFlow } returns flowOf(initialNum)
+            repository = SpotifyRepositoryImpl(appDatabase, spotifyUserApiService, spotifyApiService, apiExecutionHelper, firestore, auth, testScope)
+            advanceUntilIdle()
+
+            repository.searchSimilarNumFlow.test {
+                assertEquals(initialNum, awaitItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+        @Test
+        fun `checkMarketIfPlayableFlow SHOULD emit initial value from database`() = runTest(testDispatcher) {
+            val initialMarket = "US"
+            every { appDatabase.checkMarketIfPlayableFlow } returns flowOf(initialMarket)
+            repository = SpotifyRepositoryImpl(appDatabase, spotifyUserApiService, spotifyApiService, apiExecutionHelper, firestore, auth, testScope)
+            advanceUntilIdle()
+
+            repository.checkMarketIfPlayableFlow.test {
+                assertEquals(initialMarket, awaitItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+        // ... Add tests for other flows as needed ...
+    }
+}
 }

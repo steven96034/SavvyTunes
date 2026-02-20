@@ -52,10 +52,12 @@ fun WelcomeScreen(
     viewModel: WelcomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isWelcomeFlowCompleted by viewModel.isWelcomeFlowCompletedFlow.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        if (!viewModel.isWelcomeFlowCompletedFlow.value && uiState is WelcomeUiState.Loading)
+    LaunchedEffect(isWelcomeFlowCompleted) {
+        if (!isWelcomeFlowCompleted && uiState is WelcomeUiState.Loading) {
             viewModel.fetchAndProcessUserPreferences()
+        }
     }
 
 

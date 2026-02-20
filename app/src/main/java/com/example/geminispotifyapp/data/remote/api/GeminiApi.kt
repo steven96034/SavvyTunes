@@ -89,7 +89,7 @@ class GeminiApi @Inject constructor(){
     suspend fun askGeminiForUserPreferences(prompt: String): GenerateContentResponse =
         try {
             generativeModelBase
-                .generativeModel("gemini-2.5-flash", userPreferencesConfig)
+                .generativeModel("gemini-2.5-flash-lite", userPreferencesConfig)
                 .generateContent(prompt)
         } catch (e: Exception) {
             throw e

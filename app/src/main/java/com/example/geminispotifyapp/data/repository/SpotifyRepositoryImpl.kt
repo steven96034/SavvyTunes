@@ -169,7 +169,7 @@ class SpotifyRepositoryImpl @Inject constructor(
         }
     }
 
-    private suspend fun fetchRefreshTokenFromFirestore(): String? {
+    suspend fun fetchRefreshTokenFromFirestore(): String? {
         val uid = auth.currentUser?.uid ?: return null
         return try {
             withContext(Dispatchers.IO) {
