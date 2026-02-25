@@ -10,6 +10,8 @@ import com.example.geminispotifyapp.core.utils.UiState
 import com.example.geminispotifyapp.data.remote.model.SpotifyTrack
 import com.example.geminispotifyapp.core.utils.UiEvent
 import com.example.geminispotifyapp.core.utils.UiEventManager
+import com.example.geminispotifyapp.data.debug.AppConfig.isMockMode
+import com.example.geminispotifyapp.data.debug.MockData
 import com.example.geminispotifyapp.data.remote.interceptor.ApiError
 import com.example.geminispotifyapp.data.remote.model.WeeklyRecommendation
 import com.example.geminispotifyapp.data.repository.WeatherResponse
@@ -25,6 +27,7 @@ import com.google.ai.client.generativeai.type.ServerException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -245,6 +248,29 @@ class HomeViewModel @Inject constructor(
             return
         }
 
+        if (isMockMode) {
+            viewModelScope.launch {
+                _findWeatherMusicUiState.value = UiState.Loading
+                delay(5000)
+                _findWeatherMusicUiState.value = UiState.Success(
+                    TwoTracksList(
+                        MockData.mockSpotifyTracks.subList(0, 10),
+                        MockData.mockSpotifyTracks.subList(10, 20)
+                    )
+                )
+                uiEventManager.sendEvent(
+                    UiEvent.ShowSnackbarWithAction(
+                        "Search successfully completed.",
+                        MainScreen.Home.label
+                    )
+                )
+                if (_isRefreshing.value) {
+                    _isRefreshing.value = false
+                }
+            }
+            return
+        }
+
         searchJob = viewModelScope.launch {
             // Call UseCase and collect the results of the Flow
             findWeatherRelatedMusicUseCase(weatherResponse)
@@ -316,6 +342,21 @@ class HomeViewModel @Inject constructor(
     fun fetchLatestRecommendation() {
         if (_recommendationUiState.value is RecommendationUiState.Success) return
         Log.d(tag, "Fetching latest recommendation")
+
+        if (isMockMode) {
+            viewModelScope.launch {
+                delay(500)
+                _recommendationUiState.value =
+                    RecommendationUiState.Success(
+                        WeeklyRecommendation(
+                            LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
+                            "For Your Everyday Recommendation",
+                            null,
+                            MockData.mockTrackFromCloudRecommendation
+                        )
+                    )
+            }
+        }
 
         viewModelScope.launch {
             _recommendationUiState.value = RecommendationUiState.Loading

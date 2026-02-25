@@ -10,7 +10,10 @@ import com.example.geminispotifyapp.core.utils.UiEvent
 import com.example.geminispotifyapp.core.utils.UiEventManager
 import com.example.geminispotifyapp.core.utils.FetchResult
 import com.example.geminispotifyapp.core.utils.GlobalErrorHandler
+import com.example.geminispotifyapp.data.debug.AppConfig.isMockMode
+import com.example.geminispotifyapp.data.debug.MockData
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -62,6 +65,17 @@ class RecentlyPlayedViewModel @Inject constructor(
         }
         Log.d(tag, "Fetching recently played data...")
 
+        if (isMockMode) {
+            viewModelScope.launch {
+                _downLoadState.value = FetchResult.Loading
+                delay(1000)
+                _downLoadState.value = FetchResult.Success(MockData.mockUiPlayHistoryObjects)
+                _displayedRecentlyPlayed.value = MockData.mockUiPlayHistoryObjects
+                hasFetchedOnce = true
+            }
+            return
+        }
+
         _downLoadState.value = FetchResult.Loading
 
         viewModelScope.launch {
@@ -101,6 +115,19 @@ class RecentlyPlayedViewModel @Inject constructor(
             return
         }
         Log.d(tag, "Refreshing recently played data...")
+
+        if (isMockMode) {
+            viewModelScope.launch {
+                _isRefreshing.value = true
+                _downLoadState.value = FetchResult.Loading
+                delay(1000)
+                _downLoadState.value = FetchResult.Success(MockData.mockUiPlayHistoryObjects)
+                _displayedRecentlyPlayed.value = MockData.mockUiPlayHistoryObjects
+                uiEventManager.sendEvent(UiEvent.ShowSnackbar("Refresh successfully completed."))
+                _isRefreshing.value = false
+            }
+            return
+        }
 
         viewModelScope.launch {
             val currentData = (_downLoadState.value as? FetchResult.Success)?.data

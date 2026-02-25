@@ -17,13 +17,12 @@ import com.example.geminispotifyapp.domain.usecase.SearchForSpecificTrackUseCase
 import com.example.geminispotifyapp.core.utils.FetchResult
 import com.example.geminispotifyapp.core.utils.GlobalErrorHandler
 import com.example.geminispotifyapp.core.utils.StringSimilarityCalculator.calculateSimilarity
+import com.example.geminispotifyapp.data.debug.AppConfig.isMockMode
+import com.example.geminispotifyapp.data.debug.MockData
 import com.example.geminispotifyapp.data.remote.model.SimilarTracksAndArtistsResponse
 import com.example.geminispotifyapp.presentation.MainScreen
 import com.google.firebase.ai.type.GenerateContentResponse
-//import com.google.ai.client.generativeai.type.GenerateContentResponse
 import com.google.ai.client.generativeai.type.ServerException
-import com.google.firebase.functions.FirebaseFunctions
-import com.google.firebase.functions.functions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -36,7 +35,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
-import com.google.firebase.Firebase
 import com.google.gson.Gson
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -147,7 +145,6 @@ class FindMusicViewModel @Inject constructor(
 
     fun onDataInputChange(newData: String) {
         _dataInput.value = newData
-        //callPythonBackend()
     }
 
     fun onSelectedSuggestedTrackChange(track: SpotifyTrack?) {
@@ -182,6 +179,57 @@ class FindMusicViewModel @Inject constructor(
     }
 
     fun searchTrack(searchName: String, byType: Type = Type.TRACK, searchFor: Type = Type.TRACK) {
+        if (isMockMode) {
+            viewModelScope.launch {
+                delay(500)
+                when (searchFor) {
+                    Type.TRACK -> {
+                        _searchDataUiState.value = UiState.Success(
+                            (SpotifyDataList(
+                                MockData.mockSpotifyTracks.subList(0, 10),
+                                null,
+                                null,
+                                null
+                            ))
+                        )
+                    }
+
+                    Type.ARTIST -> {
+                        _searchDataUiState.value = UiState.Success(
+                            (SpotifyDataList(
+                                null,
+                                MockData.mockSpotifyArtists.subList(0, 10),
+                                null,
+                                null
+                            ))
+                        )
+                    }
+
+                    Type.ALBUM -> {
+                        _searchDataUiState.value = UiState.Success(
+                            (SpotifyDataList(
+                                null,
+                                null,
+                                MockData.mockSpotifyAlbums.subList(0, 10),
+                                null
+                            ))
+                        )
+                    }
+
+                    Type.ALLMENTIONED -> {
+                        _searchDataUiState.value = UiState.Success(
+                            (SpotifyDataList(
+                                MockData.mockSpotifyTracks.subList(0, 10),
+                                MockData.mockSpotifyArtists.subList(0, 10),
+                                MockData.mockSpotifyAlbums.subList(0, 10),
+                                null
+                            ))
+                        )
+                    }
+                }
+            }
+            return
+        }
         if (searchName.isBlank()) return
 
         if (_searchDataUiState.value is UiState.Loading) {
@@ -287,6 +335,11 @@ class FindMusicViewModel @Inject constructor(
         viewModelScope.launch {
             _searchByIdUiState.value = UiState.Loading
             try {
+                if (isMockMode) {
+                    _searchByIdUiState.value =
+                        UiState.Success((SpotifyDataList(null, null, null, MockData.mockSpotifyTracks.subList(10, 20))))
+                    return@launch
+                }
                 val result = spotifyRepository.getTopTracksOfArtist(artistId)
 
                 when (result) {
@@ -324,6 +377,11 @@ class FindMusicViewModel @Inject constructor(
         viewModelScope.launch {
             _searchByIdUiState.value = UiState.Loading
             try {
+                if (isMockMode) {
+                    _searchByIdUiState.value =
+                        UiState.Success((SpotifyDataList(null, null, null, MockData.mockSimplifiedTrack.subList(10, 17))))
+                    return@launch
+                }
                 val result = spotifyRepository.getAlbumTracks(albumId)
 
                 when (result) {
@@ -437,6 +495,24 @@ class FindMusicViewModel @Inject constructor(
                 uiEventManager.sendEvent(UiEvent.ShowSnackbar("Previous search has successfully cancelled."))
             }
             _searchSimilarUiState.value = UiState.Initial
+            return
+        }
+        if (isMockMode) {
+            viewModelScope.launch {
+                uiEventManager.sendEvent(UiEvent.ShowSnackbar("You can explore other content in app, we'll inform you when it's ready!"))
+                _searchSimilarUiState.value = UiState.Loading
+                delay(5000)
+                _searchSimilarUiState.value =
+                    UiState.Success(
+                        (SpotifyDataList(
+                            MockData.mockSpotifyTracks.shuffled(),
+                            MockData.mockSpotifyArtists.shuffled(),
+                            null,
+                            null
+                        ))
+                    )
+                uiEventManager.sendEvent(UiEvent.ShowSnackbarWithAction("Search successfully completed.", MainScreen.FindMusic.label))
+            }
             return
         }
         Log.d(tag, "Started searchSimilarTracksAndArtists($track, $artist)")
@@ -635,38 +711,6 @@ class FindMusicViewModel @Inject constructor(
                     uiEventManager.sendEvent(UiEvent.Unauthorized(uiEvent.message))
                 }
                 else -> {}
-            }
-        }
-    }
-
-    private fun callPythonBackend() {
-        viewModelScope.launch {
-            try {
-                val functions: FirebaseFunctions = Firebase.functions // Specify the region if not us-central1
-                val callable = functions.getHttpsCallable("get_python_secret_data")
-                callable.call()
-                    .addOnSuccessListener { result ->
-                        // Success：result.data includes the response data
-
-                        // Due to the backend Python function returning a dict, it will be parsed as a Map in Kotlin
-                        val data = result.data as? Map<String, Any>
-
-                        if (data != null) {
-                            // Extract "message" field
-                            val message = data["message"] as? String
-
-                            if (message != null) {
-                                Log.d("CloudFunction", "Successfully received message: $message")
-                            } else {
-                                Log.e("CloudFunction", "Returned data format error or missing \"message\" field")
-                            }
-                        }
-                    }
-                    .addOnFailureListener { exception ->
-                        Log.e("CloudFunction", "Failed to call cloud function", exception)
-                    }
-            } catch (e: Exception) {
-                Log.e("CloudFunction", "Error calling cloud function", e)
             }
         }
     }

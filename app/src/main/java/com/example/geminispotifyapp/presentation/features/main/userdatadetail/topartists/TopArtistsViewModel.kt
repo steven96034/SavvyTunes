@@ -12,9 +12,12 @@ import com.example.geminispotifyapp.core.utils.FetchResult
 import com.example.geminispotifyapp.core.utils.FetchResultWithEtag
 import com.example.geminispotifyapp.presentation.features.main.userdatadetail.Period // Import Period enum
 import com.example.geminispotifyapp.core.utils.GlobalErrorHandler
+import com.example.geminispotifyapp.data.debug.AppConfig.isMockMode
+import com.example.geminispotifyapp.data.debug.MockData
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -73,6 +76,16 @@ class TopArtistsViewModel @Inject constructor(
         }
         Log.d(tag, "Fetching top artists data for all periods...")
 
+        if (isMockMode) {
+            viewModelScope.launch {
+                _downLoadState.value = FetchResult.Loading
+                delay(1000)
+                _downLoadState.value = FetchResult.Success(TopArtistsData(MockData.mockSpotifyArtists, MockData.mockSpotifyArtists.shuffled(), MockData.mockSpotifyArtists.shuffled()))
+                hasFetchedOnce = true
+            }
+            return
+        }
+
         _downLoadState.value = FetchResult.Loading
         viewModelScope.launch {
             // Fetch all three time ranges concurrently
@@ -121,6 +134,18 @@ class TopArtistsViewModel @Inject constructor(
         }
         Log.d(tag, "Refreshing top artists data...")
         _isRefreshing.value = true
+
+        if (isMockMode) {
+            viewModelScope.launch {
+                _downLoadState.value = FetchResult.Loading
+                delay(1000)
+                _downLoadState.value = FetchResult.Success(TopArtistsData(MockData.mockSpotifyArtists, MockData.mockSpotifyArtists.shuffled(), MockData.mockSpotifyArtists.shuffled()))
+                // For demo use, only short is not modified
+                uiEventManager.sendEvent(UiEvent.ShowSnackbar("Refresh completed. (Data is not modified.)"))
+                _isRefreshing.value = false
+            }
+            return
+        }
 
         viewModelScope.launch {
             val currentArtistsData = (_downLoadState.value as? FetchResult.Success)?.data
@@ -191,7 +216,7 @@ class TopArtistsViewModel @Inject constructor(
 
         return when (result) {
             is FetchResultWithEtag.Success -> {
-                val parsedTimeRange = Period.Companion.fromString(timeRange)
+                val parsedTimeRange = Period.fromString(timeRange)
                 val currentData = (_downLoadState.value as? FetchResult.Success)?.data
                 val baseData = currentData ?: TopArtistsData()
                 val itemsToUpdate = result.data.items

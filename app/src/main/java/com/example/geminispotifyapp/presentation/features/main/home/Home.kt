@@ -101,6 +101,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalConfiguration
@@ -712,10 +713,10 @@ fun TrackShowcase(
     track: SpotifyTrack,
     isPortrait: Boolean
 ) {
-    var imageWidthFraction by remember { mutableStateOf(0.9f) }
+    var imageWidthFraction by remember { mutableFloatStateOf(0.9f) }
     var cardSize by remember { mutableStateOf(IntSize.Zero) }
-    var actualImageWidth by remember { mutableStateOf(0) }
-    var actualImageHeight by remember { mutableStateOf(0) }
+    var actualImageWidth by remember { mutableIntStateOf(0) }
+    var actualImageHeight by remember { mutableIntStateOf(0) }
     val imageAspectRatio by remember(actualImageWidth, actualImageHeight) {
         derivedStateOf {
             if (actualImageWidth > 0 && actualImageHeight > 0) {
@@ -1129,9 +1130,8 @@ fun RecommendationSheetContent(
                     )
                     NotificationPermissionCard(
                         isPromptDismissed,
-                        onDismissClicked,
-                        { toast(context = context, "Notification permission granted!") }
-                    )
+                        onDismissClicked
+                    ) { toast(context = context, "Notification permission granted!") }
                 }
             }
         }
@@ -1157,9 +1157,8 @@ fun RecommendationSheetContent(
                     )
                     NotificationPermissionCard(
                         isPromptDismissed,
-                        onDismissClicked,
-                        { toast(context = context, "Notification permission granted!") }
-                    )
+                        onDismissClicked
+                    ) { toast(context = context, "Notification permission granted!") }
                 }
             }
         }
@@ -1182,9 +1181,8 @@ fun RecommendationSheetContent(
 
                 NotificationPermissionCard(
                     isPromptDismissed,
-                    onDismissClicked,
-                    { toast(context = context, "Notification permission granted!") }
-                )
+                    onDismissClicked
+                ) { toast(context = context, "Notification permission granted!") }
 
                 LazyColumn(
                     contentPadding = PaddingValues(bottom = 32.dp)

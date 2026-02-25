@@ -74,16 +74,11 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.generativeai)
-    implementation(files("../spotify-app-remote-release-0.8.0.aar"))
     implementation(libs.gson)
     implementation(libs.androidx.work.runtime.ktx)
-    // Spotify
     implementation(libs.auth)
-    implementation(libs.spotify.api.kotlin.core)
-    // Coroutines
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.coil.kt.coil.compose)
-    // Network
     implementation(libs.retrofit)
     implementation (libs.converter.gson)
     implementation(libs.okhttp)
