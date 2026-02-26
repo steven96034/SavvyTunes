@@ -1,7 +1,9 @@
 package com.example.geminispotifyapp.presentation.features.main.userdatadetail.topartists
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.res.Configuration
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -394,28 +396,35 @@ fun ArtistDetail(
     HorizontalDivider()
     Spacer(modifier = Modifier.height(6.dp))
 
-    // Open in Spotify(URL)
-    val url = artist.externalUrls["spotify"]
-    if (url != null) {
-        val context = LocalContext.current
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(onClick = {
-            val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            if (intent.resolveActivity(context.packageManager) != null) {
-                context.startActivity(intent)
-            } },
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-        ) {
-            Row {
-                Text(text = "Open in Spotify")
-                Spacer(modifier = Modifier.width(4.dp))
-                Image(
-                    painter = painterResource(R.drawable.primary_logo_green_rgb),
-                    contentDescription = null,
-                    modifier = Modifier.height(20.dp)
-                )
+    val context = LocalContext.current
+    Spacer(modifier = Modifier.height(8.dp))
+    Button(
+        onClick = {
+            val intent = Intent(Intent.ACTION_VIEW, artist.uri.toUri()).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
+            try {
+                // Try to open Spotify App
+                context.startActivity(intent)
+                Log.d("TopArtists", "Successfully opened Spotify Deep Link")
+            } catch (e: ActivityNotFoundException) {
+                // Open in explorer
+                Log.d("TopArtists", "Spotify app not found, falling back to Web URL")
+                val webUrl = "https://open.spotify.com/artist/${artist.id}"
+                val webIntent = Intent(Intent.ACTION_VIEW, webUrl.toUri())
+                context.startActivity(webIntent)
+            }
+        },
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+    ) {
+        Row {
+            Text(text = "Open in Spotify")
+            Spacer(modifier = Modifier.width(4.dp))
+            Image(
+                painter = painterResource(R.drawable.primary_logo_green_rgb),
+                contentDescription = null,
+                modifier = Modifier.height(20.dp)
+            )
         }
     }
 }
