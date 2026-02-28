@@ -16,6 +16,7 @@
   <img src="https://img.shields.io/badge/Backend-Firebase-FFCA28?logo=firebase&logoColor=white" alt="Firebase">
   <img src="https://img.shields.io/badge/API-Spotify_Web-1DB954?logo=spotify&logoColor=white" alt="Spotify API">
   <img src="https://img.shields.io/badge/AI-Google_Gemini-8E75B2?logo=googlebard&logoColor=white" alt="Gemini AI">
+  <img src="https://img.shields.io/badge/API-Open--Meteo-25C2A0?logo=icloud&logoColor=white" alt="Open-Meteo">
 
   <img src="https://img.shields.io/badge/Testing-JUnit_|_MockK-4CAF50?logo=testinglibrary&logoColor=white" alt="Testing">
   <img src="https://img.shields.io/github/license/steven96034/SavvyTunes?color=blue" alt="License">
@@ -27,9 +28,7 @@
 </p>
 
 
-> A smart, personalized music discovery application powered by the Spotify Web API and Google Gemini AI.
-
-
+> A modern Android music discovery app leveraging the Spotify Web API, Open-Meteo, and Google Gemini AI for context-aware recommendations. Built with Jetpack Compose and Clean Architecture.
 
 Savvy Tunes is an Android application designed for music enthusiasts. By analyzing your Spotify listening history and combining it with real-time weather data and the semantic power of Gemini AI, it curates highly accurate, context-aware music recommendations. Built with a modern UI and a seamless cross-platform authentication experience.
 
@@ -56,7 +55,7 @@ Savvy Tunes is an Android application designed for music enthusiasts. By analyzi
       <h3>📱 Immersive Showcase & Daily Mix</h3>
       <p>Experience music discovery like never before with an <b>immersive vertical paging</b> layout. Built entirely with Jetpack Compose, the UI delivers silky-smooth, native animations fully optimized for high-refresh-rate displays (120Hz+).</p>
       <ul>
-        <li><b>Context-Aware:</b> Dynamic recommendations based on your real-time GPS location and WMO weather data.</li>
+        <li><b>Context-Aware:</b> Dynamic recommendations based on your real-time GPS location and WMO weather conditions (powered by Open-Meteo).</li>
         <li><b>Immersive Feedback:</b> Features dynamic arrow indicators and custom easing animations for a premium feel.</li>
         <li><b>Cloud Automation:</b> Daily mixes are generated and delivered every morning via <b>Firebase Cloud Functions & FCM</b>.</li>
       </ul>
@@ -174,7 +173,7 @@ The project strictly follows **Clean Architecture** principles, separating conce
 
 * **Dependency Injection:** Dagger Hilt
 
-* **Networking:** Retrofit, OkHttp3
+* **Networking & APIs:** Retrofit, OkHttp3, Spotify Web API, Open-Meteo API
 
 * **Cloud & AI:** Firebase (Auth, Firestore, Functions, Messaging, Vertex AI)
 
@@ -273,6 +272,12 @@ The project strictly follows **Clean Architecture** principles, separating conce
     * Sync Gradle and run the app on an emulator or physical device.
 
 
+
+---
+
+## 🙏 Acknowledgments & Attributions
+
+* Weather data is proudly provided by the **[Open-Meteo API](https://open-meteo.com/)**. We deeply appreciate their free, open-source weather data services that power the context-aware features of Savvy Tunes.
 
 ---
 
