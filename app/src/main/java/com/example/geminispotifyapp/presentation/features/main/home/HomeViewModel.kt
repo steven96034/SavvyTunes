@@ -226,22 +226,10 @@ class HomeViewModel @Inject constructor(
         MutableStateFlow(UiState.Initial)
     val findWeatherMusicUiState: StateFlow<UiState<TwoTracksList>> = _findWeatherMusicUiState.asStateFlow()
     private var searchJob: Job? = null
-//    private lateinit var responseRelated: GenerateContentResponse
     private val musicTag = "WeatherMusic"
-//
-//    private var relatedTracksOfCondition = mutableListOf<String>()
-//    private var relatedTracksOfEmotion = mutableListOf<String>()
-//
-//    // For Spotify API (Not-Found List is for debug.)
-//    private val conditionTempList = mutableListOf<SpotifyTrack>()
-//    private val conditionNotFoundList = mutableListOf<String>()
-//
-//    private val emotionTempList = mutableListOf<SpotifyTrack>()
-//    private val emotionNotFoundList = mutableListOf<String>()
+
 
     fun findRelatedWeatherMusic(weatherResponse: WeatherResponse) {
-
-//        searchJob?.cancel()
 
         // Check if the search is already in progress, if yes, then return and display initial.
         if (_findWeatherMusicUiState.value is UiState.Loading) {
@@ -251,7 +239,7 @@ class HomeViewModel @Inject constructor(
         if (isMockMode) {
             viewModelScope.launch {
                 _findWeatherMusicUiState.value = UiState.Loading
-                delay(5000)
+                delay(1800)
                 _findWeatherMusicUiState.value = UiState.Success(
                     TwoTracksList(
                         MockData.mockSpotifyTracks.subList(0, 10),
@@ -326,11 +314,6 @@ class HomeViewModel @Inject constructor(
                 }
         }
     }
-
-//    fun cancelSearch() {
-//        searchJob?.cancel()
-//        _findWeatherMusicUiState.value = UiState.Initial
-//    }
 
     override fun onCleared() {
         super.onCleared()

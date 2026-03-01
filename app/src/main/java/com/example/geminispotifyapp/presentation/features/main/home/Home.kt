@@ -11,6 +11,7 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColor
+import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateIntAsState
@@ -339,11 +340,11 @@ fun HomeContent(
                 ) {
                     val infiniteTransition = rememberInfiniteTransition(label = "loading_color_transition")
                     val animatedColor by infiniteTransition.animateColor(
-                        initialValue = Color(0xFF00796B), // Teal
-                        targetValue = Color(0xFF7B1FA2), // Purple
+                        initialValue = Color(0xCC1D1D23),
+                        targetValue = Color(0x99393994),
                         animationSpec = infiniteRepeatable(
-                            animation = tween(2000),
-                            repeatMode = RepeatMode.Reverse
+                            animation = tween(2000, easing = EaseInOut),
+                            repeatMode = RepeatMode.Reverse,
                         ), label = "loading_color_animation"
                     )
 
@@ -424,7 +425,16 @@ fun HomeContent(
                                         style = MaterialTheme.typography.bodyLarge
                                     )
                                 }
-                                Spacer(modifier = Modifier.height(16.dp))
+                                Spacer(modifier = Modifier.height(48.dp))
+
+                                Icon(
+                                    painter = painterResource(id = R.drawable.app_icon),
+                                    contentDescription = "App Logo",
+                                    modifier = Modifier.size(140.dp),
+                                    tint = Color.White.copy(alpha = 0.2f)
+                                )
+
+                                Spacer(modifier = Modifier.height(48.dp))
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -453,7 +463,7 @@ fun HomeContent(
                                         targetValue = dotCount,
                                         label = "dotAnimation"
                                     )
-                                    Text(text = "Loading" + ".".repeat(animatedDotCount))
+                                    Text(text = "Analyzing your music taste" + ".".repeat(animatedDotCount))
                                 }
                             }
                         }

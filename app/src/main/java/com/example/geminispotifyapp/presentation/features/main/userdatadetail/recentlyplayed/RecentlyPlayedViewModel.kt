@@ -68,7 +68,7 @@ class RecentlyPlayedViewModel @Inject constructor(
         if (isMockMode) {
             viewModelScope.launch {
                 _downLoadState.value = FetchResult.Loading
-                delay(1000)
+                delay(800)
                 _downLoadState.value = FetchResult.Success(MockData.mockUiPlayHistoryObjects)
                 _displayedRecentlyPlayed.value = MockData.mockUiPlayHistoryObjects
                 hasFetchedOnce = true
@@ -120,7 +120,7 @@ class RecentlyPlayedViewModel @Inject constructor(
             viewModelScope.launch {
                 _isRefreshing.value = true
                 _downLoadState.value = FetchResult.Loading
-                delay(1000)
+                delay(800)
                 _downLoadState.value = FetchResult.Success(MockData.mockUiPlayHistoryObjects)
                 _displayedRecentlyPlayed.value = MockData.mockUiPlayHistoryObjects
                 uiEventManager.sendEvent(UiEvent.ShowSnackbar("Refresh successfully completed."))

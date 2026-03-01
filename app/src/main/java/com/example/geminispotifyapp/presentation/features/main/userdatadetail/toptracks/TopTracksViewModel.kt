@@ -87,7 +87,7 @@ class TopTracksViewModel @Inject constructor(
         if (isMockMode) {
             viewModelScope.launch {
                 _downLoadState.value = FetchResult.Loading
-                delay(1000)
+                delay(800)
                 _downLoadState.value = FetchResult.Success(TopTrackData(MockData.mockSpotifyTracks, MockData.mockSpotifyTracks.shuffled(), MockData.mockSpotifyTracks.shuffled()))
                 hasFetchedOnce = true
             }
@@ -140,7 +140,7 @@ class TopTracksViewModel @Inject constructor(
         if (isMockMode) {
             viewModelScope.launch {
                 _downLoadState.value = FetchResult.Loading
-                delay(1000)
+                delay(800)
                 _downLoadState.value = FetchResult.Success(TopTrackData(MockData.mockSpotifyTracks, MockData.mockSpotifyTracks.shuffled(), MockData.mockSpotifyTracks.shuffled()))
                 // For demo use, only short is not modified
                 uiEventManager.sendEvent(UiEvent.ShowSnackbar("Refresh completed. (Data is not modified.)"))

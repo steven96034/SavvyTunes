@@ -79,7 +79,7 @@ class TopArtistsViewModel @Inject constructor(
         if (isMockMode) {
             viewModelScope.launch {
                 _downLoadState.value = FetchResult.Loading
-                delay(1000)
+                delay(800)
                 _downLoadState.value = FetchResult.Success(TopArtistsData(MockData.mockSpotifyArtists, MockData.mockSpotifyArtists.shuffled(), MockData.mockSpotifyArtists.shuffled()))
                 hasFetchedOnce = true
             }
@@ -138,7 +138,7 @@ class TopArtistsViewModel @Inject constructor(
         if (isMockMode) {
             viewModelScope.launch {
                 _downLoadState.value = FetchResult.Loading
-                delay(1000)
+                delay(800)
                 _downLoadState.value = FetchResult.Success(TopArtistsData(MockData.mockSpotifyArtists, MockData.mockSpotifyArtists.shuffled(), MockData.mockSpotifyArtists.shuffled()))
                 // For demo use, only short is not modified
                 uiEventManager.sendEvent(UiEvent.ShowSnackbar("Refresh completed. (Data is not modified.)"))

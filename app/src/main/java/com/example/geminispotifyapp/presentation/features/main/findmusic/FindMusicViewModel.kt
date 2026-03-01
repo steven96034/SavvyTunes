@@ -181,7 +181,7 @@ class FindMusicViewModel @Inject constructor(
     fun searchTrack(searchName: String, byType: Type = Type.TRACK, searchFor: Type = Type.TRACK) {
         if (isMockMode) {
             viewModelScope.launch {
-                delay(500)
+                delay(800)
                 when (searchFor) {
                     Type.TRACK -> {
                         _searchDataUiState.value = UiState.Success(
@@ -501,7 +501,7 @@ class FindMusicViewModel @Inject constructor(
             viewModelScope.launch {
                 uiEventManager.sendEvent(UiEvent.ShowSnackbar("You can explore other content in app, we'll inform you when it's ready!"))
                 _searchSimilarUiState.value = UiState.Loading
-                delay(5000)
+                delay(1800)
                 _searchSimilarUiState.value =
                     UiState.Success(
                         (SpotifyDataList(
