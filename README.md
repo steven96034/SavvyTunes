@@ -144,7 +144,7 @@ Savvy Tunes is an Android application designed for music enthusiasts. By analyzi
 
 * **Daily Recommendations:** Powered by **Firebase Cloud Functions**, the system automatically generates a personalized "For your everyday recommendation" playlist every morning and delivers it via Firebase Cloud Messaging (FCM).
 
-* > **💡 Backend Service:** The Cloud Functions (Python) handling the Daily Mix generation, FCM push notifications, and secure token management are maintained in a separate repository. 
+* **Backend Service:** The Cloud Functions (Python) handling the Daily Mix generation, FCM push notifications, and secure token management are maintained in a separate repository. 
 > 👉 **[View the Savvy Tunes Backend Repository Here](https://github.com/steven96034/SavvyTunes-Backend)**
 
 
