@@ -4,6 +4,7 @@ import android.util.Log
 import com.example.geminispotifyapp.data.remote.interceptor.ApiError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
 import retrofit2.Response
 import retrofit2.HttpException
@@ -45,9 +46,7 @@ class ApiExecutionHelper @Inject constructor() {
         return try {
             val results = supervisorScope {
                 val deferredTasks = operations()
-                deferredTasks.map {
-                    it.await() // Wait for each async operation
-                }
+                deferredTasks.awaitAll()
             }
             val firstError = results.firstOrNull { it is FetchResult.Error }
             if (firstError != null) {

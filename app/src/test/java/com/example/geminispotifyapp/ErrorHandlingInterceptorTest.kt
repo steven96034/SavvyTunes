@@ -42,7 +42,6 @@ class ErrorHandlingInterceptorTest {
 
         every { Log.w(any<String>(), any<String>()) } returns 0
 
-        // (可选，但推荐) 同时 mock 其他可能用到的版本，以增加测试的健壮性
         every { Log.w(any<String>(), any<Throwable>()) } returns 0
         every { Log.w(any<String>(), any<String>(), any<Throwable>()) } returns 0
 

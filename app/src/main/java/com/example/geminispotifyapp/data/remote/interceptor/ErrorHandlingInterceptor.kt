@@ -11,25 +11,25 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 // Use a custom sealed class to represent different types of errors, making error handling more precise
-sealed class ApiError(val code: Int, override val message: String?) : IOException(message) {
+sealed class ApiError(open val code: Int, override val message: String?) : IOException(message) {
     // 400 Bad Request: Request format error
-    class BadRequest(message: String?) : ApiError(400, message)
+    data class BadRequest(override val message: String?) : ApiError(400, message)
     // 401 Unauthorized: Authenticate failed or token expired (handled by ApiExecutionHelper)
-    class Unauthorized(message: String?) : ApiError(401, message)
+    data class Unauthorized(override val message: String?) : ApiError(401, message)
     // 403 Forbidden: Insufficient permission
-    class Forbidden(message: String?) : ApiError(403, message)
+    data class Forbidden(override val message: String?) : ApiError(403, message)
     // 404 Not Found: Resource not found
-    class NotFound(message: String?) : ApiError(404, message)
+    data class NotFound(override val message: String?) : ApiError(404, message)
     // 429 Too Many Requests: Request limit exceeded
-    class TooManyRequests(message: String?, val retryAfter: Int?) : ApiError(429, message)
+    data class TooManyRequests(override val message: String?, val retryAfter: Int?) : ApiError(429, message)
     // 500 Internal Server Error: Server error
-    class ServerError(message: String?) : ApiError(500, message)
+    data class ServerError(override val message: String?) : ApiError(500, message)
     // Other HTTP errors (not in the above ranges, but for 4xx or 5xx)
-    class HttpError(code: Int, message: String?) : ApiError(code, message)
+    data class HttpError(override val code: Int, override val message: String?) : ApiError(code, message)
     // Network connection error (e.g., no network)
-    class NetworkConnectionError(message: String?) : ApiError(-1, message)
+    data class NetworkConnectionError(override val message: String?) : ApiError(-1, message)
     // JSON parsing error or other unknown error
-    class UnknownError(message: String?) : ApiError(-2, message)
+    data class UnknownError(override val message: String?) : ApiError(-2, message)
 }
 
 // Data class for standard Spotify API errors (error object with status and message)
