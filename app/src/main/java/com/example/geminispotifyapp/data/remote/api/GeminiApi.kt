@@ -44,7 +44,7 @@ class GeminiApi @Inject constructor(){
     suspend fun askGeminiHome(prompt: String): GenerateContentResponse =
         try {
             generativeModelBase
-                .generativeModel("gemini-2.5-flash", homeConfig)
+                .generativeModel("gemini-3.8-flash", homeConfig)
                 .generateContent(prompt)
         } catch (e: Exception) {
             throw e
@@ -66,7 +66,7 @@ class GeminiApi @Inject constructor(){
     suspend fun askGeminiFindMusic(prompt: String): GenerateContentResponse =
         try {
             generativeModelBase
-                .generativeModel("gemini-2.5-flash", findMusicConfig)
+                .generativeModel("gemini-3.8-flash", findMusicConfig)
                 .generateContent(prompt)
         } catch (e: Exception) {
             throw e
@@ -89,7 +89,7 @@ class GeminiApi @Inject constructor(){
     suspend fun askGeminiForUserPreferences(prompt: String): GenerateContentResponse =
         try {
             generativeModelBase
-                .generativeModel("gemini-2.5-flash-lite", userPreferencesConfig)
+                .generativeModel("gemini-3.5-flash-lite", userPreferencesConfig)
                 .generateContent(prompt)
         } catch (e: Exception) {
             throw e
